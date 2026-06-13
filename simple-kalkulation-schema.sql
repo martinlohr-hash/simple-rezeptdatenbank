@@ -90,3 +90,7 @@ CREATE TRIGGER trg_articles_updated    BEFORE UPDATE ON articles    FOR EACH ROW
 CREATE TRIGGER trg_recipes_updated     BEFORE UPDATE ON recipes     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_vorprodukte_updated BEFORE UPDATE ON vorprodukte FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_suppliers_updated   BEFORE UPDATE ON suppliers   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Archiv-Spalten (Migration für bestehende Datenbanken)
+ALTER TABLE recipes      ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;
+ALTER TABLE vorprodukte  ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;

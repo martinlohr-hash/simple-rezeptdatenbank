@@ -555,11 +555,12 @@ function ArticleModal({art, onSave, onClose, suppliers=[]}) {
   );
 }
 
-function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppliers=[], pendingModal=null, onPendingClear}) {
+function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppliers=[], vps=[], pendingModal=null, onPendingClear}) {
   const [q, setQ] = useState('');
   const [showArchiv, setShowArchiv] = useState(false);
   const [modal, setModal] = useState(null);
   const [sort, setSort] = useState({col:'name',dir:'asc'});
+  const [archiveWarning, setArchiveWarning] = useState(null);
 
   useEffect(()=>{
     if (pendingModal !== null) { setModal(pendingModal); onPendingClear&&onPendingClear(); }
@@ -596,7 +597,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
     });
   }, [articles, q, showArchiv, sort]);
 
-  const saveArt = (art) => {
+  const doSaveArt = (art) => {
     const existing = articles.find(a=>a.id===art.id);
     if (existing && existing.ek !== art.ek) {
       const entry = {id:'L'+uid(),datum:new Date().toISOString(),typ:'Preisänderung',
@@ -607,6 +608,19 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
     setArticles(prev=>existing ? prev.map(a=>a.id===art.id?art:a) : [...prev,art]);
     upsert&&upsert('articles', art);
     setModal(null);
+  };
+
+  const saveArt = (art) => {
+    const existing = articles.find(a=>a.id===art.id);
+    if (art.archiv && existing && !existing.archiv) {
+      const usedIn = vps.filter(vp=>!vp.archiv&&(vp.zutaten||[]).some(z=>z.art===art.id));
+      if (usedIn.length) {
+        setModal(null);
+        setArchiveWarning({art, usedIn});
+        return;
+      }
+    }
+    doSaveArt(art);
   };
 
   const priceAge = (datum) => {
@@ -709,6 +723,29 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
         </table>
       </div>
       {modal && <ArticleModal art={modal} onSave={saveArt} onClose={()=>setModal(null)} suppliers={suppliers}/>}
+      {archiveWarning&&(
+        <div className="modal-overlay">
+          <div className="modal" style={{maxWidth:420}}>
+            <div className="modal-header">
+              <h3>Artikel wird in Vorprodukten verwendet</h3>
+            </div>
+            <div className="modal-body">
+              <div className="warn-banner">
+                <span>⚠</span>
+                <div><strong>{archiveWarning.art.name}</strong> ist Zutat in {archiveWarning.usedIn.length} aktivem Vorprodukt{archiveWarning.usedIn.length>1?'en':''}:</div>
+              </div>
+              <ul style={{margin:'12px 0 4px 16px',fontSize:13,lineHeight:2}}>
+                {archiveWarning.usedIn.map(vp=><li key={vp.id}>{vp.name}</li>)}
+              </ul>
+              <div style={{fontSize:13,color:'#64748b',marginTop:8}}>Trotzdem archivieren? Die Vorprodukt-Kalkulation bleibt vorerst bestehen.</div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={()=>setArchiveWarning(null)}>Abbrechen</button>
+              <button className="btn btn-danger" onClick={()=>{doSaveArt(archiveWarning.art);setArchiveWarning(null);}}>Trotzdem archivieren</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -718,7 +755,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
 function RecipeModal({recipe, onSave, onClose}) {
   const isNew = !recipe.id;
   const [form, setForm] = useState({
-    name:'', vkBrutto:0, vkUber:'', weEuro:0, mwst:7, anzahl:'', brot:'', ...recipe,
+    name:'', vkBrutto:0, vkUber:'', weEuro:0, mwst:7, anzahl:'', brot:'', archiv:false, ...recipe,
   });
   const f = (k,v) => setForm(p=>({...p,[k]:v}));
 
@@ -788,6 +825,13 @@ function RecipeModal({recipe, onSave, onClose}) {
             </div>
           )}
         </div>
+          {!isNew&&<div className="form-row" style={{display:'flex',alignItems:'center',gap:8,marginTop:4}}>
+            <label style={{margin:0,cursor:'pointer',fontSize:13}}>
+              <input type="checkbox" checked={form.archiv||false} onChange={e=>f('archiv',e.target.checked)} style={{width:'auto',marginRight:6}}/>
+              Archiviert
+            </label>
+          </div>}
+        </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
           <button className="btn btn-primary" disabled={!form.name.trim()||!form.vkBrutto} onClick={save}>Speichern</button>
@@ -800,6 +844,7 @@ function RecipeModal({recipe, onSave, onClose}) {
 function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upsert}) {
   const [detail, setDetail] = useState(null);
   const [modal, setModal] = useState(null);
+  const [showArchiv, setShowArchiv] = useState(false);
 
   useEffect(()=>{
     if (pendingModal !== null) { setModal(pendingModal); onPendingClear&&onPendingClear(); }
@@ -816,10 +861,11 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
     setDetail(null);
   };
 
+  const visibleRecipes = recipes.filter(r=>showArchiv||!r.archiv);
   const baseCats = [{label:'🥪 Sandwiches', ids:['R001','R002','R003','R004','R005','R006','R007','R008']},
                     {label:'☕ Getränke', ids:['R009','R010','R011','R012','R013']}];
   const categorizedIds = new Set(baseCats.flatMap(c=>c.ids));
-  const uncategorized = recipes.filter(r=>!categorizedIds.has(r.id));
+  const uncategorized = visibleRecipes.filter(r=>!categorizedIds.has(r.id));
   const cats = uncategorized.length
     ? [...baseCats,{label:'Weitere Rezepte', ids:uncategorized.map(r=>r.id)}]
     : baseCats;
@@ -827,10 +873,10 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
   return (
     <div className="tab-content">
       <div className="stats-row">
-        {[{label:'Rezepte aktiv',v:recipes.length,c:''},
-          {label:'Marge OK (≤28%)',v:recipes.filter(r=>r.wePct<=28).length,c:'#16a34a'},
-          {label:'Marge Warn. (28–38%)',v:recipes.filter(r=>r.wePct>28&&r.wePct<=38).length,c:'#d97706'},
-          {label:'Marge Alarm (>38%)',v:recipes.filter(r=>r.wePct>38).length,c:'#dc2626'},
+        {[{label:'Rezepte aktiv',v:recipes.filter(r=>!r.archiv).length,c:''},
+          {label:'Marge OK (≤28%)',v:recipes.filter(r=>!r.archiv&&r.wePct<=28).length,c:'#16a34a'},
+          {label:'Marge Warn. (28–38%)',v:recipes.filter(r=>!r.archiv&&r.wePct>28&&r.wePct<=38).length,c:'#d97706'},
+          {label:'Marge Alarm (>38%)',v:recipes.filter(r=>!r.archiv&&r.wePct>38).length,c:'#dc2626'},
         ].map(s=>(
           <div className="stat-card" key={s.label}>
             <div className="stat-label">{s.label}</div>
@@ -839,10 +885,14 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
         ))}
       </div>
       <div className="toolbar">
+        <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
+          <span className="switch"><input type="checkbox" checked={showArchiv} onChange={e=>setShowArchiv(e.target.checked)}/><span className="slider"></span></span>
+          Archiv
+        </label>
         <button className="btn btn-primary" style={{marginLeft:'auto'}} onClick={()=>setModal({})}>+ Neues Rezept</button>
       </div>
       {cats.map(cat=>{
-        const recs = recipes.filter(r=>cat.ids.includes(r.id));
+        const recs = visibleRecipes.filter(r=>cat.ids.includes(r.id));
         if(!recs.length) return null;
         return (
           <div key={cat.label} style={{marginBottom:20}}>
@@ -857,7 +907,7 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
                 {recs.map(r=>{
                   const a = ampelWE(r.wePct);
                   return (
-                    <tr key={r.id}>
+                    <tr key={r.id} style={r.archiv?{opacity:.45}:{}}>
                       <td><strong>{r.name}</strong></td>
                       <td>{fmt(r.vkBrutto)}</td>
                       <td>{r.vkUber ? fmt(r.vkUber) : <span style={{color:'#94a3b8'}}>—</span>}</td>
@@ -941,6 +991,7 @@ function VPModal({vp, articles, onSave, onClose}) {
     name: vp.name||'',
     outputKg: vp.outputKg||0,
     zutaten: vp.zutaten||[],
+    archiv: vp.archiv||false,
   });
   const f = (k,v) => setForm(p=>({...p,[k]:v}));
 
@@ -1045,6 +1096,12 @@ function VPModal({vp, articles, onSave, onClose}) {
             </div>
           </div>
         </div>
+        {!isNew&&<div style={{padding:'0 20px 16px'}}>
+          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,cursor:'pointer'}}>
+            <input type="checkbox" checked={form.archiv||false} onChange={e=>setForm(p=>({...p,archiv:e.target.checked}))} style={{width:'auto'}}/>
+            Archiviert
+          </label>
+        </div>}
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
           <button className="btn btn-primary" onClick={()=>onSave({
@@ -1060,11 +1117,14 @@ function VPModal({vp, articles, onSave, onClose}) {
 
 function VPTab({vps, setVPs, articles, setArticles, upsert, pendingModal=null, onPendingClear}) {
   const [modal, setModal] = useState(null);
+  const [showArchiv, setShowArchiv] = useState(false);
 
   useEffect(()=>{
     if (pendingModal !== null) { setModal(pendingModal); onPendingClear&&onPendingClear(); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[pendingModal]);
+
+  const visibleVPs = vps.filter(vp=>showArchiv||!vp.archiv);
 
   const saveVP = (vp) => {
     const isNew = !vps.find(v=>v.id===vp.id);
@@ -1075,7 +1135,7 @@ function VPTab({vps, setVPs, articles, setArticles, upsert, pendingModal=null, o
     const art = {
       id:artId, name:vp.name, g:1, e:'KG',
       ek:parseFloat(vp.preisKg.toFixed(4)),
-      lief:'SIMPLE', datum:new Date().toISOString().slice(0,10), archiv:false,
+      lief:'SIMPLE', datum:new Date().toISOString().slice(0,10), archiv:vp.archiv||false,
       varianten:[], _vpId:vp.id
     };
     setArticles(prev=>{
@@ -1089,7 +1149,11 @@ function VPTab({vps, setVPs, articles, setArticles, upsert, pendingModal=null, o
   return (
     <div className="tab-content">
       <div className="toolbar">
-        <div style={{fontSize:13,color:'#64748b'}}><strong>{vps.length}</strong> Vorprodukte</div>
+        <div style={{fontSize:13,color:'#64748b'}}><strong>{vps.filter(v=>!v.archiv).length}</strong> Vorprodukte{vps.filter(v=>v.archiv).length>0&&<span style={{color:'#94a3b8'}}> · {vps.filter(v=>v.archiv).length} archiviert</span>}</div>
+        <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
+          <span className="switch"><input type="checkbox" checked={showArchiv} onChange={e=>setShowArchiv(e.target.checked)}/><span className="slider"></span></span>
+          Archiv
+        </label>
         <button className="btn btn-primary" style={{marginLeft:'auto'}}
           onClick={()=>setModal({name:'',outputKg:0,zutaten:[]})}>
           + Vorprodukt
@@ -1102,10 +1166,10 @@ function VPTab({vps, setVPs, articles, setArticles, upsert, pendingModal=null, o
             <th>Zutaten</th><th>In Artikelliste</th><th></th>
           </tr></thead>
           <tbody>
-          {vps.map(vp=>{
+          {visibleVPs.map(vp=>{
             const inArts = articles.some(a=>a._vpId===vp.id||a.name===vp.name&&a.lief&&a.lief.toLowerCase()==='simple');
             return (
-              <tr key={vp.id}>
+              <tr key={vp.id} style={vp.archiv?{opacity:.45}:{}}>
                 <td><strong>{vp.name}</strong></td>
                 <td>{vp.outputKg} kg</td>
                 <td>{fmt(vp.kosten)}</td>
@@ -1971,7 +2035,7 @@ function App() {
           onNewVP={()=>{setPendingVPModal({});setTab(4);}}
           onEditArticle={art=>{setPendingModal(art);setTab(1);}}
         />}
-        {tab===1&&<ArticleTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} suppliers={suppliers}
+        {tab===1&&<ArticleTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} suppliers={suppliers} vps={vps}
           pendingModal={pendingModal} onPendingClear={()=>setPendingModal(null)}
         />}
         {tab===2&&<SupplierTab suppliers={suppliers} setSuppliers={setSuppliers} upsert={upsert}/>}
