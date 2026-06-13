@@ -831,7 +831,6 @@ function RecipeModal({recipe, onSave, onClose}) {
               Archiviert
             </label>
           </div>}
-        </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
           <button className="btn btn-primary" disabled={!form.name.trim()||!form.vkBrutto} onClick={save}>Speichern</button>
