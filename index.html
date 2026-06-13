@@ -1281,9 +1281,205 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, isC
   );
 }
 
+// ── DASHBOARD TAB ─────────────────────────────────────────────────────────────
+
+function DashboardTab({recipes, articles}) {
+  const [view, setView] = React.useState('margen');
+  const SOLL = 22;
+  const now = Date.now();
+
+  // Exclude 19%-MwSt recipes (Sonderfälle like "Big J Uber") from WE-Durchschnitt
+  const mainRecs = recipes.filter(r => r.mwst !== 19);
+  const sortedMargen = [...mainRecs].sort((a,b) => b.wePct - a.wePct);
+  const avgWe = mainRecs.length ? mainRecs.reduce((s,r)=>s+r.wePct,0)/mainRecs.length : 0;
+  const ueberSollCount = mainRecs.filter(r=>r.wePct>SOLL).length;
+  const bestDBRec = [...recipes].sort((a,b)=>b.dbNetto-a.dbNetto)[0];
+  const MAX_WE = 50;
+  const weColor = pct => pct<=SOLL ? '#16a34a' : pct<=30 ? '#d97706' : '#dc2626';
+
+  const sortedDB = [...recipes].sort((a,b)=>b.dbNetto-a.dbNetto);
+  const maxDB = sortedDB[0]?.dbNetto || 1;
+  const avgDB = recipes.length ? recipes.reduce((s,r)=>s+r.dbNetto,0)/recipes.length : 0;
+  const totalDB = recipes.filter(r=>r.anzahl).reduce((s,r)=>s+r.dbNetto*(r.anzahl||0),0);
+
+  const staleArts = articles
+    .filter(a=>!a.archiv&&a.datum)
+    .map(a=>({...a, days:Math.floor((now-new Date(a.datum))/86400000)}))
+    .filter(a=>a.days>90)
+    .sort((a,b)=>b.days-a.days);
+
+  const heute = new Date().toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  const SubBtn = ({k,label}) => (
+    <button onClick={()=>setView(k)} style={{
+      padding:'6px 18px',border:'1px solid',borderRadius:100,fontSize:13,fontWeight:500,
+      cursor:'pointer',outline:'none',transition:'all .15s',
+      borderColor:view===k?'#e85d04':'#e2e8f0',
+      color:view===k?'#e85d04':'#64748b',
+      background:'transparent',
+    }}>{label}</button>
+  );
+
+  const xTicks = [0,10,20,30,40,50];
+
+  return (
+    <div className="tab-content">
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:2}}>
+        <h2 style={{fontSize:22,fontWeight:700,letterSpacing:'-.4px'}}>Rezept-Cockpit</h2>
+      </div>
+      <div style={{fontSize:12,color:'#94a3b8',marginBottom:18}}>
+        Stand: {heute} · {articles.filter(a=>!a.archiv).length} aktive Artikel
+      </div>
+
+      <div style={{display:'flex',gap:6,marginBottom:20}}>
+        <SubBtn k="margen" label="Margen"/>
+        <SubBtn k="db" label="Deckungsbeitrag"/>
+        <SubBtn k="preisalarm" label="Preisalarm"/>
+      </div>
+
+      {view==='margen'&&(<>
+        <div className="stats-row" style={{marginBottom:20}}>
+          <div className="stat-card">
+            <div className="stat-label">Aktive Rezepte</div>
+            <div className="stat-value">{mainRecs.length}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Ø Wareneinsatz</div>
+            <div className="stat-value" style={{color:avgWe>SOLL?'#dc2626':'#16a34a'}}>{avgWe.toFixed(1)} %</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Über {SOLL} % Soll</div>
+            <div className="stat-value" style={{color:ueberSollCount>0?'#dc2626':'#16a34a'}}>{ueberSollCount} / {mainRecs.length}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Bester DB</div>
+            <div className="stat-value" style={{fontSize:15,fontWeight:700}}>{bestDBRec?.name||'—'}</div>
+            <div className="stat-sub">{bestDBRec?fmt(bestDBRec.dbNetto):''}</div>
+          </div>
+        </div>
+
+        <div className="card" style={{padding:'20px 24px'}}>
+          {sortedMargen.map(r=>{
+            const barPct = Math.min(r.wePct/MAX_WE*100, 100);
+            const sollPos = SOLL/MAX_WE*100;
+            return (
+              <div key={r.id} style={{display:'flex',alignItems:'center',marginBottom:9}}>
+                <div style={{width:150,fontSize:13,color:'#374151',textAlign:'right',paddingRight:14,flexShrink:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.name}</div>
+                <div style={{flex:1,height:26,position:'relative'}}>
+                  <div style={{width:barPct+'%',minWidth:4,height:'100%',background:weColor(r.wePct),borderRadius:4,display:'flex',alignItems:'center',paddingLeft:8}}>
+                    {barPct>18&&<span style={{fontSize:11,fontWeight:700,color:'white'}}>{r.wePct.toFixed(1)}%</span>}
+                  </div>
+                  <div style={{position:'absolute',top:0,bottom:0,left:sollPos+'%',borderLeft:'2px dashed #94a3b8',pointerEvents:'none'}}/>
+                  {barPct<=18&&<span style={{position:'absolute',left:barPct+'%',top:'50%',transform:'translateY(-50%)',paddingLeft:6,fontSize:11,color:'#374151',fontWeight:600}}>{r.wePct.toFixed(1)}%</span>}
+                </div>
+              </div>
+            );
+          })}
+          {/* X-Achse */}
+          <div style={{display:'flex',marginLeft:150,marginTop:8,paddingLeft:0}}>
+            {xTicks.map((v,i)=>(
+              <div key={v} style={{flex:i===0?0:10,minWidth:i===0?0:undefined,fontSize:10,color:'#94a3b8',textAlign:i===0?'left':'center'}}>
+                {v>0?v+'%':'0%'}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{marginTop:12,fontSize:12,color:'#94a3b8',lineHeight:1.6}}>
+          Ampel: grün ≤ {SOLL}%, orange ≤ 30%, rot {'>'} 30% WE (to-go, 7% USt). Rezepte mit 19% MwSt fließen nicht in Ø-Werte ein.
+        </div>
+      </>)}
+
+      {view==='db'&&(<>
+        <div className="stats-row" style={{marginBottom:20}}>
+          <div className="stat-card">
+            <div className="stat-label">Bester DB</div>
+            <div className="stat-value" style={{fontSize:15}}>{sortedDB[0]?.name||'—'}</div>
+            <div className="stat-sub">{sortedDB[0]?fmt(sortedDB[0].dbNetto):''}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Schwächster DB</div>
+            <div className="stat-value" style={{fontSize:15,color:'#dc2626'}}>{sortedDB[sortedDB.length-1]?.name||'—'}</div>
+            <div className="stat-sub">{sortedDB[sortedDB.length-1]?fmt(sortedDB[sortedDB.length-1].dbNetto):''}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Ø DB Netto</div>
+            <div className="stat-value">{fmt(avgDB)}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Gesamt-DB (Stückzahlen)</div>
+            <div className="stat-value" style={{fontSize:16}}>{fmt(totalDB)}</div>
+            <div className="stat-sub">bei hinterlegten Stückzahlen</div>
+          </div>
+        </div>
+        <div className="card" style={{padding:'20px 24px'}}>
+          {sortedDB.map(r=>{
+            const barPct = (r.dbNetto/maxDB)*100;
+            const dbColor = r.dbNetto>=7?'#16a34a':r.dbNetto>=4?'#d97706':'#dc2626';
+            return (
+              <div key={r.id} style={{display:'flex',alignItems:'center',marginBottom:9}}>
+                <div style={{width:150,fontSize:13,color:'#374151',textAlign:'right',paddingRight:14,flexShrink:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.name}</div>
+                <div style={{flex:1,height:26,position:'relative'}}>
+                  <div style={{width:barPct+'%',minWidth:4,height:'100%',background:dbColor,borderRadius:4,display:'flex',alignItems:'center',paddingLeft:8}}>
+                    {barPct>20&&<span style={{fontSize:11,fontWeight:700,color:'white'}}>{fmt(r.dbNetto)}</span>}
+                  </div>
+                  {barPct<=20&&<span style={{position:'absolute',left:barPct+'%',top:'50%',transform:'translateY(-50%)',paddingLeft:6,fontSize:11,color:'#374151',fontWeight:600}}>{fmt(r.dbNetto)}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{marginTop:12,fontSize:12,color:'#94a3b8'}}>
+          DB Netto = VK Brutto ÷ (1+MwSt) − Wareneinsatz. Grün ≥ 7 €, Orange ≥ 4 €, Rot {'<'} 4 €.
+        </div>
+      </>)}
+
+      {view==='preisalarm'&&(<>
+        <div className="stats-row" style={{marginBottom:20}}>
+          <div className="stat-card">
+            <div className="stat-label">Veraltet (90–180d)</div>
+            <div className="stat-value" style={{color:'#d97706'}}>{staleArts.filter(a=>a.days<=180).length}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Kritisch ({'>'} 180d)</div>
+            <div className="stat-value" style={{color:'#dc2626'}}>{staleArts.filter(a=>a.days>180).length}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Ohne Preisdatum</div>
+            <div className="stat-value">{articles.filter(a=>!a.archiv&&!a.datum).length}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Aktuelle Preise ({'<'} 90d)</div>
+            <div className="stat-value" style={{color:'#16a34a'}}>{articles.filter(a=>!a.archiv&&a.datum&&Math.floor((now-new Date(a.datum))/86400000)<=90).length}</div>
+          </div>
+        </div>
+        <div className="card">
+          <table>
+            <thead><tr>
+              <th>Artikel</th><th>Lieferant</th><th>Letzter Preis</th><th>EK</th><th>Alter</th><th>Status</th>
+            </tr></thead>
+            <tbody>
+              {staleArts.map(a=>(
+                <tr key={a.id}>
+                  <td><strong>{a.name}</strong></td>
+                  <td>{a.lief||'—'}</td>
+                  <td>{new Date(a.datum).toLocaleDateString('de-DE')}</td>
+                  <td>{fmt(a.ek)}</td>
+                  <td style={{fontFamily:'monospace'}}>{a.days}d</td>
+                  <td><span className={`ampel ${a.days>180?'red':'yellow'}`}><span className="dot"/>{a.days>180?'Kritisch':'Veraltet'}</span></td>
+                </tr>
+              ))}
+              {!staleArts.length&&<tr><td colSpan={6} className="empty">Alle Preise aktuell</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </>)}
+    </div>
+  );
+}
+
 // ── APP ───────────────────────────────────────────────────────────────────────
 
-const TABS = ['Artikel','Rezepte','Vorprodukte','Rechnungen','Preislog'];
+const TABS = ['Dashboard','Artikel','Rezepte','Vorprodukte','Rechnungen','Preislog'];
 
 function App() {
   const [tab, setTab] = useState(0);
@@ -1404,17 +1600,18 @@ function App() {
         {TABS.map((t,i)=>(
           <div key={t} className={`tab${tab===i?' active':''}`} onClick={()=>setTab(i)}>
             {t}
-            {i===0&&articles.filter(a=>!a.archiv).length>0&&<span className="badge badge-gray" style={{marginLeft:6,padding:'1px 6px'}}>{articles.filter(a=>!a.archiv).length}</span>}
-            {i===1&&warnCount>0&&<span className="badge badge-red" style={{marginLeft:6,padding:'1px 6px'}}>{warnCount}</span>}
+            {i===1&&articles.filter(a=>!a.archiv).length>0&&<span className="badge badge-gray" style={{marginLeft:6,padding:'1px 6px'}}>{articles.filter(a=>!a.archiv).length}</span>}
+            {i===2&&warnCount>0&&<span className="badge badge-red" style={{marginLeft:6,padding:'1px 6px'}}>{warnCount}</span>}
           </div>
         ))}
       </div>
       <div className="content">
-        {tab===0&&<ArticleTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert}/>}
-        {tab===1&&<RecipeTab recipes={recipes} setRecipes={setRecipes}/>}
-        {tab===2&&<VPTab vps={vps} setVPs={setVPs} articles={articles} setArticles={setArticles} upsert={upsert}/>}
-        {tab===3&&<InvoiceTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert}/>}
-        {tab===4&&<PriceLogTab priceLog={priceLog} setPriceLog={setPriceLog}/>}
+        {tab===0&&<DashboardTab recipes={recipes} articles={articles}/>}
+        {tab===1&&<ArticleTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert}/>}
+        {tab===2&&<RecipeTab recipes={recipes} setRecipes={setRecipes}/>}
+        {tab===3&&<VPTab vps={vps} setVPs={setVPs} articles={articles} setArticles={setArticles} upsert={upsert}/>}
+        {tab===4&&<InvoiceTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert}/>}
+        {tab===5&&<PriceLogTab priceLog={priceLog} setPriceLog={setPriceLog}/>}
       </div>
       {showSettings&&<SettingsModal
         sbUrl={sbUrl} setSbUrl={setSbUrl}
