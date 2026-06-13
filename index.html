@@ -752,33 +752,50 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
 
 // ── RECIPE TAB ────────────────────────────────────────────────────────────────
 
-function RecipeModal({recipe, onSave, onClose}) {
+function RecipeModal({recipe, onSave, onClose, articles=[]}) {
   const isNew = !recipe.id;
   const [form, setForm] = useState({
-    name:'', vkBrutto:0, vkUber:'', weEuro:0, mwst:7, anzahl:'', brot:'', archiv:false, ...recipe,
+    name:'', vkBrutto:0, vkUber:'', weEuro:0, mwst:7, anzahl:'', brot:'', archiv:false, zutaten:[], ...recipe,
   });
   const f = (k,v) => setForm(p=>({...p,[k]:v}));
 
+  const activeArts = useMemo(()=>articles.filter(a=>!a.archiv).sort((a,b)=>a.name.localeCompare(b.name,'de')),[articles]);
+
+  const setZutat = (i,k,v) => f('zutaten', form.zutaten.map((z,j)=>j===i?{...z,[k]:v}:z));
+  const addZutat = () => f('zutaten', [...form.zutaten, {art:'',name:'',menge:0,einheit:'St'}]);
+  const delZutat = (i) => f('zutaten', form.zutaten.filter((_,j)=>j!==i));
+
+  const computedWE = useMemo(()=>{
+    if (!form.zutaten.length) return null;
+    return form.zutaten.reduce((sum,z)=>{
+      const art = articles.find(a=>a.id===z.art);
+      if (!art || !z.menge) return sum;
+      return sum + pricePerUnit(art, z.variantLief) * z.menge;
+    }, 0);
+  }, [form.zutaten, articles]);
+
+  const weEuro = computedWE !== null ? computedWE : (parseFloat(form.weEuro)||0);
   const mwstFactor = 1 + form.mwst/100;
   const vkNetto = form.vkBrutto > 0 ? form.vkBrutto / mwstFactor : 0;
-  const wePct = vkNetto > 0 ? (form.weEuro / vkNetto * 100) : 0;
-  const dbNetto = vkNetto - form.weEuro;
+  const wePct = vkNetto > 0 ? (weEuro / vkNetto * 100) : 0;
+  const dbNetto = vkNetto - weEuro;
 
   const save = () => onSave({
     ...form,
     id: form.id || ('R'+uid()),
     vkBrutto: parseFloat(form.vkBrutto)||0,
     vkUber: form.vkUber ? parseFloat(form.vkUber) : null,
-    weEuro: parseFloat(form.weEuro)||0,
+    weEuro: parseFloat(weEuro.toFixed(4)),
     wePct: parseFloat(wePct.toFixed(2)),
     dbNetto: parseFloat(dbNetto.toFixed(4)),
     mwst: parseInt(form.mwst),
     anzahl: form.anzahl ? parseInt(form.anzahl) : null,
+    zutaten: form.zutaten,
   });
 
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="modal">
+      <div className="modal modal-lg">
         <div className="modal-header">
           <h3>{isNew?'Neues Rezept':'Rezept bearbeiten'}</h3>
           <button className="btn btn-ghost" onClick={onClose}>✕</button>
@@ -796,41 +813,113 @@ function RecipeModal({recipe, onSave, onClose}) {
             </div>
           </div>
           <div className="form-grid">
-            <div className="form-row"><label>Wareneinsatz €</label>
-              <input type="number" value={form.weEuro||''} onChange={e=>f('weEuro',e.target.value)} step="0.01" placeholder="0,00"/>
-            </div>
             <div className="form-row"><label>MwSt.</label>
               <select value={form.mwst} onChange={e=>f('mwst',e.target.value)}>
                 <option value={7}>7 % (To-Go / Lebensmittel)</option>
                 <option value={19}>19 % (Inhouse)</option>
               </select>
             </div>
-          </div>
-          <div className="form-grid">
-            <div className="form-row"><label>Stückzahl / Woche (optional)</label>
-              <input type="number" value={form.anzahl||''} onChange={e=>f('anzahl',e.target.value)} placeholder="—"/>
+            <div className="form-grid" style={{gridTemplateColumns:'1fr 1fr'}}>
+              <div className="form-row"><label>Stückzahl / Woche</label>
+                <input type="number" value={form.anzahl||''} onChange={e=>f('anzahl',e.target.value)} placeholder="—"/>
+              </div>
+              <div className="form-row"><label>Brot</label>
+                <input type="text" value={form.brot||''} onChange={e=>f('brot',e.target.value)} placeholder="z.B. Sandwichbrot"/>
+              </div>
             </div>
-            <div className="form-row"><label>Brot (optional)</label>
-              <input type="text" value={form.brot||''} onChange={e=>f('brot',e.target.value)} placeholder="z.B. Sandwichbrot"/>
-            </div>
           </div>
+
+          {/* ── Zutaten ── */}
+          <div className="section-title" style={{marginTop:8}}>Zutaten <span style={{fontSize:11,color:'#94a3b8',fontWeight:400,textTransform:'none'}}>(optional — WE wird dann automatisch berechnet)</span></div>
+          <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:12,marginBottom:14}}>
+            {form.zutaten.length > 0 && (
+              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase'}}>
+                <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span></span>
+              </div>
+            )}
+            {form.zutaten.map((z,i)=>{
+              const art = articles.find(a=>a.id===z.art);
+              const sups = art ? allSuppliers(art) : [];
+              const hasVariants = sups.length > 1;
+              const activePpu = art ? pricePerUnit(art, z.variantLief) : 0;
+              const defaultPpu = art ? pricePerUnit(art) : 0;
+              const saving = (hasVariants && z.variantLief && z.variantLief !== art.lief)
+                ? ((activePpu - defaultPpu) / defaultPpu * 100) : null;
+              return (
+                <div key={i} style={{marginBottom:6}}>
+                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px auto',gap:8,alignItems:'center'}}>
+                    <select value={z.art||''} onChange={e=>{
+                      const a2 = articles.find(a=>a.id===e.target.value);
+                      setZutat(i,'art',e.target.value);
+                      if(a2){ setZutat(i,'name',a2.name); setZutat(i,'variantLief',''); }
+                    }} style={{fontSize:12}}>
+                      <option value="">— Artikel wählen —</option>
+                      {activeArts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                    {hasVariants ? (
+                      <select value={z.variantLief||art.lief} onChange={e=>setZutat(i,'variantLief',e.target.value)} style={{fontSize:12,borderColor:'#a5b4fc'}}>
+                        {sups.map((s,si)=>(
+                          <option key={si} value={s.lief}>{s.lief||'—'} ({fmt(s.ek/(art.g||1))}/{art.e}){s.isDefault?' ★':''}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span style={{fontSize:12,color:'#94a3b8',padding:'5px 0'}}>{art?.lief||'—'}</span>
+                    )}
+                    <input type="number" value={z.menge||''} step="0.001"
+                      onChange={e=>setZutat(i,'menge',parseFloat(e.target.value)||0)}
+                      style={{fontSize:12,padding:'5px 8px'}}/>
+                    <input type="text" value={z.einheit||'St'}
+                      onChange={e=>setZutat(i,'einheit',e.target.value)}
+                      style={{fontSize:12,padding:'5px 8px'}}/>
+                    <button className="btn btn-danger btn-xs" onClick={()=>delZutat(i)}>✕</button>
+                  </div>
+                  {saving !== null && (
+                    <div style={{fontSize:11,color:saving<0?'#16a34a':'#dc2626',paddingLeft:4,marginTop:2}}>
+                      {saving<0?'▼ Einsparung':'▲ Aufpreis'} {Math.abs(saving).toFixed(1)}% vs. Standard ({fmt(defaultPpu)}/{art.e})
+                      {' · '}{fmt(activePpu*z.menge)} statt {fmt(defaultPpu*z.menge)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <button className="btn btn-secondary btn-sm" style={{marginTop:4}} onClick={addZutat}>+ Zutat</button>
+          </div>
+
+          {/* ── WE manuell (nur wenn keine Zutaten) ── */}
+          {computedWE === null && (
+            <div className="form-row"><label>Wareneinsatz € <span style={{color:'#94a3b8',fontWeight:400,textTransform:'none'}}>(manuell)</span></label>
+              <input type="number" value={form.weEuro||''} onChange={e=>f('weEuro',e.target.value)} step="0.01" placeholder="0,00"/>
+            </div>
+          )}
+
+          {/* ── Kennzahlen ── */}
           {form.vkBrutto > 0 && (
-            <div style={{background:'#1a1a1a',color:'white',borderRadius:8,padding:'14px 16px',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,textAlign:'center',marginTop:4}}>
-              <div><div style={{fontSize:11,color:'#888',marginBottom:4}}>WE %</div>
-                <div style={{fontSize:20,fontWeight:700,color:wePct<=28?'#4ade80':wePct<=38?'#fb923c':'#f87171'}}>{wePct.toFixed(1)}%</div></div>
-              <div><div style={{fontSize:11,color:'#888',marginBottom:4}}>DB Netto</div>
-                <div style={{fontSize:20,fontWeight:700}}>{fmt(dbNetto)}</div></div>
-              <div><div style={{fontSize:11,color:'#888',marginBottom:4}}>VK Netto</div>
-                <div style={{fontSize:20,fontWeight:700}}>{fmt(vkNetto)}</div></div>
+            <div style={{background:'#1a1a1a',color:'white',borderRadius:8,padding:'14px 16px',display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:12,textAlign:'center',marginTop:4}}>
+              <div>
+                <div style={{fontSize:11,color:'#888',marginBottom:4}}>WE €{computedWE!==null&&<span style={{color:'#fb923c'}}> ⟳ auto</span>}</div>
+                <div style={{fontSize:18,fontWeight:700}}>{fmt(weEuro)}</div>
+              </div>
+              <div>
+                <div style={{fontSize:11,color:'#888',marginBottom:4}}>WE %</div>
+                <div style={{fontSize:20,fontWeight:700,color:wePct<=28?'#4ade80':wePct<=38?'#fb923c':'#f87171'}}>{wePct.toFixed(1)}%</div>
+              </div>
+              <div>
+                <div style={{fontSize:11,color:'#888',marginBottom:4}}>DB Netto</div>
+                <div style={{fontSize:20,fontWeight:700}}>{fmt(dbNetto)}</div>
+              </div>
+              <div>
+                <div style={{fontSize:11,color:'#888',marginBottom:4}}>VK Netto</div>
+                <div style={{fontSize:18,fontWeight:700}}>{fmt(vkNetto)}</div>
+              </div>
             </div>
           )}
         </div>
-          {!isNew&&<div className="form-row" style={{display:'flex',alignItems:'center',gap:8,marginTop:4}}>
-            <label style={{margin:0,cursor:'pointer',fontSize:13}}>
-              <input type="checkbox" checked={form.archiv||false} onChange={e=>f('archiv',e.target.checked)} style={{width:'auto',marginRight:6}}/>
-              Archiviert
-            </label>
-          </div>}
+        {!isNew&&<div style={{padding:'0 20px 12px'}}>
+          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,cursor:'pointer'}}>
+            <input type="checkbox" checked={form.archiv||false} onChange={e=>f('archiv',e.target.checked)} style={{width:'auto'}}/>
+            Archiviert
+          </label>
+        </div>}
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
           <button className="btn btn-primary" disabled={!form.name.trim()||!form.vkBrutto} onClick={save}>Speichern</button>
@@ -840,7 +929,7 @@ function RecipeModal({recipe, onSave, onClose}) {
   );
 }
 
-function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upsert}) {
+function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upsert, del, articles=[]}) {
   const [detail, setDetail] = useState(null);
   const [modal, setModal] = useState(null);
   const [showArchiv, setShowArchiv] = useState(false);
@@ -857,6 +946,7 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
   };
   const deleteRecipe = (id) => {
     setRecipes(prev=>prev.filter(r=>r.id!==id));
+    del&&del('recipes', id);
     setDetail(null);
   };
 
@@ -965,9 +1055,37 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
                 <strong>VK-Empfehlung bei Ziel-WE 28%:</strong> {fmt(detail.weEuro/0.28 * (detail.mwst===19?1.19:1.07))}
                 {' '}| bei 32%: {fmt(detail.weEuro/0.32 * (detail.mwst===19?1.19:1.07))}
               </div>
-              <div style={{marginTop:12,fontSize:12,color:'#94a3b8'}}>
-                WE-Daten importiert aus Google Sheets. Zutaten-Detail im VP-Tab pflegen.
-              </div>
+              {(detail.zutaten||[]).length > 0 && (
+                <div style={{marginTop:16}}>
+                  <div style={{fontSize:12,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:8}}>Zutaten</div>
+                  <div style={{border:'1px solid #e2e8f0',borderRadius:6,overflow:'hidden'}}>
+                    <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                      <thead><tr style={{background:'#f8fafc'}}>
+                        <th style={{padding:'6px 10px',textAlign:'left',fontWeight:600,color:'#64748b'}}>Artikel</th>
+                        <th style={{padding:'6px 10px',textAlign:'right',fontWeight:600,color:'#64748b'}}>Menge</th>
+                        <th style={{padding:'6px 10px',textAlign:'right',fontWeight:600,color:'#64748b'}}>Kosten</th>
+                      </tr></thead>
+                      <tbody>
+                        {detail.zutaten.map((z,i)=>{
+                          const art = articles.find(a=>a.id===z.art);
+                          const kosten = art ? pricePerUnit(art, z.variantLief)*z.menge : null;
+                          return (
+                            <tr key={i} style={{borderTop:'1px solid #f1f5f9'}}>
+                              <td style={{padding:'6px 10px'}}>{z.name||z.art||'—'}{z.variantLief&&z.variantLief!==art?.lief&&<span style={{color:'#94a3b8',marginLeft:4}}>({z.variantLief})</span>}</td>
+                              <td style={{padding:'6px 10px',textAlign:'right',fontFamily:'monospace'}}>{z.menge} {z.einheit}</td>
+                              <td style={{padding:'6px 10px',textAlign:'right',fontFamily:'monospace',fontWeight:600}}>{kosten!=null?fmt(kosten):'—'}</td>
+                            </tr>
+                          );
+                        })}
+                        <tr style={{borderTop:'2px solid #e2e8f0',background:'#f8fafc'}}>
+                          <td colSpan={2} style={{padding:'7px 10px',fontWeight:600,fontSize:12}}>Wareneinsatz gesamt</td>
+                          <td style={{padding:'7px 10px',textAlign:'right',fontFamily:'monospace',fontWeight:700,color:'#e85d04'}}>{fmt(detail.weEuro)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <button className="btn btn-danger btn-sm" style={{marginRight:'auto'}} onClick={()=>deleteRecipe(detail.id)}>Löschen</button>
@@ -977,7 +1095,7 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
           </div>
         </div>
       )}
-      {modal!==null&&<RecipeModal recipe={modal} onSave={saveRecipe} onClose={()=>setModal(null)}/>}
+      {modal!==null&&<RecipeModal recipe={modal} onSave={saveRecipe} onClose={()=>setModal(null)} articles={articles}/>}
     </div>
   );
 }
@@ -1966,6 +2084,14 @@ function App() {
     else setSyncStatus('ok');
   },[client]);
 
+  const del = useCallback(async (table, id) => {
+    if (!client) return;
+    setSyncStatus('syncing');
+    const {error} = await client.from(table).delete().eq('id', id);
+    if (error) { setSyncStatus('error'); setSyncError(error.message); }
+    else setSyncStatus('ok');
+  },[client]);
+
   // Seed-merge for local mode
   useEffect(()=>{
     if (client) return; // Supabase handles it
@@ -2038,7 +2164,7 @@ function App() {
           pendingModal={pendingModal} onPendingClear={()=>setPendingModal(null)}
         />}
         {tab===2&&<SupplierTab suppliers={suppliers} setSuppliers={setSuppliers} upsert={upsert}/>}
-        {tab===3&&<RecipeTab recipes={recipes} setRecipes={setRecipes} upsert={upsert}
+        {tab===3&&<RecipeTab recipes={recipes} setRecipes={setRecipes} upsert={upsert} del={del} articles={articles}
           pendingModal={pendingRecipeModal} onPendingClear={()=>setPendingRecipeModal(null)}
         />}
         {tab===4&&<VPTab vps={vps} setVPs={setVPs} articles={articles} setArticles={setArticles} upsert={upsert}
