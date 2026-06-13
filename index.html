@@ -389,6 +389,27 @@ const VPS_SEED = [
    ]},
 ];
 
+const SUPPLIERS_SEED = [
+  {id:'SUP01',name:'Metro',kdnr:'',url:'',notizen:''},
+  {id:'SUP02',name:'Mattfeld',kdnr:'',url:'',notizen:''},
+  {id:'SUP03',name:'S&T',kdnr:'',url:'',notizen:''},
+  {id:'SUP04',name:'Mammafiore',kdnr:'',url:'',notizen:''},
+  {id:'SUP05',name:'FeuFou',kdnr:'',url:'',notizen:''},
+  {id:'SUP06',name:'Degenhof',kdnr:'',url:'',notizen:''},
+  {id:'SUP07',name:'Schanzenbäcker',kdnr:'',url:'',notizen:''},
+  {id:'SUP08',name:'Beckröge',kdnr:'',url:'',notizen:''},
+  {id:'SUP09',name:'Asiamarkt',kdnr:'',url:'',notizen:''},
+  {id:'SUP10',name:'Diana',kdnr:'',url:'',notizen:''},
+  {id:'SUP11',name:'Pergano',kdnr:'',url:'',notizen:''},
+  {id:'SUP12',name:'Lokyo',kdnr:'',url:'',notizen:''},
+  {id:'SUP13',name:'Greenbox',kdnr:'',url:'',notizen:''},
+  {id:'SUP14',name:'alibaba',kdnr:'',url:'',notizen:''},
+  {id:'SUP15',name:'SIMPLE',kdnr:'',url:'',notizen:'Eigene Vorprodukte'},
+  {id:'SUP16',name:'Branding Club',kdnr:'',url:'',notizen:''},
+  {id:'SUP17',name:'Hamburg Wasser',kdnr:'',url:'',notizen:''},
+  {id:'SUP18',name:'Metzgers',kdnr:'',url:'',notizen:''},
+];
+
 // ── UTILS ─────────────────────────────────────────────────────────────────────
 
 const fmt = (n) => new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(n||0);
@@ -440,7 +461,7 @@ function useLS(key, seed) {
 
 // ── ARTICLE TAB ───────────────────────────────────────────────────────────────
 
-function ArticleModal({art, onSave, onClose}) {
+function ArticleModal({art, onSave, onClose, suppliers=[]}) {
   const isNew = !art.id;
   const [form, setForm] = useState({...art, varianten: art.varianten||[]});
   const f = (k,v) => setForm(p=>({...p,[k]:v}));
@@ -486,9 +507,10 @@ function ArticleModal({art, onSave, onClose}) {
             <div style={{fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:10}}>
               Lieferanten &amp; Preise
             </div>
+            <datalist id="art-sup-list">{suppliers.map(s=><option key={s.id} value={s.name}/>)}</datalist>
             {/* Hauptlieferant */}
             <div style={{display:'grid',gridTemplateColumns:'1fr 90px 120px auto',gap:8,alignItems:'center',marginBottom:6}}>
-              <input type="text" value={form.lief||''} onChange={e=>f('lief',e.target.value)} placeholder="Lieferant" style={{fontSize:12}}/>
+              <input type="text" list="art-sup-list" value={form.lief||''} onChange={e=>f('lief',e.target.value)} placeholder="Lieferant" style={{fontSize:12}}/>
               <input type="number" value={form.ek||''} onChange={e=>f('ek',parseFloat(e.target.value)||0)} step="0.01" placeholder="EK €" style={{fontSize:12}}/>
               <input type="date" value={form.datum||''} onChange={e=>f('datum',e.target.value)} style={{fontSize:12}}/>
               <span className="badge badge-blue" style={{justifyContent:'center'}}>Standard</span>
@@ -499,7 +521,7 @@ function ArticleModal({art, onSave, onClose}) {
               const diffPct = ppu>0 ? ((vPpu-ppu)/ppu*100) : 0;
               return (
                 <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 90px 120px auto',gap:8,alignItems:'center',marginBottom:6}}>
-                  <input type="text" value={v.lief||''} onChange={e=>setVariant(i,'lief',e.target.value)} placeholder="Lieferant" style={{fontSize:12}}/>
+                  <input type="text" list="art-sup-list" value={v.lief||''} onChange={e=>setVariant(i,'lief',e.target.value)} placeholder="Lieferant" style={{fontSize:12}}/>
                   <div style={{position:'relative'}}>
                     <input type="number" value={v.ek||''} onChange={e=>setVariant(i,'ek',parseFloat(e.target.value)||0)} step="0.01" placeholder="EK €" style={{fontSize:12,width:'100%'}}/>
                     {v.ek>0&&ppu>0&&<span style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',fontSize:9,color:diffPct>0?'#dc2626':'#16a34a',fontWeight:700,pointerEvents:'none'}}>
@@ -533,7 +555,7 @@ function ArticleModal({art, onSave, onClose}) {
   );
 }
 
-function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert}) {
+function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppliers=[]}) {
   const [q, setQ] = useState('');
   const [showArchiv, setShowArchiv] = useState(false);
   const [modal, setModal] = useState(null);
@@ -681,7 +703,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert}) {
           </tbody>
         </table>
       </div>
-      {modal && <ArticleModal art={modal} onSave={saveArt} onClose={()=>setModal(null)}/>}
+      {modal && <ArticleModal art={modal} onSave={saveArt} onClose={()=>setModal(null)} suppliers={suppliers}/>}
     </div>
   );
 }
@@ -1281,6 +1303,131 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, isC
   );
 }
 
+// ── SUPPLIER TAB ──────────────────────────────────────────────────────────────
+
+function SupplierModal({sup, onSave, onClose}) {
+  const isNew = !sup.id;
+  const [form, setForm] = useState({name:'',kdnr:'',url:'',notizen:'',...sup});
+  const f = (k,v) => setForm(p=>({...p,[k]:v}));
+  const isUrl = form.url && (form.url.startsWith('http://') || form.url.startsWith('https://'));
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h3>{isNew?'Neuer Lieferant':'Lieferant bearbeiten'}</h3>
+          <button className="btn btn-ghost" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-grid">
+            <div className="form-row"><label>Name *</label>
+              <input type="text" value={form.name} onChange={e=>f('name',e.target.value)} placeholder="Lieferantenname"/>
+            </div>
+            <div className="form-row"><label>Kundennummer</label>
+              <input type="text" value={form.kdnr} onChange={e=>f('kdnr',e.target.value)} placeholder="optional"/>
+            </div>
+          </div>
+          <div className="form-row"><label>Bestell-URL / Adresse</label>
+            <div style={{display:'flex',gap:6,alignItems:'center'}}>
+              <input type="text" value={form.url} onChange={e=>f('url',e.target.value)} placeholder="https://… oder Straße, PLZ Ort"/>
+              {isUrl&&<a href={form.url} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{flexShrink:0}}>↗ Öffnen</a>}
+            </div>
+          </div>
+          <div className="form-row"><label>Notizen</label>
+            <textarea value={form.notizen} onChange={e=>f('notizen',e.target.value)} rows={3} placeholder="Ansprechpartner, Mindestbestellwert, …"/>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+          <button className="btn btn-primary" disabled={!form.name.trim()} onClick={()=>onSave({...form,id:form.id||('SUP'+uid())})}>Speichern</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SupplierTab({suppliers, setSuppliers, upsert}) {
+  const [q, setQ] = useState('');
+  const [modal, setModal] = useState(null);
+  const [delConfirm, setDelConfirm] = useState(null);
+
+  const filtered = useMemo(()=>{
+    const lq = q.toLowerCase();
+    return [...suppliers]
+      .filter(s=>!lq||s.name.toLowerCase().includes(lq)||(s.kdnr||'').includes(lq)||(s.notizen||'').toLowerCase().includes(lq))
+      .sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  },[suppliers,q]);
+
+  const saveSup = (sup) => {
+    setSuppliers(prev=>prev.find(s=>s.id===sup.id) ? prev.map(s=>s.id===sup.id?sup:s) : [...prev,sup]);
+    upsert&&upsert('suppliers',sup);
+    setModal(null);
+  };
+  const delSup = (id) => {
+    setSuppliers(prev=>prev.filter(s=>s.id!==id));
+    setDelConfirm(null);
+  };
+
+  const isUrl = url => url&&(url.startsWith('http://')||url.startsWith('https://'));
+
+  return (
+    <div className="tab-content">
+      <div className="stats-row">
+        <div className="stat-card"><div className="stat-label">Lieferanten gesamt</div><div className="stat-value">{suppliers.length}</div></div>
+        <div className="stat-card"><div className="stat-label">Mit Kundennummer</div><div className="stat-value">{suppliers.filter(s=>s.kdnr).length}</div></div>
+        <div className="stat-card"><div className="stat-label">Mit Bestell-URL</div><div className="stat-value">{suppliers.filter(s=>isUrl(s.url)).length}</div></div>
+        <div className="stat-card"><div className="stat-label">Mit Notizen</div><div className="stat-value">{suppliers.filter(s=>s.notizen).length}</div></div>
+      </div>
+      <div className="toolbar">
+        <input className="search" placeholder="Suche Lieferant…" value={q} onChange={e=>setQ(e.target.value)}/>
+        <button className="btn btn-primary" style={{marginLeft:'auto'}} onClick={()=>setModal({})}>+ Lieferant</button>
+      </div>
+      <div className="card">
+        <table>
+          <thead><tr>
+            <th>Name</th><th>KdNr.</th><th>Bestell-URL / Adresse</th><th>Notizen</th><th></th>
+          </tr></thead>
+          <tbody>
+            {filtered.map(s=>(
+              <tr key={s.id}>
+                <td><strong>{s.name}</strong></td>
+                <td>{s.kdnr||<span style={{color:'#94a3b8'}}>—</span>}</td>
+                <td>
+                  {s.url
+                    ? isUrl(s.url)
+                      ? <a href={s.url} target="_blank" rel="noreferrer" style={{color:'#e85d04',textDecoration:'none',fontSize:13}}>{s.url.replace(/^https?:\/\//,'').substring(0,40)}{s.url.length>47?'…':''}</a>
+                      : <span style={{fontSize:13}}>{s.url}</span>
+                    : <span style={{color:'#94a3b8'}}>—</span>}
+                </td>
+                <td style={{fontSize:12,color:'#64748b',maxWidth:200}}>{s.notizen||<span style={{color:'#94a3b8'}}>—</span>}</td>
+                <td style={{whiteSpace:'nowrap'}}>
+                  <button className="btn btn-ghost btn-xs" onClick={()=>setModal(s)}>✎</button>
+                  <button className="btn btn-ghost btn-xs" style={{color:'#dc2626'}} onClick={()=>setDelConfirm(s.id)}>✕</button>
+                </td>
+              </tr>
+            ))}
+            {!filtered.length&&<tr><td colSpan={5}><div className="empty">Keine Lieferanten gefunden</div></td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {modal!==null&&<SupplierModal sup={modal} onSave={saveSup} onClose={()=>setModal(null)}/>}
+      {delConfirm&&(
+        <div className="modal-overlay" onClick={()=>setDelConfirm(null)}>
+          <div className="modal" style={{maxWidth:360}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-header"><h3>Lieferant löschen?</h3></div>
+            <div className="modal-body" style={{fontSize:13,color:'#374151'}}>
+              <strong>{suppliers.find(s=>s.id===delConfirm)?.name}</strong> wird aus der Lieferantenliste entfernt. Artikel behalten ihren Lieferantennamen.
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={()=>setDelConfirm(null)}>Abbrechen</button>
+              <button className="btn btn-danger" onClick={()=>delSup(delConfirm)}>Löschen</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── DASHBOARD TAB ─────────────────────────────────────────────────────────────
 
 function DashboardTab({recipes, articles}) {
@@ -1479,7 +1626,7 @@ function DashboardTab({recipes, articles}) {
 
 // ── APP ───────────────────────────────────────────────────────────────────────
 
-const TABS = ['Dashboard','Artikel','Rezepte','Vorprodukte','Rechnungen','Preislog'];
+const TABS = ['Dashboard','Artikel','Lieferanten','Rezepte','Vorprodukte','Rechnungen','Preislog'];
 
 function App() {
   const [tab, setTab] = useState(0);
@@ -1490,10 +1637,11 @@ function App() {
   const [syncStatus, setSyncStatus] = useState('idle');
   const [syncError, setSyncError] = useState('');
 
-  const [articles, setArticles] = useLS('simple_articles', ARTICLES_SEED);
-  const [recipes,  setRecipes]  = useLS('simple_recipes',  RECIPES_SEED);
-  const [vps,      setVPs]      = useLS('simple_vps',      VPS_SEED);
-  const [priceLog, setPriceLog] = useLS('simple_pricelog', []);
+  const [articles,   setArticles]   = useLS('simple_articles',   ARTICLES_SEED);
+  const [recipes,    setRecipes]    = useLS('simple_recipes',    RECIPES_SEED);
+  const [vps,        setVPs]        = useLS('simple_vps',        VPS_SEED);
+  const [priceLog,   setPriceLog]   = useLS('simple_pricelog',   []);
+  const [suppliers,  setSuppliers]  = useLS('simple_suppliers',  SUPPLIERS_SEED);
 
   const client = useMemo(()=>{
     if (!sbUrl||!sbKey) return null;
@@ -1506,11 +1654,12 @@ function App() {
     (async()=>{
       setLoading(true);
       try {
-        const [a,r,v,l] = await Promise.all([
+        const [a,r,v,l,s] = await Promise.all([
           client.from('articles').select('*').order('name'),
           client.from('recipes').select('*').order('name'),
           client.from('vorprodukte').select('*').order('name'),
           client.from('price_log').select('*').order('created_at',{ascending:false}).limit(500),
+          client.from('suppliers').select('*').order('name'),
         ]);
         if (a.error) throw a.error;
         // Empty DB on first setup → push seed data
@@ -1519,12 +1668,14 @@ function App() {
             client.from('articles').upsert(articles),
             client.from('recipes').upsert(recipes),
             client.from('vorprodukte').upsert(vps),
+            client.from('suppliers').upsert(suppliers),
           ]);
         } else {
           setArticles(a.data);
           if (r.data?.length) setRecipes(r.data);
           if (v.data?.length) setVPs(v.data);
           if (l.data)         setPriceLog(l.data);
+          if (s.data?.length) setSuppliers(s.data);
         }
         setSyncStatus('ok');
       } catch(e) { setSyncStatus('error'); setSyncError(e.message); }
@@ -1601,17 +1752,18 @@ function App() {
           <div key={t} className={`tab${tab===i?' active':''}`} onClick={()=>setTab(i)}>
             {t}
             {i===1&&articles.filter(a=>!a.archiv).length>0&&<span className="badge badge-gray" style={{marginLeft:6,padding:'1px 6px'}}>{articles.filter(a=>!a.archiv).length}</span>}
-            {i===2&&warnCount>0&&<span className="badge badge-red" style={{marginLeft:6,padding:'1px 6px'}}>{warnCount}</span>}
+            {i===3&&warnCount>0&&<span className="badge badge-red" style={{marginLeft:6,padding:'1px 6px'}}>{warnCount}</span>}
           </div>
         ))}
       </div>
       <div className="content">
         {tab===0&&<DashboardTab recipes={recipes} articles={articles}/>}
-        {tab===1&&<ArticleTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert}/>}
-        {tab===2&&<RecipeTab recipes={recipes} setRecipes={setRecipes}/>}
-        {tab===3&&<VPTab vps={vps} setVPs={setVPs} articles={articles} setArticles={setArticles} upsert={upsert}/>}
-        {tab===4&&<InvoiceTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert}/>}
-        {tab===5&&<PriceLogTab priceLog={priceLog} setPriceLog={setPriceLog}/>}
+        {tab===1&&<ArticleTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} suppliers={suppliers}/>}
+        {tab===2&&<SupplierTab suppliers={suppliers} setSuppliers={setSuppliers} upsert={upsert}/>}
+        {tab===3&&<RecipeTab recipes={recipes} setRecipes={setRecipes}/>}
+        {tab===4&&<VPTab vps={vps} setVPs={setVPs} articles={articles} setArticles={setArticles} upsert={upsert}/>}
+        {tab===5&&<InvoiceTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert}/>}
+        {tab===6&&<PriceLogTab priceLog={priceLog} setPriceLog={setPriceLog}/>}
       </div>
       {showSettings&&<SettingsModal
         sbUrl={sbUrl} setSbUrl={setSbUrl}
@@ -1624,6 +1776,7 @@ function App() {
             client.from('articles').upsert(articles),
             client.from('recipes').upsert(recipes),
             client.from('vorprodukte').upsert(vps),
+            client.from('suppliers').upsert(suppliers),
           ]);
         }}
       />}

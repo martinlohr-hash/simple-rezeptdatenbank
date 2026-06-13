@@ -66,6 +66,21 @@ CREATE POLICY "allow_all" ON recipes      FOR ALL USING (true) WITH CHECK (true)
 CREATE POLICY "allow_all" ON vorprodukte  FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "allow_all" ON price_log    FOR ALL USING (true) WITH CHECK (true);
 
+CREATE TABLE IF NOT EXISTS suppliers (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  kdnr        TEXT DEFAULT '',
+  url         TEXT DEFAULT '',
+  notizen     TEXT DEFAULT '',
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all" ON suppliers FOR ALL USING (true) WITH CHECK (true);
+
+GRANT ALL ON suppliers TO anon;
+
 -- Auto updated_at
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
@@ -74,3 +89,4 @@ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$;
 CREATE TRIGGER trg_articles_updated    BEFORE UPDATE ON articles    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_recipes_updated     BEFORE UPDATE ON recipes     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_vorprodukte_updated BEFORE UPDATE ON vorprodukte FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_suppliers_updated   BEFORE UPDATE ON suppliers   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
