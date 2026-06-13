@@ -715,12 +715,114 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
 
 // ── RECIPE TAB ────────────────────────────────────────────────────────────────
 
-function RecipeTab({recipes, setRecipes}) {
-  const [detail, setDetail] = useState(null);
-  const [editVK, setEditVK] = useState(null);
+function RecipeModal({recipe, onSave, onClose}) {
+  const isNew = !recipe.id;
+  const [form, setForm] = useState({
+    name:'', vkBrutto:0, vkUber:'', weEuro:0, mwst:7, anzahl:'', brot:'', ...recipe,
+  });
+  const f = (k,v) => setForm(p=>({...p,[k]:v}));
 
-  const cats = [{label:'🥪 Sandwiches', ids:['R001','R002','R003','R004','R005','R006','R007','R008']},
-                {label:'☕ Getränke', ids:['R009','R010','R011','R012','R013']}];
+  const mwstFactor = 1 + form.mwst/100;
+  const vkNetto = form.vkBrutto > 0 ? form.vkBrutto / mwstFactor : 0;
+  const wePct = vkNetto > 0 ? (form.weEuro / vkNetto * 100) : 0;
+  const dbNetto = vkNetto - form.weEuro;
+
+  const save = () => onSave({
+    ...form,
+    id: form.id || ('R'+uid()),
+    vkBrutto: parseFloat(form.vkBrutto)||0,
+    vkUber: form.vkUber ? parseFloat(form.vkUber) : null,
+    weEuro: parseFloat(form.weEuro)||0,
+    wePct: parseFloat(wePct.toFixed(2)),
+    dbNetto: parseFloat(dbNetto.toFixed(4)),
+    mwst: parseInt(form.mwst),
+    anzahl: form.anzahl ? parseInt(form.anzahl) : null,
+  });
+
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h3>{isNew?'Neues Rezept':'Rezept bearbeiten'}</h3>
+          <button className="btn btn-ghost" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-row"><label>Name *</label>
+            <input type="text" value={form.name} onChange={e=>f('name',e.target.value)} placeholder="Rezeptname"/>
+          </div>
+          <div className="form-grid">
+            <div className="form-row"><label>VK Brutto Instore</label>
+              <input type="number" value={form.vkBrutto||''} onChange={e=>f('vkBrutto',e.target.value)} step="0.10" placeholder="0,00"/>
+            </div>
+            <div className="form-row"><label>VK Brutto Uber (optional)</label>
+              <input type="number" value={form.vkUber||''} onChange={e=>f('vkUber',e.target.value)} step="0.10" placeholder="—"/>
+            </div>
+          </div>
+          <div className="form-grid">
+            <div className="form-row"><label>Wareneinsatz €</label>
+              <input type="number" value={form.weEuro||''} onChange={e=>f('weEuro',e.target.value)} step="0.01" placeholder="0,00"/>
+            </div>
+            <div className="form-row"><label>MwSt.</label>
+              <select value={form.mwst} onChange={e=>f('mwst',e.target.value)}>
+                <option value={7}>7 % (To-Go / Lebensmittel)</option>
+                <option value={19}>19 % (Inhouse)</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-grid">
+            <div className="form-row"><label>Stückzahl / Woche (optional)</label>
+              <input type="number" value={form.anzahl||''} onChange={e=>f('anzahl',e.target.value)} placeholder="—"/>
+            </div>
+            <div className="form-row"><label>Brot (optional)</label>
+              <input type="text" value={form.brot||''} onChange={e=>f('brot',e.target.value)} placeholder="z.B. Sandwichbrot"/>
+            </div>
+          </div>
+          {form.vkBrutto > 0 && (
+            <div style={{background:'#1a1a1a',color:'white',borderRadius:8,padding:'14px 16px',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,textAlign:'center',marginTop:4}}>
+              <div><div style={{fontSize:11,color:'#888',marginBottom:4}}>WE %</div>
+                <div style={{fontSize:20,fontWeight:700,color:wePct<=28?'#4ade80':wePct<=38?'#fb923c':'#f87171'}}>{wePct.toFixed(1)}%</div></div>
+              <div><div style={{fontSize:11,color:'#888',marginBottom:4}}>DB Netto</div>
+                <div style={{fontSize:20,fontWeight:700}}>{fmt(dbNetto)}</div></div>
+              <div><div style={{fontSize:11,color:'#888',marginBottom:4}}>VK Netto</div>
+                <div style={{fontSize:20,fontWeight:700}}>{fmt(vkNetto)}</div></div>
+            </div>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+          <button className="btn btn-primary" disabled={!form.name.trim()||!form.vkBrutto} onClick={save}>Speichern</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upsert}) {
+  const [detail, setDetail] = useState(null);
+  const [modal, setModal] = useState(null);
+
+  useEffect(()=>{
+    if (pendingModal !== null) { setModal(pendingModal); onPendingClear&&onPendingClear(); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[pendingModal]);
+
+  const saveRecipe = (r) => {
+    setRecipes(prev=>prev.find(x=>x.id===r.id)?prev.map(x=>x.id===r.id?r:x):[...prev,r]);
+    upsert&&upsert('recipes',r);
+    setModal(null);
+  };
+  const deleteRecipe = (id) => {
+    setRecipes(prev=>prev.filter(r=>r.id!==id));
+    setDetail(null);
+  };
+
+  const baseCats = [{label:'🥪 Sandwiches', ids:['R001','R002','R003','R004','R005','R006','R007','R008']},
+                    {label:'☕ Getränke', ids:['R009','R010','R011','R012','R013']}];
+  const categorizedIds = new Set(baseCats.flatMap(c=>c.ids));
+  const uncategorized = recipes.filter(r=>!categorizedIds.has(r.id));
+  const cats = uncategorized.length
+    ? [...baseCats,{label:'Weitere Rezepte', ids:uncategorized.map(r=>r.id)}]
+    : baseCats;
 
   return (
     <div className="tab-content">
@@ -735,6 +837,9 @@ function RecipeTab({recipes, setRecipes}) {
             <div className="stat-value" style={s.c?{color:s.c}:{}}>{s.v}</div>
           </div>
         ))}
+      </div>
+      <div className="toolbar">
+        <button className="btn btn-primary" style={{marginLeft:'auto'}} onClick={()=>setModal({})}>+ Neues Rezept</button>
       </div>
       {cats.map(cat=>{
         const recs = recipes.filter(r=>cat.ids.includes(r.id));
@@ -765,8 +870,9 @@ function RecipeTab({recipes, setRecipes}) {
                           {a==='green'?'OK':a==='yellow'?'Warn.':'Alarm'}
                         </span>
                       </td>
-                      <td>
+                      <td style={{whiteSpace:'nowrap'}}>
                         <button className="btn btn-ghost btn-xs" onClick={()=>setDetail(r)}>Details</button>
+                        <button className="btn btn-ghost btn-xs" onClick={()=>setModal(r)}>✎</button>
                       </td>
                     </tr>
                   );
@@ -815,11 +921,14 @@ function RecipeTab({recipes, setRecipes}) {
               </div>
             </div>
             <div className="modal-footer">
+              <button className="btn btn-danger btn-sm" style={{marginRight:'auto'}} onClick={()=>deleteRecipe(detail.id)}>Löschen</button>
               <button className="btn btn-secondary" onClick={()=>setDetail(null)}>Schließen</button>
+              <button className="btn btn-primary" onClick={()=>{setModal(detail);setDetail(null);}}>Bearbeiten</button>
             </div>
           </div>
         </div>
       )}
+      {modal!==null&&<RecipeModal recipe={modal} onSave={saveRecipe} onClose={()=>setModal(null)}/>}
     </div>
   );
 }
@@ -949,8 +1058,13 @@ function VPModal({vp, articles, onSave, onClose}) {
   );
 }
 
-function VPTab({vps, setVPs, articles, setArticles, upsert}) {
+function VPTab({vps, setVPs, articles, setArticles, upsert, pendingModal=null, onPendingClear}) {
   const [modal, setModal] = useState(null);
+
+  useEffect(()=>{
+    if (pendingModal !== null) { setModal(pendingModal); onPendingClear&&onPendingClear(); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[pendingModal]);
 
   const saveVP = (vp) => {
     const isNew = !vps.find(v=>v.id===vp.id);
@@ -1435,8 +1549,9 @@ function SupplierTab({suppliers, setSuppliers, upsert}) {
 
 // ── DASHBOARD TAB ─────────────────────────────────────────────────────────────
 
-function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onEditArticle}) {
+function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, onEditArticle}) {
   const [view, setView] = React.useState('margen');
+  const [showRecipeChoice, setShowRecipeChoice] = React.useState(false);
   const SOLL = 22;
   const now = Date.now();
 
@@ -1502,15 +1617,15 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onEditArtic
           <div style={{fontSize:16,fontWeight:700,color:'#1a1a1a',marginBottom:4}}>Artikel anlegen</div>
           <div style={{fontSize:12,color:'#94a3b8'}}>Neuen Artikel mit Lieferant & Preis erfassen</div>
         </button>
-        <button onClick={onNewRecipe} style={{
+        <button onClick={()=>setShowRecipeChoice(true)} style={{
           background:'white',border:'2px solid #e2e8f0',borderRadius:12,padding:'22px 20px',
           cursor:'pointer',textAlign:'left',transition:'all .15s',outline:'none',
         }}
           onMouseEnter={e=>{e.currentTarget.style.borderColor='#6366f1';e.currentTarget.style.boxShadow='0 4px 16px rgba(99,102,241,.12)';}}
           onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';e.currentTarget.style.boxShadow='none';}}>
           <div style={{fontSize:28,marginBottom:10}}>✎</div>
-          <div style={{fontSize:16,fontWeight:700,color:'#1a1a1a',marginBottom:4}}>Rezept öffnen</div>
-          <div style={{fontSize:12,color:'#94a3b8'}}>Zu den Rezepten & Kalkulationen wechseln</div>
+          <div style={{fontSize:16,fontWeight:700,color:'#1a1a1a',marginBottom:4}}>Rezept erstellen</div>
+          <div style={{fontSize:12,color:'#94a3b8'}}>Neues Rezept oder Vorprodukt anlegen</div>
         </button>
         {reviewArt ? (
           <button onClick={()=>onEditArticle(reviewArt)} style={{
@@ -1534,6 +1649,39 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onEditArtic
           </div>
         )}
       </div>
+
+      {showRecipeChoice&&(
+        <div className="modal-overlay" onClick={()=>setShowRecipeChoice(false)}>
+          <div className="modal" style={{maxWidth:400}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Was möchtest du erstellen?</h3>
+              <button className="btn btn-ghost" onClick={()=>setShowRecipeChoice(false)}>✕</button>
+            </div>
+            <div className="modal-body" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <button onClick={()=>{setShowRecipeChoice(false);onNewRecipe();}} style={{
+                background:'#f8fafc',border:'2px solid #e2e8f0',borderRadius:10,padding:'20px 16px',
+                cursor:'pointer',textAlign:'left',outline:'none',transition:'all .15s',
+              }}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor='#6366f1';}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';}}>
+                <div style={{fontSize:24,marginBottom:8}}>🍽</div>
+                <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Rezept</div>
+                <div style={{fontSize:12,color:'#94a3b8'}}>VK, Wareneinsatz, DB, Marge</div>
+              </button>
+              <button onClick={()=>{setShowRecipeChoice(false);onNewVP();}} style={{
+                background:'#f8fafc',border:'2px solid #e2e8f0',borderRadius:10,padding:'20px 16px',
+                cursor:'pointer',textAlign:'left',outline:'none',transition:'all .15s',
+              }}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor='#e85d04';}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';}}>
+                <div style={{fontSize:24,marginBottom:8}}>🧪</div>
+                <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Vorprodukt</div>
+                <div style={{fontSize:12,color:'#94a3b8'}}>Zutaten, Kosten, Preis/kg</div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{display:'flex',gap:6,marginBottom:20}}>
         <SubBtn k="margen" label="Margen"/>
@@ -1699,7 +1847,9 @@ function App() {
   const [vps,        setVPs]        = useLS('simple_vps',        VPS_SEED);
   const [priceLog,   setPriceLog]   = useLS('simple_pricelog',   []);
   const [suppliers,  setSuppliers]  = useLS('simple_suppliers',  SUPPLIERS_SEED);
-  const [pendingModal, setPendingModal] = useState(null);
+  const [pendingModal,       setPendingModal]       = useState(null);
+  const [pendingRecipeModal, setPendingRecipeModal] = useState(null);
+  const [pendingVPModal,     setPendingVPModal]     = useState(null);
 
   const client = useMemo(()=>{
     if (!sbUrl||!sbKey) return null;
@@ -1817,15 +1967,20 @@ function App() {
       <div className="content">
         {tab===0&&<DashboardTab recipes={recipes} articles={articles}
           onNewArticle={()=>{setPendingModal({name:'',g:1,e:'KG',ek:0,lief:'',datum:'',archiv:false});setTab(1);}}
-          onNewRecipe={()=>setTab(3)}
+          onNewRecipe={()=>{setPendingRecipeModal({});setTab(3);}}
+          onNewVP={()=>{setPendingVPModal({});setTab(4);}}
           onEditArticle={art=>{setPendingModal(art);setTab(1);}}
         />}
         {tab===1&&<ArticleTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} suppliers={suppliers}
           pendingModal={pendingModal} onPendingClear={()=>setPendingModal(null)}
         />}
         {tab===2&&<SupplierTab suppliers={suppliers} setSuppliers={setSuppliers} upsert={upsert}/>}
-        {tab===3&&<RecipeTab recipes={recipes} setRecipes={setRecipes}/>}
-        {tab===4&&<VPTab vps={vps} setVPs={setVPs} articles={articles} setArticles={setArticles} upsert={upsert}/>}
+        {tab===3&&<RecipeTab recipes={recipes} setRecipes={setRecipes} upsert={upsert}
+          pendingModal={pendingRecipeModal} onPendingClear={()=>setPendingRecipeModal(null)}
+        />}
+        {tab===4&&<VPTab vps={vps} setVPs={setVPs} articles={articles} setArticles={setArticles} upsert={upsert}
+          pendingModal={pendingVPModal} onPendingClear={()=>setPendingVPModal(null)}
+        />}
         {tab===5&&<InvoiceTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert}/>}
         {tab===6&&<PriceLogTab priceLog={priceLog} setPriceLog={setPriceLog}/>}
       </div>
