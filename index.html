@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple – Küchenkalkulation</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;color:#1a1a1a;min-height:100vh}
+.app{display:flex;flex-direction:column;min-height:100vh}
+.header{background:#111;color:white;padding:12px 24px;display:flex;align-items:center;gap:12px}
+.header h1{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.header .subtitle{font-size:12px;color:#888;margin-top:1px}
+.tabs{display:flex;background:#1a1a1a;padding:0 24px;gap:2px;overflow-x:auto}
+.tab{padding:11px 16px;color:#777;cursor:pointer;font-size:13px;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s}
+.tab:hover{color:#ccc}
+.tab.active{color:#fff;border-bottom-color:#e85d04}
+.content{flex:1;padding:20px 24px;max-width:1440px;width:100%}
+table{width:100%;border-collapse:collapse;font-size:13px;background:white}
+thead th{background:#f8fafc;padding:9px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap}
+tbody tr{border-bottom:1px solid #f1f5f9}
+tbody tr:hover{background:#fafbfd}
+td{padding:8px 12px;vertical-align:middle}
+.card{background:white;border-radius:8px;border:1px solid #e2e8f0;overflow:hidden}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.search{padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;width:260px;outline:none;background:white}
+.search:focus{border-color:#e85d04;box-shadow:0 0 0 2px #e85d0420}
+.btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#e85d04;color:white}.btn-primary:hover{background:#c94e03}
+.btn-secondary{background:#f1f5f9;color:#475569}.btn-secondary:hover{background:#e2e8f0}
+.btn-ghost{background:transparent;color:#64748b;padding:5px 8px}.btn-ghost:hover{background:#f1f5f9}
+.btn-danger{background:#fee2e2;color:#dc2626}.btn-danger:hover{background:#fecaca}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-xs{padding:2px 8px;font-size:11px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:white;border-radius:10px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.25)}
+.modal-lg{max-width:760px}
+.modal-header{padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:white;z-index:1}
+.modal-header h3{font-size:15px;font-weight:600}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px}
+.form-row{margin-bottom:14px}
+.form-row label{display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;outline:none;font-family:inherit}
+input:focus,select:focus,textarea:focus{border-color:#e85d04;box-shadow:0 0 0 2px #e85d0420}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.ampel{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:12px}
+.ampel.green{color:#16a34a}.ampel.yellow{color:#d97706}.ampel.red{color:#dc2626}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0}
+.badge{display:inline-flex;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600}
+.badge-gray{background:#f1f5f9;color:#64748b}
+.badge-blue{background:#eff6ff;color:#3b82f6}
+.badge-orange{background:#fff7ed;color:#ea580c}
+.badge-green{background:#f0fdf4;color:#16a34a}
+.badge-red{background:#fef2f2;color:#dc2626}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.stat-card{background:white;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px}
+.stat-label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.stat-value{font-size:22px;font-weight:700}
+.stat-sub{font-size:11px;color:#94a3b8;margin-top:2px}
+.section-title{font-size:14px;font-weight:600;color:#374151;margin-bottom:12px}
+.empty{text-align:center;padding:48px;color:#94a3b8;font-size:13px}
+.ing-row{display:grid;grid-template-columns:2fr 80px 70px 80px auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.ing-row select,ing-row input{padding:5px 8px;font-size:12px}
+.warn-banner{background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:10px 14px;font-size:13px;color:#92400e;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start}
+.invoice-drop{border:2px dashed #e2e8f0;border-radius:8px;padding:40px;text-align:center;cursor:pointer;transition:all .15s;background:#fafbfc}
+.invoice-drop:hover,.invoice-drop.drag{border-color:#e85d04;background:#fff7f3}
+.invoice-drop p{font-size:13px;color:#94a3b8;margin-top:8px}
+.price-change-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:6px;background:#fafbfc;border:1px solid #e2e8f0;margin-bottom:8px}
+.price-up{color:#dc2626}.price-down{color:#16a34a}.price-same{color:#94a3b8}
+.tab-content{animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.switch{position:relative;display:inline-block;width:36px;height:20px}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;inset:0;background:#e2e8f0;border-radius:20px;transition:.2s}
+.slider:before{position:absolute;content:'';height:14px;width:14px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s}
+input:checked+.slider{background:#e85d04}
+input:checked+.slider:before{transform:translateX(16px)}
+.log-row-price{color:#dc2626;font-weight:600}
+.log-row-margin{color:#d97706;font-weight:600}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useCallback,useMemo,useRef} = React;
+
+// ── DATA ─────────────────────────────────────────────────────────────────────
+
+const ARTICLES_SEED = [
+  {id:'A001',name:'Apfel essig',g:1,e:'l',ek:1.99,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A002',name:'Balsamico Weiß',g:1,e:'l',ek:7.39,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A003',name:'Basil bund',g:1,e:'Stk',ek:1.75,lief:'S&T',datum:'2025-12-20',archiv:false},
+  {id:'A004',name:'basil topf',g:1,e:'Stk',ek:2.45,lief:'S&T',datum:'2025-05-05',archiv:false},
+  {id:'A005',name:'Basis Mayo',g:6.25,e:'KG',ek:23.92,lief:'SIMPLE',datum:'',archiv:false},
+  {id:'A006',name:'Becher',g:1000,e:'St',ek:136.45,lief:'',datum:'',archiv:false},
+  {id:'A007',name:'Bohnen, Cannelini',g:1,e:'Dose',ek:0.95,lief:'Mattfeld',datum:'2026-05-04',archiv:false},
+  {id:'A008',name:'Burrata',g:0.6,e:'KG',ek:9.99,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A009',name:'Burratacreme',g:0.8,e:'KG',ek:8.49,lief:'SIMPLE',datum:'',archiv:false},
+  {id:'A010',name:'Butter',g:1,e:'KG',ek:3.99,lief:'Mattfeld',datum:'2026-03-05',archiv:false},
+  {id:'A011',name:'Cafe',g:1,e:'Kg',ek:27.00,lief:'',datum:'',archiv:false},
+  {id:'A012',name:'Cheddar, gerieben',g:0.5,e:'KG',ek:3.95,lief:'Mattfeld',datum:'2026-06-10',archiv:false},
+  {id:'A013',name:'Chilli Flocken',g:1,e:'kg',ek:8.95,lief:'',datum:'2025-02-13',archiv:false},
+  {id:'A014',name:'Chinakohl',g:1,e:'St.',ek:0.60,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A015',name:'Coleslaw',g:0.485,e:'KG',ek:3.18,lief:'SIMPLE',datum:'',archiv:false},
+  {id:'A016',name:'deckel',g:1000,e:'St',ek:45.00,lief:'',datum:'',archiv:false},
+  {id:'A017',name:'Ei (Vollei)',g:1,e:'St',ek:0.19,lief:'Metro',datum:'2025-12-29',archiv:false},
+  {id:'A018',name:'Eigelb',g:1,e:'l',ek:12.99,lief:'Mattfeld',datum:'2026-01-12',archiv:false},
+  {id:'A019',name:'Emmentaler, gerieben',g:1,e:'KG',ek:6.75,lief:'Mattfeld',datum:'2026-02-17',archiv:false},
+  {id:'A020',name:'essig',g:1,e:'l',ek:8.95,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A021',name:'Fettpapier',g:10000,e:'Stk',ek:1223.00,lief:'Branding Club',datum:'2025-10-29',archiv:false},
+  {id:'A022',name:'Focaccia',g:1.6,e:'Kg',ek:9.30,lief:'Feufou',datum:'2026-05-04',archiv:false},
+  {id:'A023',name:'Frischkäse',g:3.5,e:'kg',ek:19.89,lief:'Mattfeld',datum:'2026-04-07',archiv:false},
+  {id:'A024',name:'Fritz Kola',g:24,e:'Kst',ek:17.75,lief:'',datum:'',archiv:false},
+  {id:'A025',name:'Fritz Pfand',g:1,e:'St',ek:0.08,lief:'',datum:'',archiv:false},
+  {id:'A026',name:'Frühlingszwiebeln',g:1,e:'St',ek:0.69,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A027',name:'Gestückelte Tomaten (Pomito)',g:1,e:'KG',ek:2.75,lief:'Mattfeld',datum:'2025-10-30',archiv:false},
+  {id:'A028',name:'Gewürzpauschale',g:1,e:'St.',ek:0.10,lief:'Simple',datum:'',archiv:false},
+  {id:'A029',name:'Gochujangpaste',g:0.5,e:'kg',ek:4.99,lief:'Asiamarkt',datum:'2025-10-30',archiv:false},
+  {id:'A030',name:'Hack, gemischt',g:1,e:'KG',ek:7.55,lief:'Mattfeld',datum:'2026-03-02',archiv:false},
+  {id:'A031',name:'Hafermilch',g:1,e:'l',ek:1.87,lief:'Beckröge',datum:'',archiv:false},
+  {id:'A032',name:'Honig',g:1,e:'KG',ek:6.00,lief:'',datum:'',archiv:false},
+  {id:'A033',name:'Ingwer Frisch',g:0.22,e:'KG',ek:3.99,lief:'Mattfeld',datum:'2025-10-30',archiv:false},
+  {id:'A034',name:'Kapern',g:1,e:'KG',ek:6.90,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A035',name:'Karotten',g:3,e:'KG',ek:2.39,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A036',name:'Käsemix-VP',g:1,e:'KG',ek:7.33,lief:'SIMPLE',datum:'2025-12-16',archiv:false},
+  {id:'A037',name:'Kastenweißbrot',g:1,e:'KG',ek:5.78,lief:'Schanzenbäcker',datum:'2026-03-01',archiv:false},
+  {id:'A038',name:'Kimchi',g:6.11,e:'KG',ek:10.90,lief:'SIMPLE',datum:'',archiv:false},
+  {id:'A039',name:'Knoblauch',g:1,e:'KG',ek:4.99,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A040',name:'Knoblauch Pulver',g:1.2,e:'KG',ek:21.59,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A041',name:'Koriander Samen',g:0.5,e:'KG',ek:4.65,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A042',name:'Limette',g:1,e:'kg',ek:2.99,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A043',name:'Mayonaise',g:1,e:'KG',ek:2.95,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A044',name:'Meerrettichsauce',g:0.17,e:'KG',ek:1.92,lief:'SIMPLE',datum:'',archiv:false},
+  {id:'A045',name:'Mehl',g:25,e:'KG',ek:32.50,lief:'Mammafiore',datum:'2025-02-12',archiv:false},
+  {id:'A046',name:'Milch',g:1,e:'KG',ek:1.09,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A047',name:'Mortadella',g:1,e:'KG',ek:9.69,lief:'Mattfeld',datum:'2026-06-03',archiv:false},
+  {id:'A048',name:'Mozzarella',g:1,e:'KG',ek:6.50,lief:'Mattfeld',datum:'2026-06-03',archiv:false},
+  {id:'A049',name:'Mozzarella, gerieben',g:2,e:'KG',ek:13.79,lief:'Mattfeld',datum:'2025-12-16',archiv:false},
+  {id:'A050',name:'Nutella',g:0.75,e:'kg',ek:5.29,lief:'Mattfeld',datum:'2025-02-13',archiv:false},
+  {id:'A051',name:'Oliven',g:1,e:'Kg',ek:2.18,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A052',name:'Olivenöl',g:1,e:'l',ek:7.99,lief:'Mattfeld',datum:'2025-11-27',archiv:false},
+  {id:'A053',name:'Papier für Tray',g:50000,e:'St',ek:1060.60,lief:'Pergano',datum:'2025-11-10',archiv:false},
+  {id:'A054',name:'Pappschachtel klein',g:20000,e:'St',ek:800.00,lief:'Lokyo',datum:'',archiv:false},
+  {id:'A055',name:'Pappschale',g:2000,e:'St.',ek:59.08,lief:'Mattfeld',datum:'',archiv:false},
+  {id:'A056',name:'Paprika',g:0.35,e:'KG',ek:2.75,lief:'S&T',datum:'',archiv:false},
+  {id:'A057',name:'Paprika Pulver',g:1.17,e:'KG',ek:8.29,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A058',name:'Parmesan',g:1,e:'KG',ek:14.95,lief:'S&T',datum:'2026-02-28',archiv:false},
+  {id:'A059',name:'Passierte Tomaten (Pomito)',g:1,e:'KG',ek:2.45,lief:'Mattfeld',datum:'2025-10-30',archiv:false},
+  {id:'A060',name:'Pastrami Degenhof',g:1,e:'KG',ek:29.00,lief:'Degenhof',datum:'2026-06-13',archiv:false},
+  {id:'A061',name:'Pastrami Pöklen',g:1,e:'KG',ek:1.26,lief:'SIMPLE',datum:'',archiv:false},
+  {id:'A062',name:'Pastrami Rub',g:1,e:'KG',ek:0.08,lief:'SIMPLE',datum:'',archiv:false},
+  {id:'A063',name:'Petersilie',g:1,e:'Bd',ek:1.75,lief:'S&T',datum:'2026-05-04',archiv:false},
+  {id:'A064',name:'Pfeffer geschrotet',g:1,e:'KG',ek:22.39,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A065',name:'Pfeffer Schwarz',g:1,e:'KG',ek:14.90,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A066',name:'Pickled Gurkins',g:1,e:'KG',ek:5.00,lief:'SIMPLE',datum:'',archiv:false},
+  {id:'A067',name:'Pickled Onions',g:0.75,e:'KG',ek:4.98,lief:'SIMPLE',datum:'',archiv:false},
+  {id:'A068',name:'Pistazien',g:1,e:'KG',ek:26.84,lief:'Diana',datum:'2026-03-01',archiv:false},
+  {id:'A069',name:'Pistaziencrème-VP',g:1,e:'KG',ek:15.65,lief:'Simple',datum:'2026-03-05',archiv:false},
+  {id:'A070',name:'Porkbelly gepökelt',g:1,e:'KG',ek:4.90,lief:'SIMPLE',datum:'',archiv:false},
+  {id:'A071',name:'Porkbelly Marinade',g:0.75,e:'KG',ek:1.22,lief:'SIMPLE',datum:'',archiv:false},
+  {id:'A072',name:'Porkbelly Rub',g:0.65,e:'KG',ek:9.83,lief:'SIMPLE',datum:'',archiv:false},
+  {id:'A073',name:'Portionsbecher',g:1000,e:'St.',ek:34.90,lief:'Greenbox',datum:'2025-01-12',archiv:false},
+  {id:'A074',name:'Pulled Beef',g:1,e:'KG',ek:13.55,lief:'Mattfeld',datum:'2026-06-12',archiv:false},
+  {id:'A075',name:'Rapsöl',g:10,e:'l',ek:13.99,lief:'Metro',datum:'2026-01-12',archiv:false},
+  {id:'A076',name:'Römersalat',g:1,e:'St',ek:1.89,lief:'Mattfeld',datum:'2026-01-28',archiv:false},
+  {id:'A077',name:'Ruccola',g:1,e:'KG',ek:8.90,lief:'Mammafiore',datum:'2025-02-13',archiv:false},
+  {id:'A078',name:'Sahne',g:1,e:'l',ek:4.46,lief:'Metro',datum:'',archiv:false},
+  {id:'A079',name:'Salami',g:1,e:'KG',ek:9.90,lief:'Mammafiore',datum:'2025-02-13',archiv:false},
+  {id:'A080',name:'Salatgurke',g:1,e:'St.',ek:1.10,lief:'Mattfeld',datum:'2025-10-30',archiv:false},
+  {id:'A081',name:'Salt',g:1,e:'KG',ek:0.89,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A082',name:'Sandwichbrot',g:1,e:'St.',ek:15.00,lief:'FeuFou',datum:'2026-06-03',archiv:false},
+  {id:'A083',name:'Schnittlauch',g:1,e:'KG',ek:17.99,lief:'Metro',datum:'2025-12-29',archiv:false},
+  {id:'A084',name:'Schweinebauch gepökelt',g:1,e:'KG',ek:4.90,lief:'Mattfeld',datum:'2026-06-03',archiv:false},
+  {id:'A085',name:'Senfsaat',g:1.33,e:'KG',ek:9.99,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A086',name:'Servietten',g:20000,e:'St.',ek:731.00,lief:'alibaba',datum:'',archiv:false},
+  {id:'A087',name:'Sesamöl',g:0.25,e:'L',ek:5.15,lief:'Metro',datum:'2025-12-02',archiv:false},
+  {id:'A088',name:'Sonnenblumenkerne',g:1,e:'KG',ek:4.95,lief:'S&T',datum:'2025-12-28',archiv:false},
+  {id:'A089',name:'Sonnenblumenöl',g:1,e:'L',ek:1.95,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A090',name:'Staudensellerie',g:1,e:'St',ek:1.09,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A091',name:'Stracciatella',g:1,e:'KG',ek:5.75,lief:'SIMPLE',datum:'2026-06-03',archiv:false},
+  {id:'A092',name:'Tomatensalsa',g:0.56,e:'KG',ek:2.47,lief:'Simple',datum:'2026-04-07',archiv:false},
+  {id:'A093',name:'Tomaten, Cherry',g:1,e:'KG',ek:4.50,lief:'Mammafiore',datum:'2025-02-13',archiv:false},
+  {id:'A094',name:'Tomaten, gemischt',g:1,e:'KG',ek:6.45,lief:'S&T',datum:'2025-12-28',archiv:false},
+  {id:'A095',name:'Vegan mayonaise',g:1,e:'KG',ek:3.75,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A096',name:'Viva con Aqua',g:24,e:'Kst',ek:10.04,lief:'',datum:'',archiv:false},
+  {id:'A097',name:'Wachholderbeeren',g:0.6,e:'KG',ek:9.99,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A098',name:'Walnüsse',g:1,e:'KG',ek:12.90,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A099',name:'Wasser',g:1,e:'KG',ek:0.00,lief:'Hamburg Wasser',datum:'',archiv:false},
+  {id:'A100',name:'Zimtstange',g:1,e:'KG',ek:15.90,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A101',name:'Zitrone',g:1,e:'KG',ek:1.50,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A102',name:'Zucchini',g:1,e:'KG',ek:2.95,lief:'S&T',datum:'2026-05-04',archiv:false},
+  {id:'A103',name:'Zucker',g:1,e:'KG',ek:0.99,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A104',name:'Zwiebel Pulver',g:1.2,e:'KG',ek:8.49,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A105',name:'Zwiebeln',g:1,e:'KG',ek:0.99,lief:'S&T',datum:'2025-02-13',archiv:false},
+  {id:'A106',name:'Zwiebeln rot',g:5,e:'kg',ek:5.49,lief:'Metro',datum:'2025-10-30',archiv:false},
+  {id:'A107',name:'Zwiebeln, gepickelt',g:1,e:'KG',ek:2.00,lief:'Simple',datum:'',archiv:false},
+  {id:'A108',name:'Zwiebel rot, geschält',g:1,e:'KG',ek:2.95,lief:'S&T',datum:'2026-05-23',archiv:false},
+  {id:'A109',name:'Petersilie, gehackt',g:0.25,e:'KG',ek:4.95,lief:'S&T',datum:'2026-06-06',archiv:false},
+  {id:'A110',name:'BIO Zitronen',g:1,e:'KG',ek:3.95,lief:'S&T',datum:'2026-06-06',archiv:false},
+  {id:'A111',name:'Focaccia',g:1.6,e:'Kg',ek:9.30,lief:'Feufou',datum:'2026-05-04',archiv:false},
+  {id:'A112',name:'Pulled Beef',g:1,e:'KG',ek:13.55,lief:'Mattfeld',datum:'2026-06-12',archiv:false},
+  // Archived
+  {id:'AA01',name:'Agavendicksaft',g:1,e:'l',ek:9.95,lief:'S&T',datum:'2025-02-13',archiv:true},
+  {id:'AA02',name:'Aubergine',g:1,e:'Stk',ek:0.85,lief:'Metro',datum:'2025-12-30',archiv:true},
+  {id:'AA03',name:'Bacon',g:1,e:'KG',ek:11.29,lief:'Metro',datum:'2025-12-29',archiv:true},
+  {id:'AA04',name:'Champignon, gewürfelt',g:1,e:'KG',ek:5.95,lief:'S&T',datum:'2025-12-28',archiv:true},
+  {id:'AA05',name:'Creme Fraîche',g:1,e:'l',ek:6.59,lief:'Metro',datum:'2025-10-30',archiv:true},
+  {id:'AA06',name:'Dijon Senf',g:0.5,e:'KG',ek:4.15,lief:'Metro',datum:'2025-10-25',archiv:true},
+  {id:'AA07',name:'Dill, Bund',g:1,e:'Bd',ek:1.95,lief:'S&T',datum:'2025-12-28',archiv:true},
+  {id:'AA08',name:'Feta (vegan)',g:1,e:'KG',ek:12.90,lief:'S&T',datum:'2025-02-13',archiv:true},
+  {id:'AA09',name:'Gorgonzola',g:1,e:'KG',ek:10.95,lief:'S&T',datum:'2024-12-13',archiv:true},
+  {id:'AA10',name:'Hähnchenbrust',g:1,e:'KG',ek:6.98,lief:'Mattfeld',datum:'2026-02-02',archiv:true},
+  {id:'AA11',name:'Hähnchenschenkel',g:1,e:'KG',ek:4.39,lief:'Mattfeld',datum:'2025-02-13',archiv:true},
+  {id:'AA12',name:'Hoisin Mayo',g:0.8,e:'KG',ek:3.82,lief:'Metro',datum:'2025-10-30',archiv:true},
+  {id:'AA13',name:'Hoisinsauce',g:0.73,e:'l',ek:5.99,lief:'Metro',datum:'2025-10-30',archiv:true},
+  {id:'AA14',name:'Jalapenos',g:1,e:'KG',ek:4.95,lief:'S&T',datum:'2025-02-13',archiv:true},
+  {id:'AA15',name:'Joghurt',g:1,e:'KG',ek:1.95,lief:'S&T',datum:'2025-02-13',archiv:true},
+  {id:'AA16',name:'Kräutersaitling',g:1,e:'Kg',ek:16.95,lief:'S&T',datum:'2025-11-28',archiv:true},
+  {id:'AA17',name:'Kürbiskerne',g:1,e:'KG',ek:10.59,lief:'Mattfeld',datum:'2024-10-30',archiv:true},
+  {id:'AA18',name:'Kürbiskernöl',g:0.5,e:'l',ek:11.79,lief:'Mattfeld',datum:'2024-10-30',archiv:true},
+  {id:'AA19',name:'Pökelsalz',g:10,e:'KG',ek:9.29,lief:'Metro',datum:'2025-10-30',archiv:true},
+  {id:'AA20',name:'Ricotta',g:1.5,e:'KG',ek:7.25,lief:'Mattfeld',datum:'2026-03-01',archiv:true},
+  {id:'AA21',name:'Röstzwiebeln',g:1,e:'KG',ek:5.90,lief:'S&T',datum:'2025-02-13',archiv:true},
+  {id:'AA22',name:'Sardellenfilets',g:1,e:'Ds',ek:9.99,lief:'Mattfeld',datum:'2026-01-28',archiv:true},
+  {id:'AA23',name:'Sylter Brot',g:1,e:'KG',ek:8.41,lief:'Schanzenbäcker',datum:'2025-11-27',archiv:true},
+  {id:'AA24',name:'Vegan Gravy',g:0.5,e:'L',ek:0.20,lief:'Simple',datum:'',archiv:true},
+  {id:'AA25',name:'Vegan Mushroom',g:1,e:'KG',ek:10.37,lief:'Simple',datum:'',archiv:true},
+  {id:'AA26',name:'Pastrami Metzgers',g:1,e:'KG',ek:20.00,lief:'Metzgers',datum:'',archiv:true},
+];
+
+const RECIPES_SEED = [
+  {id:'R001',name:'Pastramisandwich',vkBrutto:13.90,vkUber:18.90,weEuro:5.42,wePct:39.0,dbNetto:7.57,mwst:7,anzahl:20,brot:'Sandwichbrot'},
+  {id:'R002',name:'Big J',vkBrutto:21.90,vkUber:null,weEuro:10.14,wePct:46.3,dbNetto:10.33,mwst:7,anzahl:45,brot:'Sandwichbrot'},
+  {id:'R003',name:'Big J Uber',vkBrutto:28.90,vkUber:28.90,weEuro:7.19,wePct:24.9,dbNetto:19.82,mwst:19,anzahl:45,brot:'Kastenweißbrot'},
+  {id:'R004',name:'Porkbelly Sandwich',vkBrutto:9.90,vkUber:12.90,weEuro:2.55,wePct:25.7,dbNetto:6.70,mwst:7,anzahl:150,brot:'Sandwichbrot'},
+  {id:'R005',name:'Pulled Beef Sandwich',vkBrutto:10.50,vkUber:12.90,weEuro:3.36,wePct:32.0,dbNetto:6.45,mwst:7,anzahl:150,brot:'Sandwichbrot'},
+  {id:'R006',name:'Grilled Cheese SW',vkBrutto:9.50,vkUber:null,weEuro:1.91,wePct:20.1,dbNetto:6.97,mwst:7,anzahl:null,brot:'Kastenweißbrot'},
+  {id:'R007',name:'Kim-Cheese SW',vkBrutto:10.50,vkUber:null,weEuro:2.59,wePct:24.7,dbNetto:7.22,mwst:7,anzahl:null,brot:'Sandwichbrot'},
+  {id:'R008',name:'Mortadella SW',vkBrutto:9.90,vkUber:13.90,weEuro:3.27,wePct:33.0,dbNetto:5.98,mwst:7,anzahl:null,brot:'Sandwichbrot'},
+  // Getränke
+  {id:'R009',name:'Hafermilch (kl.)',vkBrutto:3.50,vkUber:null,weEuro:0.68,wePct:19.4,dbNetto:2.60,mwst:19,anzahl:null,brot:null},
+  {id:'R010',name:'Milchkaffee',vkBrutto:3.70,vkUber:null,weEuro:0.59,wePct:15.9,dbNetto:2.86,mwst:19,anzahl:null,brot:null},
+  {id:'R011',name:'Hafermilch (gr.)',vkBrutto:4.90,vkUber:null,weEuro:1.34,wePct:27.3,dbNetto:3.24,mwst:19,anzahl:null,brot:null},
+  {id:'R012',name:'Fritz Kola',vkBrutto:3.50,vkUber:null,weEuro:0.78,wePct:22.3,dbNetto:2.49,mwst:19,anzahl:null,brot:null},
+  {id:'R013',name:'Viva con Aqua',vkBrutto:3.00,vkUber:null,weEuro:0.46,wePct:15.3,dbNetto:2.35,mwst:19,anzahl:null,brot:null},
+];
+
+const VPS_SEED = [
+  {id:'VP01',name:'Coleslaw-VP',outputKg:2.73,kosten:2.94,preisKg:1.08,
+   zutaten:[
+     {art:'A014',name:'Chinakohl',menge:2,einheit:'kg'},
+     {art:'A035',name:'Karotten',menge:0.375,einheit:'kg'},
+     {art:'A020',name:'essig',menge:0.15,einheit:'l'},
+     {art:'A028',name:'Gewürzpauschale',menge:1,einheit:'St'},
+   ]},
+  {id:'VP02',name:'Kimchi-VP',outputKg:6.12,kosten:10.05,preisKg:1.64,
+   zutaten:[
+     {art:'A014',name:'Chinakohl',menge:4,einheit:'kg'},
+     {art:'A039',name:'Knoblauch',menge:0.012,einheit:'kg'},
+     {art:'A035',name:'Karotten',menge:0.5,einheit:'kg'},
+     {art:'A106',name:'Zwiebeln rot',menge:0.036,einheit:'kg'},
+     {art:'A026',name:'Frühlingszwiebeln',menge:1,einheit:'St'},
+     {art:'A029',name:'Gochujangpaste',menge:0.5,einheit:'kg'},
+     {art:'A033',name:'Ingwer Frisch',menge:0.07,einheit:'kg'},
+     {art:'A028',name:'Gewürzpauschale',menge:2,einheit:'St'},
+   ]},
+  {id:'VP03',name:'Burratacreme-VP',outputKg:0.80,kosten:8.39,preisKg:10.49,
+   zutaten:[
+     {art:'A008',name:'Burrata',menge:0.3,einheit:'kg'},
+     {art:'AA05',name:'Creme Fraîche',menge:0.5,einheit:'l'},
+     {art:'A028',name:'Gewürzpauschale',menge:1,einheit:'St'},
+   ]},
+  {id:'VP04',name:'Stracciatella-VP',outputKg:0.55,kosten:3.17,preisKg:5.75,
+   zutaten:[
+     {art:'A048',name:'Mozzarella',menge:0.3,einheit:'kg'},
+     {art:'A078',name:'Sahne',menge:0.25,einheit:'l'},
+     {art:'A028',name:'Gewürzpauschale',menge:1,einheit:'St'},
+   ]},
+  {id:'VP05',name:'Käsemix-VP',outputKg:2.50,kosten:17.70,preisKg:7.08,
+   zutaten:[
+     {art:'A019',name:'Emmentaler, gerieben',menge:1,einheit:'kg'},
+     {art:'A049',name:'Mozzarella, gerieben',menge:1,einheit:'kg'},
+     {art:'A012',name:'Cheddar, gerieben',menge:0.5,einheit:'kg'},
+     {art:'A028',name:'Gewürzpauschale',menge:1,einheit:'St'},
+   ]},
+  {id:'VP06',name:'Caponata-VP',outputKg:7.55,kosten:8.53,preisKg:1.13,
+   zutaten:[
+     {art:'AA02',name:'Aubergine',menge:6,einheit:'kg'},
+     {art:'A090',name:'Staudensellerie',menge:1,einheit:'St'},
+     {art:'A106',name:'Zwiebeln rot',menge:0.27,einheit:'kg'},
+     {art:'A020',name:'essig',menge:0.2,einheit:'l'},
+     {art:'A103',name:'Zucker',menge:0.07,einheit:'kg'},
+     {art:'A075',name:'Rapsöl',menge:0.01,einheit:'l'},
+     {art:'A028',name:'Gewürzpauschale',menge:2,einheit:'St'},
+   ]},
+  {id:'VP07',name:'Basis Mayo-VP',outputKg:6.26,kosten:22.97,preisKg:3.67,
+   zutaten:[
+     {art:'A018',name:'Eigelb',menge:0.8,einheit:'kg'},
+     {art:'A075',name:'Rapsöl',menge:4.6,einheit:'l'},
+     {art:'AA05',name:'Creme Fraîche',menge:0.7,einheit:'l'},
+     {art:'AA06',name:'Dijon Senf',menge:0.16,einheit:'kg'},
+     {art:'A028',name:'Gewürzpauschale',menge:2,einheit:'St'},
+   ]},
+  {id:'VP08',name:'HoisinMayo-VP',outputKg:0.84,kosten:3.72,preisKg:4.43,
+   zutaten:[
+     {art:'A005',name:'Basis Mayo',menge:0.7,einheit:'kg'},
+     {art:'AA13',name:'Hoisinsauce',menge:0.1,einheit:'l'},
+     {art:'A042',name:'Limette',menge:0.04,einheit:'kg'},
+     {art:'A028',name:'Gewürzpauschale',menge:1,einheit:'St'},
+   ]},
+  {id:'VP09',name:'Pistaziencrème-VP',outputKg:0.35,kosten:5.48,preisKg:15.65,
+   zutaten:[
+     {art:'A068',name:'Pistazien',menge:0.1,einheit:'kg'},
+     {art:'A058',name:'Parmesan',menge:0.1,einheit:'kg'},
+     {art:'A052',name:'Olivenöl',menge:0.15,einheit:'l'},
+     {art:'A028',name:'Gewürzpauschale',menge:1,einheit:'St'},
+   ]},
+  {id:'VP10',name:'Meerrettichsauce-VP',outputKg:0.17,kosten:1.82,preisKg:10.68,
+   zutaten:[
+     {art:'A005',name:'Basis Mayo',menge:0.1,einheit:'kg'},
+     {art:'A002',name:'Balsamico Weiß',menge:0.01,einheit:'l'},
+     {art:'',name:'Meerrettich',menge:0.06,einheit:'kg'},
+     {art:'A028',name:'Gewürzpauschale',menge:1,einheit:'St'},
+   ]},
+  {id:'VP11',name:'PickledOnions-VP',outputKg:0.84,kosten:1.90,preisKg:2.27,
+   zutaten:[
+     {art:'A106',name:'Zwiebeln rot',menge:0.7,einheit:'kg'},
+     {art:'A020',name:'essig',menge:0.1,einheit:'l'},
+     {art:'A103',name:'Zucker',menge:0.04,einheit:'kg'},
+     {art:'A028',name:'Gewürzpauschale',menge:2,einheit:'St'},
+   ]},
+  {id:'VP12',name:'Chiligurkins-VP',outputKg:2.79,kosten:4.98,preisKg:1.78,
+   zutaten:[
+     {art:'A080',name:'Salatgurke',menge:2,einheit:'St'},
+     {art:'A020',name:'essig',menge:0.25,einheit:'l'},
+     {art:'A103',name:'Zucker',menge:0.01,einheit:'kg'},
+     {art:'A041',name:'Koriander Samen',menge:0.01,einheit:'kg'},
+     {art:'A065',name:'Pfeffer Schwarz',menge:0.01,einheit:'kg'},
+     {art:'A013',name:'Chilli Flocken',menge:0.01,einheit:'kg'},
+     {art:'A028',name:'Gewürzpauschale',menge:2,einheit:'St'},
+   ]},
+  {id:'VP13',name:'Tomatensalsa-VP',outputKg:0.56,kosten:2.47,preisKg:4.41,
+   zutaten:[
+     {art:'A106',name:'Zwiebeln rot',menge:0.05,einheit:'kg'},
+     {art:'A039',name:'Knoblauch',menge:0.005,einheit:'kg'},
+     {art:'A002',name:'Balsamico Weiß',menge:0.005,einheit:'l'},
+     {art:'A093',name:'Tomaten, Cherry',menge:0.5,einheit:'kg'},
+     {art:'A028',name:'Gewürzpauschale',menge:1,einheit:'St'},
+   ]},
+  {id:'VP14',name:'Meatballs-VP',outputKg:4.07,kosten:27.47,preisKg:6.75,
+   zutaten:[
+     {art:'A030',name:'Hack, gemischt',menge:3.5,einheit:'kg'},
+     {art:'A104',name:'Zwiebel Pulver',menge:0.07,einheit:'kg'},
+     {art:'A046',name:'Milch',menge:0.5,einheit:'kg'},
+     {art:'A028',name:'Gewürzpauschale',menge:2,einheit:'St'},
+   ]},
+  {id:'VP15',name:'Pulled Mushroom-VP',outputKg:0.50,kosten:5.19,preisKg:10.37,
+   zutaten:[
+     {art:'AA04',name:'Champignon, gewürfelt',menge:0.67,einheit:'kg'},
+     {art:'AA13',name:'Hoisinsauce',menge:0.04,einheit:'l'},
+     {art:'A040',name:'Knoblauch Pulver',menge:0.02,einheit:'kg'},
+     {art:'A087',name:'Sesamöl',menge:0.02,einheit:'l'},
+     {art:'A028',name:'Gewürzpauschale',menge:1,einheit:'St'},
+   ]},
+  {id:'VP16',name:'Porkbelly Rub-VP',outputKg:0.65,kosten:9.83,preisKg:15.12,
+   zutaten:[
+     {art:'A064',name:'Pfeffer geschrotet',menge:0.3,einheit:'kg'},
+     {art:'A085',name:'Senfsaat',menge:0.2,einheit:'kg'},
+     {art:'A057',name:'Paprika Pulver',menge:0.05,einheit:'kg'},
+     {art:'A040',name:'Knoblauch Pulver',menge:0.05,einheit:'kg'},
+     {art:'A104',name:'Zwiebel Pulver',menge:0.05,einheit:'kg'},
+   ]},
+  {id:'VP17',name:'Pastramirub-VP',outputKg:0.86,kosten:10.28,preisKg:11.95,
+   zutaten:[
+     {art:'A064',name:'Pfeffer geschrotet',menge:0.2,einheit:'kg'},
+     {art:'A041',name:'Koriander Samen',menge:0.3,einheit:'kg'},
+     {art:'A057',name:'Paprika Pulver',menge:0.1,einheit:'kg'},
+     {art:'A013',name:'Chilli Flocken',menge:0.03,einheit:'kg'},
+     {art:'A085',name:'Senfsaat',menge:0.1,einheit:'kg'},
+     {art:'A040',name:'Knoblauch Pulver',menge:0.05,einheit:'kg'},
+     {art:'A104',name:'Zwiebel Pulver',menge:0.05,einheit:'kg'},
+     {art:'A103',name:'Zucker',menge:0.03,einheit:'kg'},
+   ]},
+];
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+
+const fmt = (n) => new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(n||0);
+const fmtPct = (n) => (n||0).toFixed(1)+'%';
+const fmtKg = (n) => (n||0).toFixed(3).replace('.',',')+'  kg';
+
+function ampelWE(pct) {
+  if (pct <= 28) return 'green';
+  if (pct <= 38) return 'yellow';
+  return 'red';
+}
+
+function pricePerUnit(art, variantLief) {
+  const v = variantLief && (art.varianten||[]).find(va=>va.lief===variantLief);
+  const ek = v ? v.ek : art.ek;
+  if (!art.g || art.g === 0) return ek;
+  return ek / art.g;
+}
+
+function allSuppliers(art) {
+  // Returns [{lief, ek, datum, isDefault}] — default first
+  const main = {lief: art.lief||'', ek: art.ek, datum: art.datum||'', isDefault: true};
+  const extras = (art.varianten||[]).map(v=>({...v, isDefault:false}));
+  return [main, ...extras];
+}
+
+function uid() {
+  return 'X'+(Math.random()*1e9|0).toString(36).toUpperCase();
+}
+
+// ── STORAGE HOOK ──────────────────────────────────────────────────────────────
+
+function useLS(key, seed) {
+  const [data, setData] = useState(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : seed;
+    } catch { return seed; }
+  });
+  const set = useCallback((v) => {
+    setData(prev => {
+      const next = typeof v === 'function' ? v(prev) : v;
+      localStorage.setItem(key, JSON.stringify(next));
+      return next;
+    });
+  }, [key]);
+  return [data, set];
+}
+
+// ── ARTICLE TAB ───────────────────────────────────────────────────────────────
+
+function ArticleModal({art, onSave, onClose}) {
+  const isNew = !art.id;
+  const [form, setForm] = useState({...art, varianten: art.varianten||[]});
+  const f = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  const addVariant = () => f('varianten',[...form.varianten,{lief:'',ek:0,datum:''}]);
+  const setVariant = (i,k,v) => f('varianten',form.varianten.map((va,j)=>j===i?{...va,[k]:v}:va));
+  const removeVariant = (i) => f('varianten',form.varianten.filter((_,j)=>j!==i));
+  const setAsDefault = (i) => {
+    const v = form.varianten[i];
+    // swap: old default goes into varianten, new default becomes main
+    const oldDefault = {lief:form.lief||'', ek:form.ek, datum:form.datum||''};
+    f('varianten', form.varianten.map((va,j)=>j===i?oldDefault:va));
+    setForm(p=>({...p, lief:v.lief, ek:v.ek, datum:v.datum,
+      varianten: p.varianten.map((va,j)=>j===i?oldDefault:va)}));
+  };
+
+  const ppu = form.g>0 ? form.ek/form.g : form.ek;
+
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h3>{isNew?'Neuer Artikel':'Artikel bearbeiten'}</h3>
+          <button className="btn btn-ghost" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-row"><label>Name</label>
+            <input type="text" value={form.name||''} onChange={e=>f('name',e.target.value)} placeholder="Artikelname"/>
+          </div>
+          <div className="form-grid">
+            <div className="form-row"><label>Packungsgröße</label>
+              <input type="number" value={form.g||''} onChange={e=>f('g',parseFloat(e.target.value)||0)} step="0.001"/>
+            </div>
+            <div className="form-row"><label>Einheit</label>
+              <select value={form.e||'KG'} onChange={e=>f('e',e.target.value)}>
+                {['KG','kg','g','l','L','St','St.','Stk','Bd','Ds','Kst','Dose'].map(u=><option key={u}>{u}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* ── Lieferanten-Preise ── */}
+          <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,padding:12,marginBottom:14}}>
+            <div style={{fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:10}}>
+              Lieferanten &amp; Preise
+            </div>
+            {/* Hauptlieferant */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 90px 120px auto',gap:8,alignItems:'center',marginBottom:6}}>
+              <input type="text" value={form.lief||''} onChange={e=>f('lief',e.target.value)} placeholder="Lieferant" style={{fontSize:12}}/>
+              <input type="number" value={form.ek||''} onChange={e=>f('ek',parseFloat(e.target.value)||0)} step="0.01" placeholder="EK €" style={{fontSize:12}}/>
+              <input type="date" value={form.datum||''} onChange={e=>f('datum',e.target.value)} style={{fontSize:12}}/>
+              <span className="badge badge-blue" style={{justifyContent:'center'}}>Standard</span>
+            </div>
+            {/* Alternative Lieferanten */}
+            {form.varianten.map((v,i)=>{
+              const vPpu = form.g>0 ? v.ek/form.g : v.ek;
+              const diffPct = ppu>0 ? ((vPpu-ppu)/ppu*100) : 0;
+              return (
+                <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 90px 120px auto',gap:8,alignItems:'center',marginBottom:6}}>
+                  <input type="text" value={v.lief||''} onChange={e=>setVariant(i,'lief',e.target.value)} placeholder="Lieferant" style={{fontSize:12}}/>
+                  <div style={{position:'relative'}}>
+                    <input type="number" value={v.ek||''} onChange={e=>setVariant(i,'ek',parseFloat(e.target.value)||0)} step="0.01" placeholder="EK €" style={{fontSize:12,width:'100%'}}/>
+                    {v.ek>0&&ppu>0&&<span style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',fontSize:9,color:diffPct>0?'#dc2626':'#16a34a',fontWeight:700,pointerEvents:'none'}}>
+                      {diffPct>0?'▲':'▼'}{Math.abs(diffPct).toFixed(0)}%
+                    </span>}
+                  </div>
+                  <input type="date" value={v.datum||''} onChange={e=>setVariant(i,'datum',e.target.value)} style={{fontSize:12}}/>
+                  <div style={{display:'flex',gap:4}}>
+                    <button className="btn btn-secondary btn-xs" onClick={()=>setAsDefault(i)} title="Als Standard setzen">★</button>
+                    <button className="btn btn-danger btn-xs" onClick={()=>removeVariant(i)}>✕</button>
+                  </div>
+                </div>
+              );
+            })}
+            <button className="btn btn-secondary btn-sm" style={{marginTop:4}} onClick={addVariant}>+ Lieferant</button>
+          </div>
+
+          {!isNew && <div className="form-row" style={{display:'flex',alignItems:'center',gap:8}}>
+            <label style={{margin:0,cursor:'pointer'}}>
+              <input type="checkbox" checked={form.archiv||false} onChange={e=>f('archiv',e.target.checked)} style={{width:'auto',marginRight:6}}/>
+              Archiviert
+            </label>
+          </div>}
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+          <button className="btn btn-primary" onClick={()=>onSave({...form,id:form.id||('A'+uid())})}>Speichern</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert}) {
+  const [q, setQ] = useState('');
+  const [showArchiv, setShowArchiv] = useState(false);
+  const [modal, setModal] = useState(null);
+  const [sort, setSort] = useState({col:'name',dir:'asc'});
+
+  const toggleSort = (col) => setSort(s => s.col===col ? {col,dir:s.dir==='asc'?'desc':'asc'} : {col,dir:'asc'});
+  const SortTh = ({col,children}) => (
+    <th onClick={()=>toggleSort(col)} style={{cursor:'pointer',userSelect:'none',whiteSpace:'nowrap'}}>
+      {children}{' '}
+      <span style={{opacity:sort.col===col?1:.25,fontSize:10}}>
+        {sort.col===col&&sort.dir==='desc'?'▼':'▲'}
+      </span>
+    </th>
+  );
+
+  const filtered = useMemo(()=>{
+    const base = articles.filter(a=>{
+      if (!showArchiv && a.archiv) return false;
+      return !q || a.name.toLowerCase().includes(q.toLowerCase()) || (a.lief||'').toLowerCase().includes(q.toLowerCase());
+    });
+    const {col,dir} = sort;
+    return [...base].sort((a,b)=>{
+      let va, vb;
+      if (col==='name')   { va=a.name.toLowerCase(); vb=b.name.toLowerCase(); }
+      else if (col==='ek')     { va=a.ek; vb=b.ek; }
+      else if (col==='ppu')    { va=pricePerUnit(a); vb=pricePerUnit(b); }
+      else if (col==='lief')   { va=(a.lief||'').toLowerCase(); vb=(b.lief||'').toLowerCase(); }
+      else if (col==='datum')  { va=a.datum||''; vb=b.datum||''; }
+      else return 0;
+      if (va<vb) return dir==='asc'?-1:1;
+      if (va>vb) return dir==='asc'?1:-1;
+      return 0;
+    });
+  }, [articles, q, showArchiv, sort]);
+
+  const saveArt = (art) => {
+    const existing = articles.find(a=>a.id===art.id);
+    if (existing && existing.ek !== art.ek) {
+      const entry = {id:'L'+uid(),datum:new Date().toISOString(),typ:'Preisänderung',
+        produkt:art.name,altPreis:existing.ek,neuPreis:art.ek,quelle:'Manuell',status:'ok'};
+      setPriceLog(prev=>[entry,...prev]);
+      upsert&&upsert('price_log', entry);
+    }
+    setArticles(prev=>existing ? prev.map(a=>a.id===art.id?art:a) : [...prev,art]);
+    upsert&&upsert('articles', art);
+    setModal(null);
+  };
+
+  const priceAge = (datum) => {
+    if (!datum) return null;
+    const days = Math.floor((Date.now() - new Date(datum)) / 86400000);
+    if (days > 180) return 'red';
+    if (days > 90) return 'yellow';
+    return 'green';
+  };
+
+  return (
+    <div className="tab-content">
+      <div className="stats-row">
+        <div className="stat-card">
+          <div className="stat-label">Artikel aktiv</div>
+          <div className="stat-value">{articles.filter(a=>!a.archiv).length}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Archiviert</div>
+          <div className="stat-value" style={{color:'#94a3b8'}}>{articles.filter(a=>a.archiv).length}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Lieferanten</div>
+          <div className="stat-value">{new Set(articles.filter(a=>!a.archiv&&a.lief).map(a=>a.lief.toUpperCase())).size}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Preis > 6 Mon. alt</div>
+          <div className="stat-value" style={{color:'#dc2626'}}>
+            {articles.filter(a=>!a.archiv&&priceAge(a.datum)==='red').length}
+          </div>
+        </div>
+      </div>
+      <div className="toolbar">
+        <input className="search" placeholder="Suche Artikel oder Lieferant…" value={q} onChange={e=>setQ(e.target.value)}/>
+        <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
+          <span className="switch"><input type="checkbox" checked={showArchiv} onChange={e=>setShowArchiv(e.target.checked)}/><span className="slider"></span></span>
+          Archiv
+        </label>
+        <button className="btn btn-primary" style={{marginLeft:'auto'}} onClick={()=>setModal({name:'',g:1,e:'KG',ek:0,lief:'',datum:'',archiv:false})}>
+          + Artikel
+        </button>
+      </div>
+      <div className="card">
+        <table>
+          <thead><tr>
+            <SortTh col="name">Name</SortTh>
+            <th>Größe</th>
+            <SortTh col="ek">EK Netto</SortTh>
+            <SortTh col="ppu">EK/Einheit</SortTh>
+            <SortTh col="lief">Lieferant</SortTh>
+            <SortTh col="datum">Preisdatum</SortTh>
+            <th>Status</th><th></th>
+          </tr></thead>
+          <tbody>
+          {filtered.map(a=>{
+            const ppu = pricePerUnit(a);
+            const age = priceAge(a.datum);
+            const suppliers = allSuppliers(a);
+            const hasVariants = (a.varianten||[]).length > 0;
+            const ppuMin = hasVariants ? Math.min(...suppliers.map(s=>s.ek/(a.g||1))) : ppu;
+            const ppuMax = hasVariants ? Math.max(...suppliers.map(s=>s.ek/(a.g||1))) : ppu;
+            return (
+              <tr key={a.id} style={a.archiv?{opacity:.5}:{}}>
+                <td><strong>{a.name}</strong></td>
+                <td style={{color:'#64748b'}}>{a.g} {a.e}</td>
+                <td>{fmt(a.ek)}</td>
+                <td style={{fontFamily:'monospace'}}>
+                  {hasVariants
+                    ? <span>{fmt(ppuMin)}–{fmt(ppuMax)}<span style={{color:'#94a3b8'}}>/{a.e}</span></span>
+                    : <span>{fmt(ppu)}<span style={{color:'#94a3b8'}}>/{a.e}</span></span>}
+                </td>
+                <td>
+                  {hasVariants
+                    ? <span title={suppliers.map(s=>`${s.lief}: ${fmt(s.ek)}`).join('\n')}
+                        className="badge badge-blue" style={{cursor:'default'}}>
+                        {suppliers.length}× Lieferanten
+                      </span>
+                    : <span className="badge badge-gray">{a.lief||'—'}</span>}
+                </td>
+                <td>
+                  {a.datum ? <span style={{color: age==='red'?'#dc2626':age==='yellow'?'#d97706':'#374151', fontSize:12}}>
+                    {a.datum}
+                  </span> : <span style={{color:'#94a3b8',fontSize:12}}>—</span>}
+                </td>
+                <td>
+                  {a.archiv ? <span className="badge badge-gray">Archiv</span> :
+                    age === 'red' ? <span className="ampel red"><span className="dot"/>veraltet</span> :
+                    age === 'yellow' ? <span className="ampel yellow"><span className="dot"/>&gt;3 Mon.</span> :
+                    <span className="ampel green"><span className="dot"/>aktuell</span>
+                  }
+                </td>
+                <td>
+                  <button className="btn btn-ghost btn-xs" onClick={()=>setModal({...a})}>✎</button>
+                </td>
+              </tr>
+            );
+          })}
+          {filtered.length===0&&<tr><td colSpan={8}><div className="empty">Keine Artikel gefunden</div></td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {modal && <ArticleModal art={modal} onSave={saveArt} onClose={()=>setModal(null)}/>}
+    </div>
+  );
+}
+
+// ── RECIPE TAB ────────────────────────────────────────────────────────────────
+
+function RecipeTab({recipes, setRecipes}) {
+  const [detail, setDetail] = useState(null);
+  const [editVK, setEditVK] = useState(null);
+
+  const cats = [{label:'🥪 Sandwiches', ids:['R001','R002','R003','R004','R005','R006','R007','R008']},
+                {label:'☕ Getränke', ids:['R009','R010','R011','R012','R013']}];
+
+  return (
+    <div className="tab-content">
+      <div className="stats-row">
+        {[{label:'Rezepte aktiv',v:recipes.length,c:''},
+          {label:'Marge OK (≤28%)',v:recipes.filter(r=>r.wePct<=28).length,c:'#16a34a'},
+          {label:'Marge Warn. (28–38%)',v:recipes.filter(r=>r.wePct>28&&r.wePct<=38).length,c:'#d97706'},
+          {label:'Marge Alarm (>38%)',v:recipes.filter(r=>r.wePct>38).length,c:'#dc2626'},
+        ].map(s=>(
+          <div className="stat-card" key={s.label}>
+            <div className="stat-label">{s.label}</div>
+            <div className="stat-value" style={s.c?{color:s.c}:{}}>{s.v}</div>
+          </div>
+        ))}
+      </div>
+      {cats.map(cat=>{
+        const recs = recipes.filter(r=>cat.ids.includes(r.id));
+        if(!recs.length) return null;
+        return (
+          <div key={cat.label} style={{marginBottom:20}}>
+            <div className="section-title">{cat.label}</div>
+            <div className="card">
+              <table>
+                <thead><tr>
+                  <th>Rezept</th><th>VK Instore</th><th>VK Uber</th>
+                  <th>WE €</th><th>WE %</th><th>DB Netto</th><th>MwSt</th><th>Marge</th><th></th>
+                </tr></thead>
+                <tbody>
+                {recs.map(r=>{
+                  const a = ampelWE(r.wePct);
+                  return (
+                    <tr key={r.id}>
+                      <td><strong>{r.name}</strong></td>
+                      <td>{fmt(r.vkBrutto)}</td>
+                      <td>{r.vkUber ? fmt(r.vkUber) : <span style={{color:'#94a3b8'}}>—</span>}</td>
+                      <td>{fmt(r.weEuro)}</td>
+                      <td style={{fontFamily:'monospace'}}>{fmtPct(r.wePct)}</td>
+                      <td style={{fontFamily:'monospace',fontWeight:600}}>{fmt(r.dbNetto)}</td>
+                      <td><span className="badge badge-gray">{r.mwst}%</span></td>
+                      <td>
+                        <span className={`ampel ${a}`}><span className="dot"/>
+                          {a==='green'?'OK':a==='yellow'?'Warn.':'Alarm'}
+                        </span>
+                      </td>
+                      <td>
+                        <button className="btn btn-ghost btn-xs" onClick={()=>setDetail(r)}>Details</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })}
+      {detail && (
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setDetail(null)}>
+          <div className="modal">
+            <div className="modal-header">
+              <h3>{detail.name}</h3>
+              <button className="btn btn-ghost" onClick={()=>setDetail(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-grid" style={{marginBottom:16}}>
+                {[['VK Instore',fmt(detail.vkBrutto)],
+                  ['VK Uber',detail.vkUber?fmt(detail.vkUber):'—'],
+                  ['Wareneinsatz',fmt(detail.weEuro)+' ('+fmtPct(detail.wePct)+')'],
+                  ['DB Netto',fmt(detail.dbNetto)],
+                  ['MwSt.',detail.mwst+'%'],
+                  ['Brot',detail.brot||'—'],
+                ].map(([k,v])=>(
+                  <div key={k} style={{background:'#f8fafc',borderRadius:6,padding:'10px 12px'}}>
+                    <div style={{fontSize:11,color:'#64748b',fontWeight:600,textTransform:'uppercase'}}>{k}</div>
+                    <div style={{fontSize:15,fontWeight:600,marginTop:2}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <div className={`ampel ${ampelWE(detail.wePct)}`} style={{fontSize:14,padding:'10px 14px',background:'#f8fafc',borderRadius:6,display:'flex'}}>
+                <span className="dot" style={{width:12,height:12}}/>
+                Wareneinsatz {fmtPct(detail.wePct)} —
+                {ampelWE(detail.wePct)==='green'?' Marge in Ordnung':
+                 ampelWE(detail.wePct)==='yellow'?' Marge grenzwertig':
+                 ' Marge kritisch — prüfen!'}
+              </div>
+              <div style={{marginTop:16,padding:'10px 14px',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:6,fontSize:13,color:'#166534'}}>
+                <strong>VK-Empfehlung bei Ziel-WE 28%:</strong> {fmt(detail.weEuro/0.28 * (detail.mwst===19?1.19:1.07))}
+                {' '}| bei 32%: {fmt(detail.weEuro/0.32 * (detail.mwst===19?1.19:1.07))}
+              </div>
+              <div style={{marginTop:12,fontSize:12,color:'#94a3b8'}}>
+                WE-Daten importiert aus Google Sheets. Zutaten-Detail im VP-Tab pflegen.
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={()=>setDetail(null)}>Schließen</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── VP TAB ────────────────────────────────────────────────────────────────────
+
+function VPModal({vp, articles, onSave, onClose}) {
+  const isNew = !vp.id;
+  const [form, setForm] = useState({
+    name: vp.name||'',
+    outputKg: vp.outputKg||0,
+    zutaten: vp.zutaten||[],
+  });
+  const f = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  const activeArts = useMemo(()=>articles.filter(a=>!a.archiv).sort((a,b)=>a.name.localeCompare(b.name)),[articles]);
+
+  const setZutat = (i,k,v) => f('zutaten',form.zutaten.map((z,j)=>j===i?{...z,[k]:v}:z));
+  const addZutat = () => f('zutaten',[...form.zutaten,{art:'',name:'',menge:0,einheit:'kg'}]);
+  const delZutat = (i) => f('zutaten',form.zutaten.filter((_,j)=>j!==i));
+
+  const kosten = useMemo(()=>{
+    return form.zutaten.reduce((sum,z)=>{
+      const art = articles.find(a=>a.id===z.art);
+      if (!art) return sum;
+      return sum + pricePerUnit(art, z.variantLief)*z.menge;
+    },0);
+  },[form.zutaten,articles]);
+
+  const preisKg = form.outputKg > 0 ? kosten/form.outputKg : 0;
+
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal modal-lg">
+        <div className="modal-header">
+          <h3>{isNew?'Neues Vorprodukt':'VP bearbeiten'}</h3>
+          <button className="btn btn-ghost" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-grid">
+            <div className="form-row"><label>Name VP</label>
+              <input type="text" value={form.name} onChange={e=>f('name',e.target.value)} placeholder="z.B. Kimchi-VP"/>
+            </div>
+            <div className="form-row"><label>Output Menge (kg)</label>
+              <input type="number" value={form.outputKg||''} onChange={e=>f('outputKg',parseFloat(e.target.value)||0)} step="0.01"/>
+            </div>
+          </div>
+          <div className="section-title">Zutaten</div>
+          <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:12,marginBottom:12}}>
+            <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase'}}>
+              <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span></span>
+            </div>
+            {form.zutaten.map((z,i)=>{
+              const art = articles.find(a=>a.id===z.art);
+              const suppliers = art ? allSuppliers(art) : [];
+              const hasVariants = suppliers.length > 1;
+              const activePpu = art ? pricePerUnit(art, z.variantLief) : 0;
+              const defaultPpu = art ? pricePerUnit(art) : 0;
+              const saving = (hasVariants && z.variantLief && z.variantLief !== art.lief)
+                ? ((activePpu - defaultPpu) / defaultPpu * 100) : null;
+              return (
+                <div key={i} style={{marginBottom:6}}>
+                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px auto',gap:8,alignItems:'center'}}>
+                    <select value={z.art||''} onChange={e=>{
+                      const a2 = articles.find(a=>a.id===e.target.value);
+                      setZutat(i,'art',e.target.value);
+                      if(a2){ setZutat(i,'name',a2.name); setZutat(i,'variantLief',''); }
+                    }} style={{fontSize:12}}>
+                      <option value="">— Artikel wählen —</option>
+                      {activeArts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                    {hasVariants ? (
+                      <select value={z.variantLief||art.lief} onChange={e=>setZutat(i,'variantLief',e.target.value)} style={{fontSize:12,borderColor:'#a5b4fc'}}>
+                        {suppliers.map((s,si)=>(
+                          <option key={si} value={s.lief}>
+                            {s.lief||'—'} ({fmt(s.ek/(art.g||1))}/{art.e}){s.isDefault?' ★':''}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span style={{fontSize:12,color:'#94a3b8',padding:'5px 0'}}>{art?.lief||'—'}</span>
+                    )}
+                    <input type="number" value={z.menge||''} step="0.001"
+                      onChange={e=>setZutat(i,'menge',parseFloat(e.target.value)||0)}
+                      style={{fontSize:12,padding:'5px 8px'}}/>
+                    <input type="text" value={z.einheit||'kg'}
+                      onChange={e=>setZutat(i,'einheit',e.target.value)}
+                      style={{fontSize:12,padding:'5px 8px'}}/>
+                    <button className="btn btn-danger btn-xs" onClick={()=>delZutat(i)}>✕</button>
+                  </div>
+                  {saving !== null && (
+                    <div style={{fontSize:11,color:saving<0?'#16a34a':'#dc2626',paddingLeft:4,marginTop:2}}>
+                      {saving<0?'▼ Einsparung':'▲ Aufpreis'} {Math.abs(saving).toFixed(1)}% vs. Standard ({fmt(defaultPpu)}/{art.e})
+                      {' · '}{fmt(activePpu*z.menge)} statt {fmt(defaultPpu*z.menge)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <button className="btn btn-secondary btn-sm" style={{marginTop:4}} onClick={addZutat}>+ Zutat</button>
+          </div>
+          <div style={{background:'#1a1a1a',color:'white',borderRadius:6,padding:'14px 16px',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,textAlign:'center'}}>
+            <div>
+              <div style={{fontSize:11,color:'#888',marginBottom:4}}>Kosten gesamt</div>
+              <div style={{fontSize:20,fontWeight:700}}>{fmt(kosten)}</div>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:'#888',marginBottom:4}}>Output</div>
+              <div style={{fontSize:20,fontWeight:700}}>{(form.outputKg||0).toFixed(2)} kg</div>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:'#888',marginBottom:4}}>Preis/kg netto</div>
+              <div style={{fontSize:20,fontWeight:700,color:'#fb923c'}}>{fmt(preisKg)}</div>
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+          <button className="btn btn-primary" onClick={()=>onSave({
+            ...vp, id:vp.id||('VP'+uid()), ...form, kosten, preisKg
+          })}>
+            {isNew?'VP anlegen & als Artikel speichern':'Speichern'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VPTab({vps, setVPs, articles, setArticles, upsert}) {
+  const [modal, setModal] = useState(null);
+
+  const saveVP = (vp) => {
+    const isNew = !vps.find(v=>v.id===vp.id);
+    setVPs(prev=>isNew?[...prev,vp]:prev.map(v=>v.id===vp.id?vp:v));
+    upsert&&upsert('vorprodukte', vp);
+    // Sync als Artikel mit Lieferant Simple
+    const artId = 'AV'+vp.id;
+    const art = {
+      id:artId, name:vp.name, g:1, e:'KG',
+      ek:parseFloat(vp.preisKg.toFixed(4)),
+      lief:'SIMPLE', datum:new Date().toISOString().slice(0,10), archiv:false,
+      varianten:[], _vpId:vp.id
+    };
+    setArticles(prev=>{
+      const ex = prev.find(a=>a.id===artId||a._vpId===vp.id);
+      return ex ? prev.map(a=>(a.id===artId||a._vpId===vp.id)?art:a) : [...prev,art];
+    });
+    upsert&&upsert('articles', art);
+    setModal(null);
+  };
+
+  return (
+    <div className="tab-content">
+      <div className="toolbar">
+        <div style={{fontSize:13,color:'#64748b'}}><strong>{vps.length}</strong> Vorprodukte</div>
+        <button className="btn btn-primary" style={{marginLeft:'auto'}}
+          onClick={()=>setModal({name:'',outputKg:0,zutaten:[]})}>
+          + Vorprodukt
+        </button>
+      </div>
+      <div className="card">
+        <table>
+          <thead><tr>
+            <th>Vorprodukt</th><th>Output</th><th>Kosten</th><th>€/kg netto</th>
+            <th>Zutaten</th><th>In Artikelliste</th><th></th>
+          </tr></thead>
+          <tbody>
+          {vps.map(vp=>{
+            const inArts = articles.some(a=>a._vpId===vp.id||a.name===vp.name&&a.lief&&a.lief.toLowerCase()==='simple');
+            return (
+              <tr key={vp.id}>
+                <td><strong>{vp.name}</strong></td>
+                <td>{vp.outputKg} kg</td>
+                <td>{fmt(vp.kosten)}</td>
+                <td style={{fontFamily:'monospace',fontWeight:600,color:'#e85d04'}}>{fmt(vp.preisKg)}</td>
+                <td style={{color:'#64748b',fontSize:12}}>{vp.zutaten.length} Pos.</td>
+                <td>{inArts?<span className="badge badge-green">✓ Synced</span>:<span className="badge badge-gray">—</span>}</td>
+                <td>
+                  <button className="btn btn-ghost btn-xs" onClick={()=>setModal({...vp})}>✎</button>
+                </td>
+              </tr>
+            );
+          })}
+          </tbody>
+        </table>
+      </div>
+      {modal && <VPModal vp={modal} articles={articles} onSave={saveVP} onClose={()=>setModal(null)}/>}
+    </div>
+  );
+}
+
+// ── INVOICE TAB ───────────────────────────────────────────────────────────────
+
+function InvoiceTab({articles, setArticles, priceLog, setPriceLog, upsert}) {
+  const [apiKey, setApiKey] = useLS('sk_simple_apikey','');
+  const [showKey, setShowKey] = useState(false);
+  const [file, setFile] = useState(null);
+  const [scanning, setScanning] = useState(false);
+  const [result, setResult] = useState(null);
+  const [confirmed, setConfirmed] = useState({});
+  const dropRef = useRef();
+
+  const handleFile = (f) => { setFile(f); setResult(null); setConfirmed({}); };
+
+  const scan = async () => {
+    if (!apiKey || !file) return;
+    setScanning(true); setResult(null);
+    try {
+      const b64 = await new Promise((res,rej)=>{
+        const r = new FileReader();
+        r.onload = e => res(e.target.result.split(',')[1]);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      const isPdf = file.type==='application/pdf';
+      const mediaType = isPdf ? 'application/pdf' : file.type||'image/jpeg';
+
+      const systemPrompt = `Du bist ein Rechnungsanalyse-Assistent für eine Gastronomie-Küche.
+Extrahiere aus dem Dokument alle Positionen mit Name, Menge, Einheit und Preis.
+Antworte NUR mit gültigem JSON in diesem Format:
+{"positionen":[{"name":"Artikel","menge":1,"einheit":"KG","preisNetto":12.50,"preisProEinheit":12.50}]}
+Preise in Euro als Dezimalzahl. Falls Bruttopreis, vermerke es im Namen mit (brutto).`;
+
+      const resp = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{
+          'x-api-key':apiKey,
+          'anthropic-version':'2023-06-01',
+          'content-type':'application/json',
+          'anthropic-dangerous-direct-browser-access':'true',
+        },
+        body:JSON.stringify({
+          model:'claude-haiku-4-5-20251001',
+          max_tokens:2048,
+          system: systemPrompt,
+          messages:[{role:'user',content:[
+            {type:isPdf?'document':'image',source:{type:'base64',media_type:mediaType,data:b64}},
+            {type:'text',text:'Extrahiere alle Artikel mit Preisen aus diesem Dokument.'}
+          ]}]
+        })
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error?.message||'API Fehler');
+      const text = json.content[0].text;
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('Kein JSON in Antwort');
+      const parsed = JSON.parse(match[0]);
+
+      // Match gegen Artikelliste
+      const positions = (parsed.positionen||[]).map(p=>{
+        const found = articles.find(a=>!a.archiv&&a.name.toLowerCase().includes(p.name.toLowerCase().slice(0,6)));
+        const ppu = p.preisProEinheit||p.preisNetto;
+        const currentPpu = found ? pricePerUnit(found) : null;
+        const diff = (found&&currentPpu) ? ((ppu-currentPpu)/currentPpu*100) : null;
+        return {...p, matched:found, currentPpu, diff, flagged: diff!==null && diff>3};
+      });
+      setResult(positions);
+    } catch(e) {
+      setResult([{error:e.message}]);
+    }
+    setScanning(false);
+  };
+
+  const confirmAll = () => {
+    if (!result) return;
+    const updates = result.filter(p=>p.matched&&p.flagged&&!confirmed[p.name]);
+    const logs = [];
+    const updatedArts = [];
+    setArticles(prev=>prev.map(a=>{
+      const match = updates.find(p=>p.matched&&p.matched.id===a.id);
+      if (!match) return a;
+      const newArt = {...a, ek:match.preisProEinheit*a.g, datum:new Date().toISOString().slice(0,10)};
+      logs.push({id:'L'+uid(),datum:new Date().toISOString(),typ:'Rechnung-Import',
+        produkt:a.name,altPreis:pricePerUnit(a),neuPreis:match.preisProEinheit||match.preisNetto,
+        quelle:'Rechnung: '+file.name,status:'bestätigt'});
+      updatedArts.push(newArt);
+      return newArt;
+    }));
+    setPriceLog(prev=>[...logs,...prev]);
+    if (upsert) { upsert('articles', updatedArts); upsert('price_log', logs); }
+    setConfirmed(updates.reduce((o,p)=>({...o,[p.name]:true}),{}));
+  };
+
+  const dragEvents = {
+    onDragOver:e=>{e.preventDefault();dropRef.current.classList.add('drag')},
+    onDragLeave:()=>dropRef.current.classList.remove('drag'),
+    onDrop:e=>{e.preventDefault();dropRef.current.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)handleFile(f);}
+  };
+
+  const flags = result?.filter(p=>p.flagged&&!p.error) || [];
+
+  return (
+    <div className="tab-content">
+      {/* API Key */}
+      <div className="card" style={{padding:'14px 16px',marginBottom:16}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:13,color:'#64748b',fontWeight:600,whiteSpace:'nowrap'}}>Anthropic API Key</span>
+          <input type={showKey?'text':'password'} value={apiKey} onChange={e=>setApiKey(e.target.value)}
+            placeholder="sk-ant-..." style={{flex:1,fontSize:12,padding:'6px 10px'}}/>
+          <button className="btn btn-secondary btn-sm" onClick={()=>setShowKey(s=>!s)}>{showKey?'Verbergen':'Zeigen'}</button>
+        </div>
+        <div style={{fontSize:11,color:'#94a3b8',marginTop:6}}>
+          Key wird nur in deinem Browser gespeichert (localStorage). Keine Serverübertragung.
+        </div>
+      </div>
+
+      {/* Drop Zone */}
+      <div ref={dropRef} className="invoice-drop" {...dragEvents} onClick={()=>document.getElementById('inv-file').click()}>
+        <input id="inv-file" type="file" accept="image/*,application/pdf" style={{display:'none'}}
+          onChange={e=>e.target.files[0]&&handleFile(e.target.files[0])}/>
+        <div style={{fontSize:36}}>📄</div>
+        <p>{file ? <><strong>{file.name}</strong> ({(file.size/1024).toFixed(0)} KB)</> : 'Rechnung oder Lieferschein hier ablegen (Bild oder PDF)'}</p>
+        {file && <p style={{color:'#64748b',fontSize:12}}>Klicken um andere Datei zu wählen</p>}
+      </div>
+
+      <div style={{display:'flex',gap:10,margin:'14px 0',alignItems:'center'}}>
+        <button className="btn btn-primary" onClick={scan} disabled={!file||!apiKey||scanning} style={{minWidth:160}}>
+          {scanning?'⏳ Analysiere…':'🔍 Mit KI scannen'}
+        </button>
+        {flags.length>0&&<button className="btn btn-secondary" onClick={confirmAll}>
+          ✓ Alle {flags.length} Preisänderungen übernehmen
+        </button>}
+      </div>
+
+      {/* Results */}
+      {result && result[0]?.error && (
+        <div className="warn-banner">⚠ Fehler: {result[0].error}</div>
+      )}
+      {result && !result[0]?.error && (
+        <div className="card">
+          <table>
+            <thead><tr>
+              <th>Artikel (Rechnung)</th><th>Erkannt als</th><th>Menge</th>
+              <th>Preis Rechnung</th><th>Preis aktuell</th><th>Δ</th><th>Status</th>
+            </tr></thead>
+            <tbody>
+            {result.map((p,i)=>{
+              const isDone = confirmed[p.name];
+              return (
+                <tr key={i} style={p.flagged&&!isDone?{background:'#fef9f0'}:{}}>
+                  <td>{p.name}</td>
+                  <td>{p.matched?<span className="badge badge-blue">{p.matched.name}</span>:<span style={{color:'#94a3b8',fontSize:12}}>nicht erkannt</span>}</td>
+                  <td style={{fontFamily:'monospace'}}>{p.menge} {p.einheit}</td>
+                  <td style={{fontFamily:'monospace',fontWeight:600}}>{fmt(p.preisProEinheit||p.preisNetto)}</td>
+                  <td style={{fontFamily:'monospace'}}>{p.currentPpu!=null?fmt(p.currentPpu):'—'}</td>
+                  <td>
+                    {p.diff!=null?<span className={p.diff>0?'price-up':'price-down'}>
+                      {p.diff>0?'▲':'▼'}{Math.abs(p.diff).toFixed(1)}%
+                    </span>:<span className="price-same">—</span>}
+                  </td>
+                  <td>
+                    {isDone?<span className="badge badge-green">✓ Übernommen</span>:
+                    p.flagged?<span className="badge badge-orange">⚠ Preiserhöhung</span>:
+                    <span className="badge badge-gray">OK</span>}
+                  </td>
+                </tr>
+              );
+            })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── PRICE LOG TAB ─────────────────────────────────────────────────────────────
+
+function PriceLogTab({priceLog, setPriceLog}) {
+  const [q, setQ] = useState('');
+  const filtered = priceLog.filter(l=>!q||l.produkt.toLowerCase().includes(q.toLowerCase())||l.quelle.toLowerCase().includes(q.toLowerCase()));
+
+  return (
+    <div className="tab-content">
+      <div className="toolbar">
+        <input className="search" placeholder="Suche Produkt oder Quelle…" value={q} onChange={e=>setQ(e.target.value)}/>
+        <div style={{marginLeft:'auto',fontSize:13,color:'#64748b'}}>{priceLog.length} Einträge</div>
+      </div>
+      <div className="card">
+        <table>
+          <thead><tr>
+            <th>Datum</th><th>Produkt</th><th>Alt</th><th>Neu</th><th>Δ</th><th>Quelle</th><th>Status</th>
+          </tr></thead>
+          <tbody>
+          {filtered.length===0&&<tr><td colSpan={7}><div className="empty">Keine Einträge</div></td></tr>}
+          {filtered.map(l=>{
+            const diff = l.altPreis ? ((l.neuPreis-l.altPreis)/l.altPreis*100) : null;
+            return (
+              <tr key={l.id}>
+                <td style={{fontSize:12,color:'#64748b'}}>{l.datum?.slice(0,10)||'—'}</td>
+                <td><strong>{l.produkt}</strong></td>
+                <td style={{fontFamily:'monospace'}}>{l.altPreis!=null?fmt(l.altPreis):'—'}</td>
+                <td style={{fontFamily:'monospace',fontWeight:600}}>{fmt(l.neuPreis)}</td>
+                <td>{diff!=null?<span className={diff>0?'price-up':'price-down'}>{diff>0?'▲':'▼'}{Math.abs(diff).toFixed(1)}%</span>:'—'}</td>
+                <td><span className="badge badge-gray">{l.quelle||'—'}</span></td>
+                <td><span className={`badge badge-${l.status==='bestätigt'?'green':'gray'}`}>{l.status||'—'}</span></td>
+              </tr>
+            );
+          })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── SETTINGS MODAL ───────────────────────────────────────────────────────────
+
+function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, isConnected, syncError}) {
+  const [url, setUrl] = useState(sbUrl);
+  const [key, setKey] = useState(sbKey);
+  const [showKey, setShowKey] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testMsg, setTestMsg] = useState('');
+  const [seeding, setSeeding] = useState(false);
+
+  const test = async () => {
+    if (!url||!key) return;
+    setTesting(true); setTestMsg('');
+    try {
+      const c = window.supabase.createClient(url.trim(), key.trim());
+      const {error} = await c.from('articles').select('count').limit(1);
+      if (error) throw error;
+      setTestMsg('✓ Verbindung erfolgreich!');
+    } catch(e) { setTestMsg('✗ '+e.message); }
+    setTesting(false);
+  };
+
+  const save = () => { setSbUrl(url.trim()); setSbKey(key.trim()); onClose(); window.location.reload(); };
+
+  const seed = async () => {
+    setSeeding(true);
+    try { await onSeedDb(); setTestMsg('✓ Daten hochgeladen!'); }
+    catch(e) { setTestMsg('✗ '+e.message); }
+    setSeeding(false);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h3>⚙ Einstellungen – Supabase</h3>
+          <button className="btn btn-ghost" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {syncError&&<div className="warn-banner" style={{marginBottom:14}}>⚠ {syncError}</div>}
+          <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:6,padding:'10px 14px',marginBottom:16,fontSize:13,color:'#166534',lineHeight:1.6}}>
+            <strong>Einmalig einrichten:</strong><br/>
+            1. <a href="https://supabase.com" target="_blank" rel="noopener" style={{color:'inherit'}}>supabase.com</a> → kostenloses Konto + neues Projekt<br/>
+            2. Settings → API → Project URL + anon key kopieren<br/>
+            3. SQL Editor → Inhalt von <strong>simple-kalkulation-schema.sql</strong> einfügen → Run
+          </div>
+          <div className="form-row"><label>Supabase Project URL</label>
+            <input type="text" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://xxxxxxxxxxxx.supabase.co"/>
+          </div>
+          <div className="form-row"><label>Anon Key</label>
+            <div style={{display:'flex',gap:8}}>
+              <input type={showKey?'text':'password'} value={key} onChange={e=>setKey(e.target.value)} placeholder="eyJhbGci…" style={{flex:1}}/>
+              <button className="btn btn-secondary btn-sm" onClick={()=>setShowKey(s=>!s)}>{showKey?'Verbergen':'Zeigen'}</button>
+            </div>
+            <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>Bleibt lokal im Browser. Der anon-Key ist für Browser-Apps konzipiert.</div>
+          </div>
+          {testMsg&&<div style={{padding:'8px 12px',borderRadius:6,marginBottom:12,fontSize:13,
+            background:testMsg.startsWith('✓')?'#f0fdf4':'#fef2f2',
+            color:testMsg.startsWith('✓')?'#166534':'#dc2626'}}>{testMsg}</div>}
+          {isConnected&&(
+            <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'12px 14px'}}>
+              <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Datenmigration</div>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:10}}>Lokale Daten (Artikel, Rezepte, VPs) einmalig nach Supabase hochladen.</div>
+              <button className="btn btn-secondary btn-sm" onClick={seed} disabled={seeding}>
+                {seeding?'Lädt…':'⬆ Lokale Daten migrieren'}
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary btn-sm" onClick={test} disabled={testing||!url||!key}>
+            {testing?'Teste…':'Verbindung testen'}
+          </button>
+          <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+          <button className="btn btn-primary" onClick={save} disabled={!url||!key}>Speichern & neu laden</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+
+const TABS = ['Artikel','Rezepte','Vorprodukte','Rechnungen','Preislog'];
+
+function App() {
+  const [tab, setTab] = useState(0);
+  const [sbUrl, setSbUrl] = useLS('sb_url','');
+  const [sbKey, setSbKey] = useLS('sb_key','');
+  const [showSettings, setShowSettings] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState('idle');
+  const [syncError, setSyncError] = useState('');
+
+  const [articles, setArticles] = useLS('simple_articles', ARTICLES_SEED);
+  const [recipes,  setRecipes]  = useLS('simple_recipes',  RECIPES_SEED);
+  const [vps,      setVPs]      = useLS('simple_vps',      VPS_SEED);
+  const [priceLog, setPriceLog] = useLS('simple_pricelog', []);
+
+  const client = useMemo(()=>{
+    if (!sbUrl||!sbKey) return null;
+    try { return window.supabase.createClient(sbUrl,sbKey); } catch { return null; }
+  },[sbUrl,sbKey]);
+
+  // ── Initialload from Supabase ──
+  useEffect(()=>{
+    if (!client) { setLoading(false); return; }
+    (async()=>{
+      setLoading(true);
+      try {
+        const [a,r,v,l] = await Promise.all([
+          client.from('articles').select('*').order('name'),
+          client.from('recipes').select('*').order('name'),
+          client.from('vorprodukte').select('*').order('name'),
+          client.from('price_log').select('*').order('created_at',{ascending:false}).limit(500),
+        ]);
+        if (a.error) throw a.error;
+        // Empty DB on first setup → push seed data
+        if (a.data.length===0) {
+          await Promise.all([
+            client.from('articles').upsert(articles),
+            client.from('recipes').upsert(recipes),
+            client.from('vorprodukte').upsert(vps),
+          ]);
+        } else {
+          setArticles(a.data);
+          if (r.data?.length) setRecipes(r.data);
+          if (v.data?.length) setVPs(v.data);
+          if (l.data)         setPriceLog(l.data);
+        }
+        setSyncStatus('ok');
+      } catch(e) { setSyncStatus('error'); setSyncError(e.message); }
+      setLoading(false);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[client]);
+
+  // ── Upsert helper (called explicitly by save functions via props) ──
+  const upsert = useCallback(async (table, item) => {
+    if (!client) return;
+    setSyncStatus('syncing');
+    const {error} = await client.from(table).upsert(
+      Array.isArray(item) ? item : [item]
+    );
+    if (error) { setSyncStatus('error'); setSyncError(error.message); }
+    else setSyncStatus('ok');
+  },[client]);
+
+  // Seed-merge for local mode
+  useEffect(()=>{
+    if (client) return; // Supabase handles it
+    setArticles(prev=>{
+      const ids = new Set(prev.map(a=>a.id));
+      const missing = ARTICLES_SEED.filter(a=>!ids.has(a.id));
+      return missing.length ? [...prev,...missing] : prev;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+
+  // ── Status indicator ──
+  const si = !client
+    ? {c:'#94a3b8', label:'Lokal (kein Cloud-Sync)'}
+    : loading
+    ? {c:'#d97706', label:'Verbinde…'}
+    : syncStatus==='syncing'
+    ? {c:'#d97706', label:'Sync…'}
+    : syncStatus==='error'
+    ? {c:'#dc2626', label:'Fehler'}
+    : {c:'#16a34a', label:'Supabase ✓'};
+
+  const warnCount  = recipes.filter(r=>r.wePct>38).length;
+  const staleCount = articles.filter(a=>!a.archiv&&a.datum&&Math.floor((Date.now()-new Date(a.datum))/86400000)>180).length;
+
+  if (loading && client) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:16,background:'#f3f4f6'}}>
+      <div style={{fontSize:40}}>☁️</div>
+      <div style={{fontWeight:600,color:'#374151',fontSize:16}}>Lade Daten von Supabase…</div>
+      <div style={{fontSize:13,color:'#94a3b8'}}>Erstverbindung kann einen Moment dauern</div>
+    </div>
+  );
+
+  return (
+    <div className="app">
+      <div className="header">
+        <div>
+          <div className="header" style={{padding:0,background:'transparent'}}>
+            <h1>🥩 Simple — Küchenkalkulation</h1>
+          </div>
+          <div className="subtitle">Artikelliste · Rezepte · Vorprodukte · Rechnungs-Scanner</div>
+        </div>
+        <div style={{marginLeft:'auto',display:'flex',gap:10,alignItems:'center'}}>
+          {warnCount>0&&<span className="badge badge-red">⚠ {warnCount} Margenalarm</span>}
+          {staleCount>0&&<span className="badge badge-orange">📅 {staleCount} Preise veraltet</span>}
+          <span style={{fontSize:12,color:si.c,fontWeight:600,display:'flex',alignItems:'center',gap:5,cursor:'pointer'}} onClick={()=>setShowSettings(true)} title="Einstellungen">
+            <span style={{width:7,height:7,borderRadius:'50%',background:si.c,display:'inline-block',flexShrink:0}}/>
+            {si.label}
+          </span>
+          <button className="btn btn-ghost" style={{color:'#888',fontSize:18,padding:'4px 8px'}} onClick={()=>setShowSettings(true)} title="Einstellungen">⚙</button>
+        </div>
+      </div>
+      <div className="tabs">
+        {TABS.map((t,i)=>(
+          <div key={t} className={`tab${tab===i?' active':''}`} onClick={()=>setTab(i)}>
+            {t}
+            {i===0&&articles.filter(a=>!a.archiv).length>0&&<span className="badge badge-gray" style={{marginLeft:6,padding:'1px 6px'}}>{articles.filter(a=>!a.archiv).length}</span>}
+            {i===1&&warnCount>0&&<span className="badge badge-red" style={{marginLeft:6,padding:'1px 6px'}}>{warnCount}</span>}
+          </div>
+        ))}
+      </div>
+      <div className="content">
+        {tab===0&&<ArticleTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert}/>}
+        {tab===1&&<RecipeTab recipes={recipes} setRecipes={setRecipes}/>}
+        {tab===2&&<VPTab vps={vps} setVPs={setVPs} articles={articles} setArticles={setArticles} upsert={upsert}/>}
+        {tab===3&&<InvoiceTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert}/>}
+        {tab===4&&<PriceLogTab priceLog={priceLog} setPriceLog={setPriceLog}/>}
+      </div>
+      {showSettings&&<SettingsModal
+        sbUrl={sbUrl} setSbUrl={setSbUrl}
+        sbKey={sbKey} setSbKey={setSbKey}
+        isConnected={!!client}
+        syncError={syncStatus==='error'?syncError:''}
+        onClose={()=>setShowSettings(false)}
+        onSeedDb={async()=>{
+          await Promise.all([
+            client.from('articles').upsert(articles),
+            client.from('recipes').upsert(recipes),
+            client.from('vorprodukte').upsert(vps),
+          ]);
+        }}
+      />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
