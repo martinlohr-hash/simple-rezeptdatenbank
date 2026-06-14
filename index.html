@@ -655,8 +655,8 @@ function getIngUnits(artE){
   return [artE||'St'];
 }
 function defaultIngUnit(artE){
-  if(isWeightUnit(artE)) return 'g';
-  if(isVolumeUnit(artE)) return 'ml';
+  if(isWeightUnit(artE)) return 'kg';
+  if(isVolumeUnit(artE)) return 'l';
   return artE||'St';
 }
 
@@ -1140,7 +1140,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
 function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], deliveryRate=30}) {
   const isNew = !recipe.id;
   const [form, setForm] = useState({
-    name:'', vkBrutto:0, vkUber:'', weEuro:0, mwst:7, anzahl:'', brot:'', archiv:false, zutaten:[], ...recipe,
+    name:'', vkBrutto:0, vkUber:'', weEuro:0, mwst:7, anzahl:'', brot:'', archiv:false, zutaten:[], kategorie:'Sandwiches', ...recipe,
   });
   const f = (k,v) => setForm(p=>({...p,[k]:v}));
 
@@ -1187,8 +1187,17 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
           <button className="btn btn-ghost" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
-          <div className="form-row"><label>Name *</label>
-            <input type="text" value={form.name} onChange={e=>f('name',e.target.value)} placeholder="Rezeptname"/>
+          <div className="form-grid">
+            <div className="form-row"><label>Name *</label>
+              <input type="text" value={form.name} onChange={e=>f('name',e.target.value)} placeholder="Rezeptname"/>
+            </div>
+            <div className="form-row"><label>Kategorie</label>
+              <select value={form.kategorie||'Sandwiches'} onChange={e=>f('kategorie',e.target.value)}>
+                <option value="Sandwiches">🥪 Sandwiches</option>
+                <option value="Getränke">☕ Getränke</option>
+                <option value="Weitere">Weitere</option>
+              </select>
+            </div>
           </div>
           <div className="form-grid">
             <div className="form-row"><label>VK Brutto Instore</label>
@@ -1362,13 +1371,13 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
   };
 
   const visibleRecipes = recipes.filter(r=>showArchiv||!r.archiv);
-  const baseCats = [{label:'🥪 Sandwiches', ids:['R001','R002','R003','R004','R005','R006','R007','R008']},
-                    {label:'☕ Getränke', ids:['R009','R010','R011','R012','R013']}];
-  const categorizedIds = new Set(baseCats.flatMap(c=>c.ids));
-  const uncategorized = visibleRecipes.filter(r=>!categorizedIds.has(r.id));
-  const cats = uncategorized.length
-    ? [...baseCats,{label:'Weitere Rezepte', ids:uncategorized.map(r=>r.id)}]
-    : baseCats;
+  const getKat = r => r.kategorie ||
+    (['R001','R002','R003','R004','R005','R006','R007','R008'].includes(r.id) ? 'Sandwiches' :
+     ['R009','R010','R011','R012','R013'].includes(r.id) ? 'Getränke' : 'Weitere');
+  const KAT_LABELS = {Sandwiches:'🥪 Sandwiches', Getränke:'☕ Getränke', Weitere:'Weitere Rezepte'};
+  const usedKats = [...new Set(visibleRecipes.map(getKat))];
+  const katOrder = ['Sandwiches','Getränke',...usedKats.filter(k=>k!=='Sandwiches'&&k!=='Getränke')];
+  const cats = katOrder.filter(k=>usedKats.includes(k)).map(k=>({label:KAT_LABELS[k]||k, kat:k}));
 
   return (
     <div className="tab-content">
@@ -1392,7 +1401,7 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
         <button className="btn btn-primary" style={{marginLeft:'auto'}} onClick={()=>setModal({})}>+ Neues Rezept</button>
       </div>
       {cats.map(cat=>{
-        const recs = visibleRecipes.filter(r=>cat.ids.includes(r.id));
+        const recs = visibleRecipes.filter(r=>getKat(r)===cat.kat);
         if(!recs.length) return null;
         return (
           <div key={cat.label} style={{marginBottom:20}}>
