@@ -7,8 +7,8 @@ colors:
   ink-black: "#111111"
   ink-dark: "#1a1a1a"
   body-text: "#374151"
-  muted-text: "#64748b"
-  placeholder: "#94a3b8"
+  muted-text: "#566373"
+  placeholder: "#5e6e7f"
   bg-page: "#f3f4f6"
   bg-surface: "#ffffff"
   bg-muted: "#f8fafc"
@@ -131,8 +131,8 @@ A near-black framework holding a light workspace, with a single unambiguous cons
 - **Ink Black** (#111111): App header background. The darkest surface; anchors the page.
 - **Ink Dark** (#1a1a1a): Tab bar background, primary body text.
 - **Body Text** (#374151): Secondary prose and table cell content.
-- **Muted Text** (#64748b): Column headers, ghost button text, form labels, stat sub-text.
-- **Placeholder** (#94a3b8): Empty states, placeholder text, stat sub-lines. Never for body copy.
+- **Muted Text** (#566373): Column headers, ghost button text, form labels, stat sub-text. 6.1:1 on white — WCAG AA.
+- **Placeholder** (#5e6e7f): Empty states, placeholder text, stat sub-lines. 5.2:1 on white — WCAG AA.
 - **Page BG** (#f3f4f6): Overall page background; separates content from browser chrome.
 - **Surface White** (#ffffff): Cards, modals, table rows, inputs.
 - **Muted Surface** (#f8fafc): Table header background, drop zone background.

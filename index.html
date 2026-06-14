@@ -17,22 +17,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .header h1{font-size:17px;font-weight:700;letter-spacing:-.3px}
 .header .subtitle{font-size:12px;color:#888;margin-top:1px}
 .tabs{display:flex;background:#1a1a1a;padding:0 24px;gap:2px;overflow-x:auto}
-.tab{padding:11px 16px;color:#777;cursor:pointer;font-size:13px;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s}
+.tab{padding:11px 16px;color:#999;cursor:pointer;font-size:13px;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s}
 .tab.active{color:#fff;border-bottom-color:#e85d04}
 .content{flex:1;padding:20px 24px;max-width:1440px;width:100%}
 table{width:100%;border-collapse:collapse;font-size:13px;background:white}
-thead th{background:#f8fafc;padding:9px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap}
+thead th{background:#f8fafc;padding:9px 12px;text-align:left;font-weight:600;color:#566373;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap}
 tbody tr{border-bottom:1px solid #f1f5f9}
 td{padding:8px 12px;vertical-align:middle}
 .card{background:white;border-radius:8px;border:1px solid #e2e8f0;overflow:hidden}
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
-.search{padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;width:260px;outline:none;background:white}
+.search{padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;max-width:260px;width:100%;outline:none;background:white}
 .search:focus{border-color:#e85d04;box-shadow:0 0 0 2px #e85d0420}
 .btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:background-color 150ms ease-out,transform 150ms ease-out;display:inline-flex;align-items:center;gap:6px}
 .btn:active{transform:scale(0.97)}
 .btn-primary{background:#e85d04;color:white}
 .btn-secondary{background:#f1f5f9;color:#475569}
-.btn-ghost{background:transparent;color:#64748b;padding:5px 8px}
+.btn-ghost{background:transparent;color:#566373;padding:5px 8px}
 .btn-danger{background:#fee2e2;color:#dc2626}
 .btn-sm{padding:4px 10px;font-size:12px}
 .btn-xs{padding:2px 8px;font-size:11px}
@@ -44,7 +44,7 @@ td{padding:8px 12px;vertical-align:middle}
 .modal-body{padding:20px}
 .modal-footer{padding:14px 20px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px}
 .form-row{margin-bottom:14px}
-.form-row label{display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.form-row label{display:block;font-size:11px;font-weight:600;color:#566373;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
 input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;outline:none;font-family:inherit}
 input:focus,select:focus,textarea:focus{border-color:#e85d04;box-shadow:0 0 0 2px #e85d0420}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -53,26 +53,26 @@ input:focus,select:focus,textarea:focus{border-color:#e85d04;box-shadow:0 0 0 2p
 .ampel.green{color:#16a34a}.ampel.yellow{color:#d97706}.ampel.red{color:#dc2626}
 .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0}
 .badge{display:inline-flex;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600}
-.badge-gray{background:#f1f5f9;color:#64748b}
+.badge-gray{background:#f1f5f9;color:#566373}
 .badge-blue{background:#eff6ff;color:#3b82f6}
 .badge-orange{background:#fff7ed;color:#ea580c}
 .badge-green{background:#f0fdf4;color:#16a34a}
 .badge-red{background:#fef2f2;color:#dc2626}
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
 .stat-card{background:white;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px}
-.stat-label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.stat-label{font-size:11px;color:#566373;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .stat-value{font-size:22px;font-weight:700}
-.stat-sub{font-size:11px;color:#94a3b8;margin-top:2px}
+.stat-sub{font-size:11px;color:#5e6e7f;margin-top:2px}
 .section-title{font-size:14px;font-weight:600;color:#374151;margin-bottom:12px}
-.empty{text-align:center;padding:48px;color:#94a3b8;font-size:13px}
+.empty{text-align:center;padding:48px;color:#5e6e7f;font-size:13px}
 .ing-row{display:grid;grid-template-columns:2fr 80px 70px 80px auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
 .ing-row select,ing-row input{padding:5px 8px;font-size:12px}
 .warn-banner{background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:10px 14px;font-size:13px;color:#92400e;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start}
 .invoice-drop{border:2px dashed #e2e8f0;border-radius:8px;padding:40px;text-align:center;cursor:pointer;transition:border-color 150ms ease-out,background-color 150ms ease-out;background:#fafbfc}
 .invoice-drop.drag{border-color:#e85d04;background:#fff7f3}
-.invoice-drop p{font-size:13px;color:#94a3b8;margin-top:8px}
+.invoice-drop p{font-size:13px;color:#5e6e7f;margin-top:8px}
 .price-change-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:6px;background:#fafbfc;border:1px solid #e2e8f0;margin-bottom:8px}
-.price-up{color:#dc2626}.price-down{color:#16a34a}.price-same{color:#94a3b8}
+.price-up{color:#dc2626}.price-down{color:#16a34a}.price-same{color:#5e6e7f}
 .tab-content{animation:fadeIn .15s ease-out}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .switch{position:relative;display:inline-block;width:36px;height:20px}
@@ -103,7 +103,26 @@ input:checked+.slider:before{transform:translateX(16px)}
 .toast-x{flex-shrink:0;cursor:pointer;font-size:16px;line-height:1;padding:0 2px;background:none;border:none;color:currentColor;opacity:.5;transition:opacity 120ms ease-out}
 .toast-x:hover{opacity:1}
 @keyframes toastIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-@media(prefers-reduced-motion:reduce){.toast{animation:none}}
+@media(prefers-reduced-motion:reduce){.toast{animation:none;}.tab-content{animation:none}}
+@media(max-width:767px){
+  .header{flex-wrap:wrap;padding:10px 16px;gap:8px}
+  .content{padding:12px 16px}
+  .tabs{padding:0 12px}
+  .tab{padding:9px 12px}
+  .toolbar{gap:8px}
+  .search{max-width:100%}
+  .stats-row{grid-template-columns:repeat(2,1fr);gap:8px}
+  .form-grid{grid-template-columns:1fr}
+  .form-grid-3{grid-template-columns:1fr 1fr}
+  .stat-card{padding:10px 12px}
+  .card{overflow-x:auto}
+  table{min-width:520px}
+  .modal{max-height:95vh}
+  .modal-lg{max-width:calc(100vw - 40px)}
+  .ing-row{grid-template-columns:1fr 65px 60px 72px auto}
+  .toast-wrap{bottom:12px;right:12px;left:12px}
+  .toast{min-width:0;max-width:100%}
+}
 </style>
 </head>
 <body>
@@ -798,7 +817,7 @@ function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
 
           {/* ── Lieferanten-Preise ── */}
           <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,padding:12,marginBottom:14}}>
-            <div style={{fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:10}}>
               Lieferanten &amp; Preise
             </div>
             <datalist id="art-sup-list">{suppliers.map(s=><option key={s.id} value={s.name}/>)}</datalist>
@@ -981,7 +1000,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
         </div>
         <div className="stat-card">
           <div className="stat-label">Archiviert</div>
-          <div className="stat-value" style={{color:'#94a3b8'}}>{articles.filter(a=>a.archiv).length}</div>
+          <div className="stat-value" style={{color:'#5e6e7f'}}>{articles.filter(a=>a.archiv).length}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Lieferanten</div>
@@ -997,7 +1016,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
       </div>
       <div className="toolbar">
         <input className="search" placeholder="Suche Artikel oder Lieferant…" value={q} onChange={e=>setQ(e.target.value)}/>
-        <button onClick={()=>setShowFav(s=>!s)} style={{padding:'6px 12px',borderRadius:6,border:'1px solid',fontSize:13,cursor:'pointer',fontWeight:600,transition:'all .15s',borderColor:showFav?'#f59e0b':'#e2e8f0',background:showFav?'#fffbeb':'white',color:showFav?'#d97706':'#94a3b8'}}>
+        <button onClick={()=>setShowFav(s=>!s)} style={{padding:'6px 12px',borderRadius:6,border:'1px solid',fontSize:13,cursor:'pointer',fontWeight:600,transition:'all .15s',borderColor:showFav?'#f59e0b':'#e2e8f0',background:showFav?'#fffbeb':'white',color:showFav?'#d97706':'#5e6e7f'}}>
           ★ Favoriten
         </button>
         <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
@@ -1017,14 +1036,14 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
             <SortTh col="ek">EK Netto</SortTh>
             <SortTh col="ppu">EK/Einheit</SortTh>
             <th style={{padding:'9px 12px'}}>
-              <select value={lieferantFilter} onChange={e=>setLieferantFilter(e.target.value)} style={{background:'transparent',border:'none',outline:'none',fontWeight:600,fontSize:11,color:lieferantFilter!=='all'?'#e85d04':'#64748b',textTransform:'uppercase',letterSpacing:'.5px',cursor:'pointer',padding:0,appearance:'none',WebkitAppearance:'none'}}>
+              <select value={lieferantFilter} onChange={e=>setLieferantFilter(e.target.value)} style={{background:'transparent',border:'none',outline:'none',fontWeight:600,fontSize:11,color:lieferantFilter!=='all'?'#e85d04':'#566373',textTransform:'uppercase',letterSpacing:'.5px',cursor:'pointer',padding:0,appearance:'none',WebkitAppearance:'none'}}>
                 <option value="all">Lieferant{lieferantFilter!=='all'?` ▼`:' ▲'}</option>
                 {[...new Set(articles.filter(a=>!a.archiv&&a.lief).map(a=>a.lief))].sort().map(l=><option key={l} value={l}>{l}</option>)}
               </select>
             </th>
             <SortTh col="datum">Preisdatum</SortTh>
             <th style={{padding:'9px 12px'}}>
-              <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{background:'transparent',border:'none',outline:'none',fontWeight:600,fontSize:11,color:statusFilter==='red'?'#dc2626':statusFilter==='yellow'?'#d97706':statusFilter==='green'?'#16a34a':'#64748b',textTransform:'uppercase',letterSpacing:'.5px',cursor:'pointer',padding:0,appearance:'none',WebkitAppearance:'none'}}>
+              <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{background:'transparent',border:'none',outline:'none',fontWeight:600,fontSize:11,color:statusFilter==='red'?'#dc2626':statusFilter==='yellow'?'#d97706':statusFilter==='green'?'#16a34a':'#566373',textTransform:'uppercase',letterSpacing:'.5px',cursor:'pointer',padding:0,appearance:'none',WebkitAppearance:'none'}}>
                 <option value="all">Status{statusFilter==='all'?' ▲':' ▼'}</option>
                 <option value="red">Veraltet</option>
                 <option value="yellow">&gt;3 Mon.</option>
@@ -1048,12 +1067,12 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
                   </button>
                 </td>
                 <td><strong>{a.name}</strong></td>
-                <td style={{color:'#64748b'}}>{a.g} {a.e}</td>
+                <td style={{color:'#566373'}}>{a.g} {a.e}</td>
                 <td>{fmt(a.ek)}</td>
                 <td style={{fontFamily:'monospace'}}>
                   {hasVariants
-                    ? <span>{fmt(ppuMin)}–{fmt(ppuMax)}<span style={{color:'#94a3b8'}}>/{a.e}</span></span>
-                    : <span>{fmt(ppu)}<span style={{color:'#94a3b8'}}>/{a.e}</span></span>}
+                    ? <span>{fmt(ppuMin)}–{fmt(ppuMax)}<span style={{color:'#5e6e7f'}}>/{a.e}</span></span>
+                    : <span>{fmt(ppu)}<span style={{color:'#5e6e7f'}}>/{a.e}</span></span>}
                 </td>
                 <td>
                   {hasVariants
@@ -1066,7 +1085,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
                 <td>
                   {a.datum ? <span style={{color: age==='red'?'#dc2626':age==='yellow'?'#d97706':'#374151', fontSize:12}}>
                     {a.datum}
-                  </span> : <span style={{color:'#94a3b8',fontSize:12}}>—</span>}
+                  </span> : <span style={{color:'#5e6e7f',fontSize:12}}>—</span>}
                 </td>
                 <td>
                   {a.archiv ? <span className="badge badge-gray">Archiv</span> :
@@ -1100,7 +1119,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
               <ul style={{margin:'12px 0 4px 16px',fontSize:13,lineHeight:2}}>
                 {archiveWarning.usedIn.map(vp=><li key={vp.id}>{vp.name}</li>)}
               </ul>
-              <div style={{fontSize:13,color:'#64748b',marginTop:8}}>Trotzdem archivieren? Die Vorprodukt-Kalkulation bleibt vorerst bestehen.</div>
+              <div style={{fontSize:13,color:'#566373',marginTop:8}}>Trotzdem archivieren? Die Vorprodukt-Kalkulation bleibt vorerst bestehen.</div>
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={()=>setArchiveWarning(null)}>Abbrechen</button>
@@ -1123,7 +1142,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
               </div>
               {deleteWarning.usedInRecipes.length>0&&(
                 <div style={{marginTop:14}}>
-                  <div style={{fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:6}}>Rezepte</div>
+                  <div style={{fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:6}}>Rezepte</div>
                   {deleteWarning.usedInRecipes.map(r=>(
                     <button key={r.id} onClick={()=>{setDeleteWarning(null);onNavigateToRecipe&&onNavigateToRecipe(r);}}
                       style={{display:'block',width:'100%',textAlign:'left',padding:'7px 12px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,cursor:'pointer',marginBottom:4,color:'#3b82f6',fontWeight:500}}>
@@ -1134,7 +1153,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
               )}
               {deleteWarning.usedInVPs.length>0&&(
                 <div style={{marginTop:14}}>
-                  <div style={{fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:6}}>Vorprodukte</div>
+                  <div style={{fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:6}}>Vorprodukte</div>
                   {deleteWarning.usedInVPs.map(vp=>(
                     <button key={vp.id} onClick={()=>{setDeleteWarning(null);onNavigateToVP&&onNavigateToVP(vp);}}
                       style={{display:'block',width:'100%',textAlign:'left',padding:'7px 12px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,cursor:'pointer',marginBottom:4,color:'#e85d04',fontWeight:500}}>
@@ -1257,10 +1276,10 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
           </div>
 
           {/* ── Zutaten ── */}
-          <div className="section-title" style={{marginTop:8}}>Zutaten <span style={{fontSize:11,color:'#94a3b8',fontWeight:400,textTransform:'none'}}>(optional — WE wird dann automatisch berechnet)</span></div>
+          <div className="section-title" style={{marginTop:8}}>Zutaten <span style={{fontSize:11,color:'#5e6e7f',fontWeight:400,textTransform:'none'}}>(optional — WE wird dann automatisch berechnet)</span></div>
           <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:12,marginBottom:14}}>
             {form.zutaten.length > 0 && (
-              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 60px 65px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase'}}>
+              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 60px 65px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase'}}>
                 <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span style={{textAlign:'right'}}>€</span><span></span>
               </div>
             )}
@@ -1301,13 +1320,13 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
                         ))}
                       </select>
                     ) : (
-                      <span style={{fontSize:12,color:'#94a3b8',padding:'5px 0'}}>{art?.lief||'—'}</span>
+                      <span style={{fontSize:12,color:'#5e6e7f',padding:'5px 0'}}>{art?.lief||'—'}</span>
                     )}
                     <input type="number" value={z.menge||''} step="0.001"
                       onChange={e=>setZutat(i,'menge',parseFloat(e.target.value)||0)}
                       style={{fontSize:12,padding:'5px 8px'}}/>
                     {(()=>{const uOpts=getIngUnits(art?.e);const allU=uOpts.includes(z.einheit)?uOpts:[z.einheit,...uOpts].filter(Boolean);return<select value={z.einheit||''} onChange={e=>setZutat(i,'einheit',e.target.value)} style={{fontSize:12,padding:'3px 4px',width:'100%'}}>{allU.map(u=><option key={u} value={u}>{u}</option>)}</select>;})()}
-                    <div style={{textAlign:'right',fontSize:12,fontWeight:600,color:zeilKosten>0?'#374151':'#94a3b8',fontFamily:'monospace',whiteSpace:'nowrap'}}>
+                    <div style={{textAlign:'right',fontSize:12,fontWeight:600,color:zeilKosten>0?'#374151':'#5e6e7f',fontFamily:'monospace',whiteSpace:'nowrap'}}>
                       {zeilKosten!=null&&zeilKosten>0 ? fmt(zeilKosten) : '—'}
                     </div>
                     <button className="btn btn-danger btn-xs" onClick={()=>delZutat(i)}>✕</button>
@@ -1327,7 +1346,7 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
               );
             })}
             <div style={{display:'flex',gap:6,marginTop:6,alignItems:'center',flexWrap:'wrap'}}>
-              {templates.length > 0 && <span style={{fontSize:11,color:'#94a3b8'}}>Vorlage:</span>}
+              {templates.length > 0 && <span style={{fontSize:11,color:'#5e6e7f'}}>Vorlage:</span>}
               {templates.map(tpl=>(
                 <button key={tpl.id} className="btn btn-secondary btn-xs" onClick={()=>f('zutaten',[...form.zutaten,...tpl.zutaten])}>
                   + {tpl.name}
@@ -1339,7 +1358,7 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
 
           {/* ── WE manuell (nur wenn keine Zutaten) ── */}
           {computedWE === null && (
-            <div className="form-row"><label>Wareneinsatz € <span style={{color:'#94a3b8',fontWeight:400,textTransform:'none'}}>(manuell)</span></label>
+            <div className="form-row"><label>Wareneinsatz € <span style={{color:'#5e6e7f',fontWeight:400,textTransform:'none'}}>(manuell)</span></label>
               <input type="number" value={form.weEuro||''} onChange={e=>f('weEuro',e.target.value)} step="0.01" placeholder="0,00"/>
             </div>
           )}
@@ -1348,19 +1367,19 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
           {form.vkBrutto > 0 && (
             <div style={{background:'#1a1a1a',color:'white',borderRadius:8,padding:'14px 16px',display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:10,textAlign:'center',marginTop:4}}>
               <div>
-                <div style={{fontSize:10,color:'#888',marginBottom:4}}>WE €{computedWE!==null&&<span style={{color:'#fb923c'}}> ⟳ auto</span>}</div>
+                <div style={{fontSize:10,color:'#5e6e7f',marginBottom:4}}>WE €{computedWE!==null&&<span style={{color:'#fb923c'}}> ⟳ auto</span>}</div>
                 <div style={{fontSize:17,fontWeight:700}}>{fmt(weEuro)}</div>
               </div>
               <div>
-                <div style={{fontSize:10,color:'#888',marginBottom:4}}>WE %</div>
+                <div style={{fontSize:10,color:'#5e6e7f',marginBottom:4}}>WE %</div>
                 <div style={{fontSize:19,fontWeight:700,color:wePct<=28?'#4ade80':wePct<=38?'#fb923c':'#f87171'}}>{wePct.toFixed(1)}%</div>
               </div>
               <div>
-                <div style={{fontSize:10,color:'#888',marginBottom:4}}>DB Netto</div>
+                <div style={{fontSize:10,color:'#5e6e7f',marginBottom:4}}>DB Netto</div>
                 <div style={{fontSize:19,fontWeight:700}}>{fmt(dbNetto)}</div>
               </div>
               <div>
-                <div style={{fontSize:10,color:'#888',marginBottom:4}}>VK Netto</div>
+                <div style={{fontSize:10,color:'#5e6e7f',marginBottom:4}}>VK Netto</div>
                 <div style={{fontSize:17,fontWeight:700}}>{fmt(vkNetto)}</div>
               </div>
               <div style={{background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:5,padding:'5px 8px'}}>
@@ -1456,7 +1475,7 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
                     <tr key={r.id} style={r.archiv?{opacity:.45}:{}}>
                       <td><strong style={{cursor:'pointer',textDecoration:'underline',textDecorationColor:'#e2e8f0'}} onClick={()=>setDetail(r)}>{r.name}</strong></td>
                       <td>{fmt(r.vkBrutto)}</td>
-                      <td>{r.vkUber ? fmt(r.vkUber) : <span style={{color:'#94a3b8'}}>—</span>}</td>
+                      <td>{r.vkUber ? fmt(r.vkUber) : <span style={{color:'#5e6e7f'}}>—</span>}</td>
                       <td>{fmt(r.weEuro)}</td>
                       <td style={{fontFamily:'monospace'}}>{fmtPct(r.wePct)}</td>
                       <td style={{fontFamily:'monospace',fontWeight:600}}>{fmt(r.dbNetto)}</td>
@@ -1495,7 +1514,7 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
                   ['Brot',detail.brot||'—'],
                 ].map(([k,v])=>(
                   <div key={k} style={{background:'#f8fafc',borderRadius:6,padding:'10px 12px'}}>
-                    <div style={{fontSize:11,color:'#64748b',fontWeight:600,textTransform:'uppercase'}}>{k}</div>
+                    <div style={{fontSize:11,color:'#566373',fontWeight:600,textTransform:'uppercase'}}>{k}</div>
                     <div style={{fontSize:15,fontWeight:600,marginTop:2}}>{v}</div>
                   </div>
                 ))}
@@ -1513,13 +1532,13 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
               </div>
               {(detail.zutaten||[]).length > 0 && (
                 <div style={{marginTop:16}}>
-                  <div style={{fontSize:12,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:8}}>Zutaten</div>
+                  <div style={{fontSize:12,fontWeight:600,color:'#566373',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:8}}>Zutaten</div>
                   <div style={{border:'1px solid #e2e8f0',borderRadius:6,overflow:'hidden'}}>
                     <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
                       <thead><tr style={{background:'#f8fafc'}}>
-                        <th style={{padding:'6px 10px',textAlign:'left',fontWeight:600,color:'#64748b'}}>Artikel</th>
-                        <th style={{padding:'6px 10px',textAlign:'right',fontWeight:600,color:'#64748b'}}>Menge</th>
-                        <th style={{padding:'6px 10px',textAlign:'right',fontWeight:600,color:'#64748b'}}>Kosten</th>
+                        <th style={{padding:'6px 10px',textAlign:'left',fontWeight:600,color:'#566373'}}>Artikel</th>
+                        <th style={{padding:'6px 10px',textAlign:'right',fontWeight:600,color:'#566373'}}>Menge</th>
+                        <th style={{padding:'6px 10px',textAlign:'right',fontWeight:600,color:'#566373'}}>Kosten</th>
                       </tr></thead>
                       <tbody>
                         {detail.zutaten.map((z,i)=>{
@@ -1527,7 +1546,7 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
                           const kosten = art ? pricePerUnit(art, z.variantLief)*z.menge*toBaseMultiplier(z.einheit) : null;
                           return (
                             <tr key={i} style={{borderTop:'1px solid #f1f5f9'}}>
-                              <td style={{padding:'6px 10px'}}>{z.name||z.art||'—'}{z.variantLief&&z.variantLief!==art?.lief&&<span style={{color:'#94a3b8',marginLeft:4}}>({z.variantLief})</span>}</td>
+                              <td style={{padding:'6px 10px'}}>{z.name||z.art||'—'}{z.variantLief&&z.variantLief!==art?.lief&&<span style={{color:'#5e6e7f',marginLeft:4}}>({z.variantLief})</span>}</td>
                               <td style={{padding:'6px 10px',textAlign:'right',fontFamily:'monospace'}}>{z.menge} {z.einheit}</td>
                               <td style={{padding:'6px 10px',textAlign:'right',fontFamily:'monospace',fontWeight:600}}>{kosten!=null?fmt(kosten):'—'}</td>
                             </tr>
@@ -1602,7 +1621,7 @@ function VPModal({vp, articles, onSave, onClose}) {
           </div>
           <div className="section-title">Zutaten</div>
           <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:12,marginBottom:12}}>
-            <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase'}}>
+            <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase'}}>
               <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span></span>
             </div>
             {form.zutaten.map((z,i)=>{
@@ -1638,7 +1657,7 @@ function VPModal({vp, articles, onSave, onClose}) {
                         ))}
                       </select>
                     ) : (
-                      <span style={{fontSize:12,color:'#94a3b8',padding:'5px 0'}}>{art?.lief||'—'}</span>
+                      <span style={{fontSize:12,color:'#5e6e7f',padding:'5px 0'}}>{art?.lief||'—'}</span>
                     )}
                     <input type="number" value={z.menge||''} step="0.001"
                       onChange={e=>setZutat(i,'menge',parseFloat(e.target.value)||0)}
@@ -1659,15 +1678,15 @@ function VPModal({vp, articles, onSave, onClose}) {
           </div>
           <div style={{background:'#1a1a1a',color:'white',borderRadius:6,padding:'14px 16px',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,textAlign:'center'}}>
             <div>
-              <div style={{fontSize:11,color:'#888',marginBottom:4}}>Kosten gesamt</div>
+              <div style={{fontSize:11,color:'#5e6e7f',marginBottom:4}}>Kosten gesamt</div>
               <div style={{fontSize:20,fontWeight:700}}>{fmt(kosten)}</div>
             </div>
             <div>
-              <div style={{fontSize:11,color:'#888',marginBottom:4}}>Output</div>
+              <div style={{fontSize:11,color:'#5e6e7f',marginBottom:4}}>Output</div>
               <div style={{fontSize:20,fontWeight:700}}>{(form.outputKg||0).toFixed(2)} kg</div>
             </div>
             <div>
-              <div style={{fontSize:11,color:'#888',marginBottom:4}}>Preis/kg netto</div>
+              <div style={{fontSize:11,color:'#5e6e7f',marginBottom:4}}>Preis/kg netto</div>
               <div style={{fontSize:20,fontWeight:700,color:'#fb923c'}}>{fmt(preisKg)}</div>
             </div>
           </div>
@@ -1725,7 +1744,7 @@ function VPTab({vps, setVPs, articles, setArticles, upsert, pendingModal=null, o
   return (
     <div className="tab-content">
       <div className="toolbar">
-        <div style={{fontSize:13,color:'#64748b'}}><strong>{vps.filter(v=>!v.archiv).length}</strong> Vorprodukte{vps.filter(v=>v.archiv).length>0&&<span style={{color:'#94a3b8'}}> · {vps.filter(v=>v.archiv).length} archiviert</span>}</div>
+        <div style={{fontSize:13,color:'#566373'}}><strong>{vps.filter(v=>!v.archiv).length}</strong> Vorprodukte{vps.filter(v=>v.archiv).length>0&&<span style={{color:'#5e6e7f'}}> · {vps.filter(v=>v.archiv).length} archiviert</span>}</div>
         <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
           <span className="switch"><input type="checkbox" checked={showArchiv} onChange={e=>setShowArchiv(e.target.checked)}/><span className="slider"></span></span>
           Archiv
@@ -1750,7 +1769,7 @@ function VPTab({vps, setVPs, articles, setArticles, upsert, pendingModal=null, o
                 <td>{vp.outputKg} kg</td>
                 <td>{fmt(vp.kosten)}</td>
                 <td style={{fontFamily:'monospace',fontWeight:600,color:'#e85d04'}}>{fmt(vp.preisKg)}</td>
-                <td style={{color:'#64748b',fontSize:12}}>{vp.zutaten.length} Pos.</td>
+                <td style={{color:'#566373',fontSize:12}}>{vp.zutaten.length} Pos.</td>
                 <td>{inArts?<span className="badge badge-green">✓ Synced</span>:<span className="badge badge-gray">—</span>}</td>
                 <td>
                   <button className="btn btn-ghost btn-xs" onClick={()=>setModal({...vp})}>✎</button>
@@ -1937,12 +1956,12 @@ Antworte NUR mit gültigem JSON:
       {/* API Key */}
       <div className="card" style={{padding:'14px 16px',marginBottom:16}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <span style={{fontSize:13,color:'#64748b',fontWeight:600,whiteSpace:'nowrap'}}>Anthropic API Key</span>
+          <span style={{fontSize:13,color:'#566373',fontWeight:600,whiteSpace:'nowrap'}}>Anthropic API Key</span>
           <input type={showKey?'text':'password'} value={apiKey} onChange={e=>setApiKey(e.target.value)}
             placeholder="sk-ant-..." style={{flex:1,fontSize:12,padding:'6px 10px'}}/>
           <button className="btn btn-secondary btn-sm" onClick={()=>setShowKey(s=>!s)}>{showKey?'Verbergen':'Zeigen'}</button>
         </div>
-        <div style={{fontSize:11,color:'#94a3b8',marginTop:6}}>
+        <div style={{fontSize:11,color:'#5e6e7f',marginTop:6}}>
           Key wird nur in deinem Browser gespeichert (localStorage). Keine Serverübertragung.
         </div>
       </div>
@@ -1953,7 +1972,7 @@ Antworte NUR mit gültigem JSON:
           onChange={e=>e.target.files[0]&&handleFile(e.target.files[0])}/>
         <div style={{fontSize:36}}>📄</div>
         <p>{file ? <><strong>{file.name}</strong> ({(file.size/1024).toFixed(0)} KB)</> : 'Rechnung oder Lieferschein hier ablegen (Bild oder PDF)'}</p>
-        {file && <p style={{color:'#64748b',fontSize:12}}>Klicken um andere Datei zu wählen</p>}
+        {file && <p style={{color:'#566373',fontSize:12}}>Klicken um andere Datei zu wählen</p>}
       </div>
 
       <div style={{display:'flex',gap:10,margin:'14px 0',alignItems:'center'}}>
@@ -1979,7 +1998,7 @@ Antworte NUR mit gültigem JSON:
             <div className="modal-body">
               <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'10px 14px',marginBottom:16}}>
                 <div style={{fontSize:13,fontWeight:600}}>{confirmModal.match.name}</div>
-                <div style={{fontSize:12,color:'#64748b',marginTop:2}}>
+                <div style={{fontSize:12,color:'#566373',marginTop:2}}>
                   Aktuell: {fmt(confirmModal.match.ek)} für {confirmModal.match.g} {confirmModal.match.e}
                   {' '}= {fmt(pricePerUnit(confirmModal.match))} / {confirmModal.match.e}
                 </div>
@@ -1995,7 +2014,7 @@ Antworte NUR mit gültigem JSON:
                   → {fmt(parseFloat(confirmModal.newEk)/(confirmModal.match.g||1))} / {confirmModal.match.e}
                 </div>
               )}
-              <div style={{fontSize:12,color:'#94a3b8',marginTop:10}}>
+              <div style={{fontSize:12,color:'#5e6e7f',marginTop:10}}>
                 Rechnungspreis: {fmt(confirmModal.p.preisProEinheit||confirmModal.p.preisNetto)} {confirmModal.p.einheit&&`(${confirmModal.p.einheit})`}
               </div>
             </div>
@@ -2095,7 +2114,7 @@ function PriceLogTab({priceLog, setPriceLog}) {
     <div className="tab-content">
       <div className="toolbar">
         <input className="search" placeholder="Suche Produkt oder Quelle…" value={q} onChange={e=>setQ(e.target.value)}/>
-        <div style={{marginLeft:'auto',fontSize:13,color:'#64748b'}}>{priceLog.length} Einträge</div>
+        <div style={{marginLeft:'auto',fontSize:13,color:'#566373'}}>{priceLog.length} Einträge</div>
       </div>
       <div className="card">
         <table>
@@ -2108,7 +2127,7 @@ function PriceLogTab({priceLog, setPriceLog}) {
             const diff = l.altPreis ? ((l.neuPreis-l.altPreis)/l.altPreis*100) : null;
             return (
               <tr key={l.id}>
-                <td style={{fontSize:12,color:'#64748b'}}>{l.datum?.slice(0,10)||'—'}</td>
+                <td style={{fontSize:12,color:'#566373'}}>{l.datum?.slice(0,10)||'—'}</td>
                 <td><strong>{l.produkt}</strong></td>
                 <td style={{fontFamily:'monospace'}}>{l.altPreis!=null?fmt(l.altPreis):'—'}</td>
                 <td style={{fontFamily:'monospace',fontWeight:600}}>{fmt(l.neuPreis)}</td>
@@ -2180,7 +2199,7 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
               <input type={showKey?'text':'password'} value={key} onChange={e=>setKey(e.target.value)} placeholder="eyJhbGci…" style={{flex:1}}/>
               <button className="btn btn-secondary btn-sm" onClick={()=>setShowKey(s=>!s)}>{showKey?'Verbergen':'Zeigen'}</button>
             </div>
-            <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>Bleibt lokal im Browser. Der anon-Key ist für Browser-Apps konzipiert.</div>
+            <div style={{fontSize:11,color:'#5e6e7f',marginTop:4}}>Bleibt lokal im Browser. Der anon-Key ist für Browser-Apps konzipiert.</div>
           </div>
           {testMsg&&<div style={{padding:'8px 12px',borderRadius:6,marginBottom:12,fontSize:13,
             background:testMsg.startsWith('✓')?'#f0fdf4':'#fef2f2',
@@ -2188,13 +2207,13 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
           <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'12px 14px',marginTop:14}}>
             <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Delivery-Kalkulation</div>
             <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
-              <span style={{fontSize:13,color:'#64748b'}}>Uber-Provision</span>
+              <span style={{fontSize:13,color:'#566373'}}>Uber-Provision</span>
               <input type="number" value={deliveryRate||30} min={0} max={100} step={1}
                 onChange={e=>setDeliveryRate(parseFloat(e.target.value)||0)}
                 style={{width:70,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13}}/>
-              <span style={{fontSize:13,color:'#64748b'}}>%</span>
+              <span style={{fontSize:13,color:'#566373'}}>%</span>
             </div>
-            <div style={{fontSize:11,color:'#94a3b8'}}>Uber kassiert X% vom Brutto-VK. Delivery-VK wird auf Rezeptkarten berechnet damit DB Netto gleichbleibt.</div>
+            <div style={{fontSize:11,color:'#5e6e7f'}}>Uber kassiert X% vom Brutto-VK. Delivery-VK wird auf Rezeptkarten berechnet damit DB Netto gleichbleibt.</div>
           </div>
           <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'12px 14px',marginTop:14}}>
             <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Preis-Aktualität</div>
@@ -2205,7 +2224,7 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
                   <input type="number" value={warnDays||90} min={1} step={1}
                     onChange={e=>setWarnDays(parseInt(e.target.value)||90)}
                     style={{width:70,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13}}/>
-                  <span style={{fontSize:13,color:'#64748b'}}>Tagen</span>
+                  <span style={{fontSize:13,color:'#566373'}}>Tagen</span>
                 </div>
               </div>
               <div>
@@ -2214,16 +2233,16 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
                   <input type="number" value={alertDays||180} min={1} step={1}
                     onChange={e=>setAlertDays(parseInt(e.target.value)||180)}
                     style={{width:70,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13}}/>
-                  <span style={{fontSize:13,color:'#64748b'}}>Tagen</span>
+                  <span style={{fontSize:13,color:'#566373'}}>Tagen</span>
                 </div>
               </div>
             </div>
-            <div style={{fontSize:11,color:'#94a3b8'}}>Pro Artikel überschreibbar (z.B. Tagespreis = 1 Tag).</div>
+            <div style={{fontSize:11,color:'#5e6e7f'}}>Pro Artikel überschreibbar (z.B. Tagespreis = 1 Tag).</div>
           </div>
           {isConnected&&(
             <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'12px 14px',marginTop:14}}>
               <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Datenmigration</div>
-              <div style={{fontSize:12,color:'#64748b',marginBottom:10}}>Lokale Daten (Artikel, Rezepte, VPs) einmalig nach Supabase hochladen.</div>
+              <div style={{fontSize:12,color:'#566373',marginBottom:10}}>Lokale Daten (Artikel, Rezepte, VPs) einmalig nach Supabase hochladen.</div>
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                 <button className="btn btn-secondary btn-sm" onClick={seed} disabled={seeding}>
                   {seeding?'Lädt…':'⬆ Lokale Daten migrieren'}
@@ -2237,7 +2256,7 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
                   {seeding2?'Lädt…':'✦ Fehlende Seed-Daten ergänzen'}
                 </button>
               </div>
-              <div style={{fontSize:11,color:'#94a3b8',marginTop:8}}>
+              <div style={{fontSize:11,color:'#5e6e7f',marginTop:8}}>
                 „Fehlende Seed-Daten": ergänzt neue Rezepte/VPs und Zutaten-Details – überschreibt keine bestehenden Daten.
               </div>
             </div>
@@ -2342,15 +2361,15 @@ function SupplierTab({suppliers, setSuppliers, upsert}) {
             {filtered.map(s=>(
               <tr key={s.id}>
                 <td><strong>{s.name}</strong></td>
-                <td>{s.kdnr||<span style={{color:'#94a3b8'}}>—</span>}</td>
+                <td>{s.kdnr||<span style={{color:'#5e6e7f'}}>—</span>}</td>
                 <td>
                   {s.url
                     ? isUrl(s.url)
                       ? <a href={s.url} target="_blank" rel="noreferrer" style={{color:'#e85d04',textDecoration:'none',fontSize:13}}>{s.url.replace(/^https?:\/\//,'').substring(0,40)}{s.url.length>47?'…':''}</a>
                       : <span style={{fontSize:13}}>{s.url}</span>
-                    : <span style={{color:'#94a3b8'}}>—</span>}
+                    : <span style={{color:'#5e6e7f'}}>—</span>}
                 </td>
-                <td style={{fontSize:12,color:'#64748b',maxWidth:200}}>{s.notizen||<span style={{color:'#94a3b8'}}>—</span>}</td>
+                <td style={{fontSize:12,color:'#566373',maxWidth:200}}>{s.notizen||<span style={{color:'#5e6e7f'}}>—</span>}</td>
                 <td style={{whiteSpace:'nowrap'}}>
                   <button className="btn btn-ghost btn-xs" onClick={()=>setModal(s)}>✎</button>
                   <button className="btn btn-ghost btn-xs" style={{color:'#dc2626'}} onClick={()=>setDelConfirm(s.id)}>✕</button>
@@ -2405,7 +2424,7 @@ function VorlagenModal({tpl, articles, onSave, onClose}) {
           <div className="section-title">Zutaten</div>
           <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:12,marginBottom:12}}>
             {form.zutaten.length > 0 && (
-              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 50px 65px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase'}}>
+              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 50px 65px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase'}}>
                 <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span style={{textAlign:'right'}}>€</span><span></span>
               </div>
             )}
@@ -2427,11 +2446,11 @@ function VorlagenModal({tpl, articles, onSave, onClose}) {
                       return grp.length?<optgroup key={cat} label={cat}>{grp.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</optgroup>:null;
                     })}
                   </select>
-                  <span style={{fontSize:12,color:'#94a3b8',padding:'5px 0'}}>{art?.lief||'—'}</span>
+                  <span style={{fontSize:12,color:'#5e6e7f',padding:'5px 0'}}>{art?.lief||'—'}</span>
                   <input type="number" value={z.menge||''} step="0.001"
                     onChange={e=>setZutat(i,'menge',parseFloat(e.target.value)||0)}
                     style={{fontSize:12,padding:'5px 8px'}}/>
-                  <span style={{fontSize:12,color:'#64748b',padding:'5px 4px',textAlign:'center'}}>{art?.e||z.einheit||'—'}</span>
+                  <span style={{fontSize:12,color:'#566373',padding:'5px 4px',textAlign:'center'}}>{art?.e||z.einheit||'—'}</span>
                   <div style={{textAlign:'right',fontSize:12,fontWeight:600,color:'#374151',fontFamily:'monospace'}}>
                     {art&&z.menge ? fmt(ppu*z.menge*toBaseMultiplier(z.einheit)) : '—'}
                   </div>
@@ -2463,7 +2482,7 @@ function VorlagenTab({templates, setTemplates, articles}) {
   return (
     <div className="tab-content">
       <div className="toolbar">
-        <div style={{fontSize:13,color:'#64748b'}}><strong>{templates.length}</strong> Vorlagen</div>
+        <div style={{fontSize:13,color:'#566373'}}><strong>{templates.length}</strong> Vorlagen</div>
         <button className="btn btn-primary" style={{marginLeft:'auto'}} onClick={()=>setModal({name:'',zutaten:[]})}>+ Neue Vorlage</button>
       </div>
       <div className="card">
@@ -2475,7 +2494,7 @@ function VorlagenTab({templates, setTemplates, articles}) {
           {templates.map(tpl=>(
             <tr key={tpl.id}>
               <td><strong>{tpl.name}</strong></td>
-              <td style={{color:'#64748b',fontSize:12,maxWidth:400}}>
+              <td style={{color:'#566373',fontSize:12,maxWidth:400}}>
                 {tpl.zutaten.length} Pos.: {tpl.zutaten.map(z=>z.name).filter(Boolean).join(', ')}
               </td>
               <td style={{whiteSpace:'nowrap'}}>
@@ -2607,7 +2626,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
       padding:'6px 18px',border:'1px solid',borderRadius:100,fontSize:13,fontWeight:500,
       cursor:'pointer',outline:'none',transition:'all .15s',
       borderColor:view===k?'#e85d04':'#e2e8f0',
-      color:view===k?'#e85d04':'#64748b',
+      color:view===k?'#e85d04':'#566373',
       background:'transparent',
     }}>{label}</button>
   );
@@ -2619,16 +2638,16 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
       <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:2}}>
         <h2 style={{fontSize:22,fontWeight:700,letterSpacing:'-.4px'}}>Rezept-Cockpit</h2>
       </div>
-      <div style={{fontSize:12,color:'#94a3b8',marginBottom:14}}>
+      <div style={{fontSize:12,color:'#5e6e7f',marginBottom:14}}>
         Stand: {heute} · {articles.filter(a=>!a.archiv).length} aktive Artikel
       </div>
 
       {/* ── Welcome / Activity ── */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:24}}>
         <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:8,padding:'14px 16px'}}>
-          <div style={{fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Letzte Aktivität</div>
+          <div style={{fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Letzte Aktivität</div>
           {lastChanges.length===0 ? (
-            <div style={{fontSize:13,color:'#94a3b8',padding:'8px 0'}}>Noch keine Änderungen aufgezeichnet</div>
+            <div style={{fontSize:13,color:'#5e6e7f',padding:'8px 0'}}>Noch keine Änderungen aufgezeichnet</div>
           ) : lastChanges.map((c,i)=>{
             const isUp = c.neuPreis > c.altPreis;
             const pctChg = c.altPreis>0 ? (c.neuPreis-c.altPreis)/c.altPreis*100 : 0;
@@ -2637,12 +2656,12 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
                 <span style={{fontSize:15,color:isUp?'#dc2626':'#16a34a',flexShrink:0,lineHeight:1}}>{isUp?'↑':'↓'}</span>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:13,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.produkt}</div>
-                  <div style={{fontSize:11,color:'#94a3b8'}}>
+                  <div style={{fontSize:11,color:'#5e6e7f'}}>
                     {fmt(c.altPreis)} → {fmt(c.neuPreis)}
                     <span style={{color:isUp?'#dc2626':'#16a34a',fontWeight:700,marginLeft:4}}>{isUp?'+':''}{pctChg.toFixed(1)}%</span>
                   </div>
                 </div>
-                <div style={{fontSize:11,color:'#94a3b8',flexShrink:0}}>{relDate(c.datum)}</div>
+                <div style={{fontSize:11,color:'#5e6e7f',flexShrink:0}}>{relDate(c.datum)}</div>
               </div>
             );
           })}
@@ -2650,14 +2669,14 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
 
         <div style={{background:currentSaving?'#f0fdf4':'#f8fafc',border:`1px solid ${currentSaving?'#bbf7d0':'#e2e8f0'}`,borderRadius:8,padding:'14px 16px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-            <div style={{fontSize:11,fontWeight:600,color:currentSaving?'#166534':'#64748b',textTransform:'uppercase',letterSpacing:'.5px'}}>💡 Sparhinweis</div>
+            <div style={{fontSize:11,fontWeight:600,color:currentSaving?'#166534':'#566373',textTransform:'uppercase',letterSpacing:'.5px'}}>💡 Sparhinweis</div>
             {visibleOpps.length>1&&(
               <div style={{display:'flex',alignItems:'center',gap:4}}>
                 <button onClick={()=>setSavingIdx(i=>Math.max(0,i-1))} disabled={clampedIdx===0}
-                  style={{background:'none',border:'none',cursor:clampedIdx===0?'default':'pointer',color:clampedIdx===0?'#d1d5db':'#64748b',fontSize:18,padding:'0 4px',lineHeight:1}}>‹</button>
-                <span style={{fontSize:11,color:'#94a3b8'}}>{clampedIdx+1} / {visibleOpps.length}</span>
+                  style={{background:'none',border:'none',cursor:clampedIdx===0?'default':'pointer',color:clampedIdx===0?'#d1d5db':'#566373',fontSize:18,padding:'0 4px',lineHeight:1}}>‹</button>
+                <span style={{fontSize:11,color:'#5e6e7f'}}>{clampedIdx+1} / {visibleOpps.length}</span>
                 <button onClick={()=>setSavingIdx(i=>Math.min(visibleOpps.length-1,i+1))} disabled={clampedIdx===visibleOpps.length-1}
-                  style={{background:'none',border:'none',cursor:clampedIdx===visibleOpps.length-1?'default':'pointer',color:clampedIdx===visibleOpps.length-1?'#d1d5db':'#64748b',fontSize:18,padding:'0 4px',lineHeight:1}}>›</button>
+                  style={{background:'none',border:'none',cursor:clampedIdx===visibleOpps.length-1?'default':'pointer',color:clampedIdx===visibleOpps.length-1?'#d1d5db':'#566373',fontSize:18,padding:'0 4px',lineHeight:1}}>›</button>
               </div>
             )}
           </div>
@@ -2682,8 +2701,8 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
                   Wenn Du bei <strong>{currentSaving.art.name}</strong> den Lieferanten auf <strong>{currentSaving.cheapestV.lief}</strong> wechselst, spart das{' '}
                   <span style={{color:'#16a34a',fontWeight:700}}>{savingVal}</span>
                 </div>
-                <div style={{marginTop:6,fontSize:11,color:'#64748b'}}>{allNames}</div>
-                <label style={{display:'flex',alignItems:'center',gap:6,marginTop:10,fontSize:11,color:'#94a3b8',cursor:'pointer'}}>
+                <div style={{marginTop:6,fontSize:11,color:'#566373'}}>{allNames}</div>
+                <label style={{display:'flex',alignItems:'center',gap:6,marginTop:10,fontSize:11,color:'#5e6e7f',cursor:'pointer'}}>
                   <input type="checkbox" style={{width:'auto',cursor:'pointer'}} onChange={e=>{
                     if (e.target.checked) setDismissed(prev=>({...prev,[dismissKey]:now+28*24*3600*1000}));
                   }}/>
@@ -2692,7 +2711,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
               </div>
             );
           })() : (
-            <div style={{fontSize:13,color:'#94a3b8',lineHeight:1.6,padding:'8px 0'}}>Füge alternative Lieferanten zu deinen Artikeln hinzu um Einsparpotenziale zu entdecken</div>
+            <div style={{fontSize:13,color:'#5e6e7f',lineHeight:1.6,padding:'8px 0'}}>Füge alternative Lieferanten zu deinen Artikeln hinzu um Einsparpotenziale zu entdecken</div>
           )}
         </div>
       </div>
@@ -2707,7 +2726,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
           onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';e.currentTarget.style.boxShadow='none';}}>
           <div style={{fontSize:28,marginBottom:10}}>+</div>
           <div style={{fontSize:16,fontWeight:700,color:'#1a1a1a',marginBottom:4}}>Artikel anlegen</div>
-          <div style={{fontSize:12,color:'#94a3b8'}}>Neuen Artikel mit Lieferant & Preis erfassen</div>
+          <div style={{fontSize:12,color:'#5e6e7f'}}>Neuen Artikel mit Lieferant & Preis erfassen</div>
         </button>
         <button onClick={()=>setShowRecipeChoice(true)} style={{
           background:'white',border:'2px solid #e2e8f0',borderRadius:12,padding:'22px 20px',
@@ -2717,7 +2736,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
           onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';e.currentTarget.style.boxShadow='none';}}>
           <div style={{fontSize:28,marginBottom:10}}>✎</div>
           <div style={{fontSize:16,fontWeight:700,color:'#1a1a1a',marginBottom:4}}>Rezept erstellen</div>
-          <div style={{fontSize:12,color:'#94a3b8'}}>Neues Rezept oder Vorprodukt anlegen</div>
+          <div style={{fontSize:12,color:'#5e6e7f'}}>Neues Rezept oder Vorprodukt anlegen</div>
         </button>
         {reviewArt ? (
           <button onClick={()=>onEditArticle(reviewArt)} style={{
@@ -2758,7 +2777,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
                 onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';}}>
                 <div style={{fontSize:24,marginBottom:8}}>🍽</div>
                 <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Rezept</div>
-                <div style={{fontSize:12,color:'#94a3b8'}}>VK, Wareneinsatz, DB, Marge</div>
+                <div style={{fontSize:12,color:'#5e6e7f'}}>VK, Wareneinsatz, DB, Marge</div>
               </button>
               <button onClick={()=>{setShowRecipeChoice(false);onNewVP();}} style={{
                 background:'#f8fafc',border:'2px solid #e2e8f0',borderRadius:10,padding:'20px 16px',
@@ -2768,7 +2787,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
                 onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';}}>
                 <div style={{fontSize:24,marginBottom:8}}>🧪</div>
                 <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Vorprodukt</div>
-                <div style={{fontSize:12,color:'#94a3b8'}}>Zutaten, Kosten, Preis/kg</div>
+                <div style={{fontSize:12,color:'#5e6e7f'}}>Zutaten, Kosten, Preis/kg</div>
               </button>
             </div>
           </div>
@@ -2804,7 +2823,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
         </div>
 
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
-          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#64748b',cursor:'pointer',userSelect:'none'}}>
+          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#566373',cursor:'pointer',userSelect:'none'}}>
             <span className="switch" style={{flexShrink:0}}>
               <input type="checkbox" checked={showArchivMargen} onChange={e=>setShowArchivMargen(e.target.checked)}/>
               <span className="slider"/>
@@ -2820,13 +2839,13 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
             const barColor = isArchiv ? '#cbd5e1' : weColor(r.wePct);
             return (
               <div key={r.id} style={{display:'flex',alignItems:'center',marginBottom:9,opacity:isArchiv?0.6:1}}>
-                <div style={{width:150,fontSize:13,color:isArchiv?'#94a3b8':'#374151',textAlign:'right',paddingRight:14,flexShrink:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',fontStyle:isArchiv?'italic':'normal'}}>{r.name}</div>
+                <div style={{width:150,fontSize:13,color:isArchiv?'#5e6e7f':'#374151',textAlign:'right',paddingRight:14,flexShrink:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',fontStyle:isArchiv?'italic':'normal'}}>{r.name}</div>
                 <div style={{flex:1,height:26,position:'relative'}}>
                   <div style={{width:barPct+'%',minWidth:4,height:'100%',background:barColor,borderRadius:4,display:'flex',alignItems:'center',paddingLeft:8}}>
                     {barPct>18&&<span style={{fontSize:11,fontWeight:700,color:'white'}}>{r.wePct.toFixed(1)}%</span>}
                   </div>
-                  <div style={{position:'absolute',top:0,bottom:0,left:sollPos+'%',borderLeft:'2px dashed #94a3b8',pointerEvents:'none'}}/>
-                  {barPct<=18&&<span style={{position:'absolute',left:barPct+'%',top:'50%',transform:'translateY(-50%)',paddingLeft:6,fontSize:11,color:isArchiv?'#94a3b8':'#374151',fontWeight:600}}>{r.wePct.toFixed(1)}%</span>}
+                  <div style={{position:'absolute',top:0,bottom:0,left:sollPos+'%',borderLeft:'2px dashed #5e6e7f',pointerEvents:'none'}}/>
+                  {barPct<=18&&<span style={{position:'absolute',left:barPct+'%',top:'50%',transform:'translateY(-50%)',paddingLeft:6,fontSize:11,color:isArchiv?'#5e6e7f':'#374151',fontWeight:600}}>{r.wePct.toFixed(1)}%</span>}
                 </div>
               </div>
             );
@@ -2834,13 +2853,13 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
           {/* X-Achse */}
           <div style={{display:'flex',marginLeft:150,marginTop:8,paddingLeft:0}}>
             {xTicks.map((v,i)=>(
-              <div key={v} style={{flex:i===0?0:10,minWidth:i===0?0:undefined,fontSize:10,color:'#94a3b8',textAlign:i===0?'left':'center'}}>
+              <div key={v} style={{flex:i===0?0:10,minWidth:i===0?0:undefined,fontSize:10,color:'#5e6e7f',textAlign:i===0?'left':'center'}}>
                 {v>0?v+'%':'0%'}
               </div>
             ))}
           </div>
         </div>
-        <div style={{marginTop:12,fontSize:12,color:'#94a3b8',lineHeight:1.6}}>
+        <div style={{marginTop:12,fontSize:12,color:'#5e6e7f',lineHeight:1.6}}>
           Ampel: grün ≤ {SOLL}%, orange ≤ 30%, rot {'>'} 30% WE (to-go, 7% USt). Rezepte mit 19% MwSt fließen nicht in Ø-Werte ein.
         </div>
       </>)}
@@ -2884,7 +2903,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
             );
           })}
         </div>
-        <div style={{marginTop:12,fontSize:12,color:'#94a3b8'}}>
+        <div style={{marginTop:12,fontSize:12,color:'#5e6e7f'}}>
           DB Netto = VK Brutto ÷ (1+MwSt) − Wareneinsatz. Grün ≥ 7 €, Orange ≥ 4 €, Rot {'<'} 4 €. Nur Sandwiches (To-go, 7% MwSt) – Getränke ausgeblendet.
         </div>
       </>)}
@@ -2953,8 +2972,8 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
               <div className="form-row" style={{margin:0}}>
                 <label style={{visibility:'hidden'}}>Modus</label>
                 <div style={{display:'flex',border:'1px solid #e2e8f0',borderRadius:6,overflow:'hidden',height:35}}>
-                  <button onClick={()=>setSzMode('pct')} style={{padding:'0 14px',border:'none',fontSize:13,cursor:'pointer',fontWeight:500,transition:'all .15s',background:szMode==='pct'?'#e85d04':'white',color:szMode==='pct'?'white':'#64748b'}}>%</button>
-                  <button onClick={()=>setSzMode('abs')} style={{padding:'0 14px',border:'none',fontSize:13,cursor:'pointer',fontWeight:500,transition:'all .15s',borderLeft:'1px solid #e2e8f0',background:szMode==='abs'?'#e85d04':'white',color:szMode==='abs'?'white':'#64748b'}}>€ Preis</button>
+                  <button onClick={()=>setSzMode('pct')} style={{padding:'0 14px',border:'none',fontSize:13,cursor:'pointer',fontWeight:500,transition:'all .15s',background:szMode==='pct'?'#e85d04':'white',color:szMode==='pct'?'white':'#566373'}}>%</button>
+                  <button onClick={()=>setSzMode('abs')} style={{padding:'0 14px',border:'none',fontSize:13,cursor:'pointer',fontWeight:500,transition:'all .15s',borderLeft:'1px solid #e2e8f0',background:szMode==='abs'?'#e85d04':'white',color:szMode==='abs'?'white':'#566373'}}>€ Preis</button>
                 </div>
               </div>
               <div className="form-row" style={{margin:0}}>
@@ -2971,7 +2990,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
             {szArtId&&(()=>{
               const total = affectedRecs.length+szVPResults.length;
               const dPct = szArt&&szArt.ek>0 ? (szNewEk-szArt.ek)/szArt.ek*100 : 0;
-              return <div style={{fontSize:12,color:'#64748b',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'8px 12px',marginBottom:14}}>
+              return <div style={{fontSize:12,color:'#566373',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'8px 12px',marginBottom:14}}>
                 <strong>{szArt?.name}</strong>: {fmt(szArt?.ek)} → {fmt(szNewEk)}
                 {' '}<span style={{color:dPct>0?'#dc2626':'#16a34a',fontWeight:700}}>{dPct>=0?'+':''}{dPct.toFixed(1)}%</span>
                 {' '}(je {szArt?.g} {szArt?.e}){' '}·{' '}
@@ -3003,10 +3022,10 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
                           <td style={{fontFamily:'monospace',fontWeight:700,color:dWE>0?'#dc2626':'#16a34a'}}>{dWE>0?'+':''}{fmtPct(dWE)}</td>
                           <td style={{fontFamily:'monospace'}}>{fmt(dbOld)}</td>
                           <td style={{fontFamily:'monospace',fontWeight:700,color:dDB<0?'#dc2626':'#16a34a'}}>{dDB>=0?'+':''}{fmt(dDB)}</td>
-                          <td style={{fontFamily:'monospace',fontWeight:700,color:annualDelta!=null?(annualDelta<0?'#dc2626':annualDelta>0?'#16a34a':'#64748b'):'#94a3b8'}}>
-                            {annualDelta!=null ? <>{annualDelta>=0?'+':''}{fmt(annualDelta)}</> : <span style={{color:'#94a3b8',fontWeight:400}}>—</span>}
+                          <td style={{fontFamily:'monospace',fontWeight:700,color:annualDelta!=null?(annualDelta<0?'#dc2626':annualDelta>0?'#16a34a':'#566373'):'#5e6e7f'}}>
+                            {annualDelta!=null ? <>{annualDelta>=0?'+':''}{fmt(annualDelta)}</> : <span style={{color:'#5e6e7f',fontWeight:400}}>—</span>}
                           </td>
-                          <td style={{fontFamily:'monospace',fontWeight:700,color:per100Delta<0?'#dc2626':per100Delta>0?'#16a34a':'#64748b'}}>
+                          <td style={{fontFamily:'monospace',fontWeight:700,color:per100Delta<0?'#dc2626':per100Delta>0?'#16a34a':'#566373'}}>
                             {per100Delta>=0?'+':''}{fmt(per100Delta)}
                           </td>
                         </tr>
@@ -3018,7 +3037,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
             )}
             {szArtId && szVPResults.length>0 && (
               <div>
-                {affectedRecs.length>0&&<div style={{fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:8}}>Betroffene Vorprodukte</div>}
+                {affectedRecs.length>0&&<div style={{fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:8}}>Betroffene Vorprodukte</div>}
                 <div className="card">
                   <table>
                     <thead><tr>
@@ -3036,7 +3055,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
                           <td style={{fontFamily:'monospace'}}>{fmt(kostenOld)}</td>
                           <td style={{fontFamily:'monospace'}}>{fmt(kostenNew)}</td>
                           <td style={{fontFamily:'monospace',fontWeight:700,color:dKosten>0?'#dc2626':'#16a34a'}}>{dKosten>=0?'+':''}{fmt(dKosten)}</td>
-                          <td style={{color:'#64748b'}}>{vp.outputKg} kg</td>
+                          <td style={{color:'#566373'}}>{vp.outputKg} kg</td>
                           <td style={{fontFamily:'monospace',fontWeight:700,color:dPreisKg>0?'#dc2626':'#16a34a'}}>{dPreisKg>=0?'+':''}{fmt(dPreisKg)}/kg</td>
                         </tr>
                       ))}
@@ -3217,7 +3236,7 @@ function App() {
 
   // ── Status indicator ──
   const si = !client
-    ? {c:'#94a3b8', label:'Lokal (kein Cloud-Sync)'}
+    ? {c:'#5e6e7f', label:'Lokal (kein Cloud-Sync)'}
     : loading
     ? {c:'#d97706', label:'Verbinde…'}
     : syncStatus==='syncing'
@@ -3233,7 +3252,7 @@ function App() {
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:16,background:'#f3f4f6'}}>
       <div style={{fontSize:40}}>☁️</div>
       <div style={{fontWeight:600,color:'#374151',fontSize:16}}>Lade Daten von Supabase…</div>
-      <div style={{fontSize:13,color:'#94a3b8'}}>Erstverbindung kann einen Moment dauern</div>
+      <div style={{fontSize:13,color:'#5e6e7f'}}>Erstverbindung kann einen Moment dauern</div>
     </div>
   );
 
