@@ -818,6 +818,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
   const [showArchiv, setShowArchiv] = useState(false);
   const [showFav, setShowFav] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [lieferantFilter, setLieferantFilter] = useState('all');
   const [modal, setModal] = useState(null);
   const [sort, setSort] = useState({col:'name',dir:'asc'});
   const [archiveWarning, setArchiveWarning] = useState(null);
@@ -883,6 +884,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
         const age = priceAge(a.datum, warnDays, alertDays, a.checkTage);
         if (age !== statusFilter) return false;
       }
+      if (lieferantFilter !== 'all' && (a.lief||'') !== lieferantFilter) return false;
       return !q || a.name.toLowerCase().includes(q.toLowerCase()) || (a.lief||'').toLowerCase().includes(q.toLowerCase());
     });
     const {col,dir} = sort;
@@ -898,7 +900,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
       if (va>vb) return dir==='asc'?1:-1;
       return 0;
     });
-  }, [articles, q, showArchiv, showFav, statusFilter, warnDays, alertDays, sort]);
+  }, [articles, q, showArchiv, showFav, statusFilter, lieferantFilter, warnDays, alertDays, sort]);
 
   const doSaveArt = (art) => {
     const existing = articles.find(a=>a.id===art.id);
@@ -977,13 +979,20 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
             <th>Größe</th>
             <SortTh col="ek">EK Netto</SortTh>
             <SortTh col="ppu">EK/Einheit</SortTh>
-            <SortTh col="lief">Lieferant</SortTh>
+            <th style={{padding:'9px 12px'}}>
+              <select value={lieferantFilter} onChange={e=>setLieferantFilter(e.target.value)} style={{background:'transparent',border:'none',outline:'none',fontWeight:600,fontSize:11,color:lieferantFilter!=='all'?'#e85d04':'#64748b',textTransform:'uppercase',letterSpacing:'.5px',cursor:'pointer',padding:0,appearance:'none',WebkitAppearance:'none'}}>
+                <option value="all">Lieferant{lieferantFilter!=='all'?` ▼`:' ▲'}</option>
+                {[...new Set(articles.filter(a=>!a.archiv&&a.lief).map(a=>a.lief))].sort().map(l=><option key={l} value={l}>{l}</option>)}
+              </select>
+            </th>
             <SortTh col="datum">Preisdatum</SortTh>
-            <th onClick={()=>setStatusFilter(s=>s==='all'?'red':s==='red'?'yellow':s==='yellow'?'green':'all')} style={{cursor:'pointer',userSelect:'none',whiteSpace:'nowrap',color:statusFilter==='red'?'#dc2626':statusFilter==='yellow'?'#d97706':statusFilter==='green'?'#16a34a':'#64748b'}}>
-              STATUS{' '}
-              <span style={{fontSize:10,opacity:statusFilter==='all'?.25:1}}>
-                {statusFilter==='red'?'▼ Veraltet':statusFilter==='yellow'?'▼ >3 Mon.':statusFilter==='green'?'▼ Aktuell':'▲'}
-              </span>
+            <th style={{padding:'9px 12px'}}>
+              <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{background:'transparent',border:'none',outline:'none',fontWeight:600,fontSize:11,color:statusFilter==='red'?'#dc2626':statusFilter==='yellow'?'#d97706':statusFilter==='green'?'#16a34a':'#64748b',textTransform:'uppercase',letterSpacing:'.5px',cursor:'pointer',padding:0,appearance:'none',WebkitAppearance:'none'}}>
+                <option value="all">Status{statusFilter==='all'?' ▲':' ▼'}</option>
+                <option value="red">Veraltet</option>
+                <option value="yellow">&gt;3 Mon.</option>
+                <option value="green">Aktuell</option>
+              </select>
             </th><th></th>
           </tr></thead>
           <tbody>
