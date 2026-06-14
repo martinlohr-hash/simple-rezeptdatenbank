@@ -18,23 +18,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .header .subtitle{font-size:12px;color:#888;margin-top:1px}
 .tabs{display:flex;background:#1a1a1a;padding:0 24px;gap:2px;overflow-x:auto}
 .tab{padding:11px 16px;color:#777;cursor:pointer;font-size:13px;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s}
-.tab:hover{color:#ccc}
 .tab.active{color:#fff;border-bottom-color:#e85d04}
 .content{flex:1;padding:20px 24px;max-width:1440px;width:100%}
 table{width:100%;border-collapse:collapse;font-size:13px;background:white}
 thead th{background:#f8fafc;padding:9px 12px;text-align:left;font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;white-space:nowrap}
 tbody tr{border-bottom:1px solid #f1f5f9}
-tbody tr:hover{background:#fafbfd}
 td{padding:8px 12px;vertical-align:middle}
 .card{background:white;border-radius:8px;border:1px solid #e2e8f0;overflow:hidden}
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
 .search{padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;width:260px;outline:none;background:white}
 .search:focus{border-color:#e85d04;box-shadow:0 0 0 2px #e85d0420}
-.btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
-.btn-primary{background:#e85d04;color:white}.btn-primary:hover{background:#c94e03}
-.btn-secondary{background:#f1f5f9;color:#475569}.btn-secondary:hover{background:#e2e8f0}
-.btn-ghost{background:transparent;color:#64748b;padding:5px 8px}.btn-ghost:hover{background:#f1f5f9}
-.btn-danger{background:#fee2e2;color:#dc2626}.btn-danger:hover{background:#fecaca}
+.btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:background-color 150ms ease-out,transform 150ms ease-out;display:inline-flex;align-items:center;gap:6px}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:#e85d04;color:white}
+.btn-secondary{background:#f1f5f9;color:#475569}
+.btn-ghost{background:transparent;color:#64748b;padding:5px 8px}
+.btn-danger{background:#fee2e2;color:#dc2626}
 .btn-sm{padding:4px 10px;font-size:12px}
 .btn-xs{padding:2px 8px;font-size:11px}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -69,21 +68,33 @@ input:focus,select:focus,textarea:focus{border-color:#e85d04;box-shadow:0 0 0 2p
 .ing-row{display:grid;grid-template-columns:2fr 80px 70px 80px auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
 .ing-row select,ing-row input{padding:5px 8px;font-size:12px}
 .warn-banner{background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:10px 14px;font-size:13px;color:#92400e;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start}
-.invoice-drop{border:2px dashed #e2e8f0;border-radius:8px;padding:40px;text-align:center;cursor:pointer;transition:all .15s;background:#fafbfc}
-.invoice-drop:hover,.invoice-drop.drag{border-color:#e85d04;background:#fff7f3}
+.invoice-drop{border:2px dashed #e2e8f0;border-radius:8px;padding:40px;text-align:center;cursor:pointer;transition:border-color 150ms ease-out,background-color 150ms ease-out;background:#fafbfc}
+.invoice-drop.drag{border-color:#e85d04;background:#fff7f3}
 .invoice-drop p{font-size:13px;color:#94a3b8;margin-top:8px}
 .price-change-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:6px;background:#fafbfc;border:1px solid #e2e8f0;margin-bottom:8px}
 .price-up{color:#dc2626}.price-down{color:#16a34a}.price-same{color:#94a3b8}
-.tab-content{animation:fadeIn .15s ease}
+.tab-content{animation:fadeIn .15s ease-out}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .switch{position:relative;display:inline-block;width:36px;height:20px}
 .switch input{opacity:0;width:0;height:0}
-.slider{position:absolute;cursor:pointer;inset:0;background:#e2e8f0;border-radius:20px;transition:.2s}
-.slider:before{position:absolute;content:'';height:14px;width:14px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s}
+.slider{position:absolute;cursor:pointer;inset:0;background:#e2e8f0;border-radius:20px;transition:background-color 200ms ease-out}
+.slider:before{position:absolute;content:'';height:14px;width:14px;left:3px;bottom:3px;background:white;border-radius:50%;transition:transform 200ms ease-out}
 input:checked+.slider{background:#e85d04}
 input:checked+.slider:before{transform:translateX(16px)}
 .log-row-price{color:#dc2626;font-weight:600}
 .log-row-margin{color:#d97706;font-weight:600}
+.modal-overlay{transition:opacity 200ms ease-out}
+.modal{transition:opacity 200ms ease-out,transform 200ms ease-out}
+@starting-style{.modal-overlay{opacity:0}.modal{opacity:0;transform:scale(0.97)}}
+@media(hover:hover)and(pointer:fine){
+  .tab:hover{color:#ccc}
+  tbody tr:hover{background:#fafbfd}
+  .btn-primary:hover{background:#c94e03}
+  .btn-secondary:hover{background:#e2e8f0}
+  .btn-ghost:hover{background:#f1f5f9}
+  .btn-danger:hover{background:#fecaca}
+  .invoice-drop:hover{border-color:#e85d04;background:#fff7f3}
+}
 </style>
 </head>
 <body>
