@@ -2568,6 +2568,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const [szAbsPrice, setSzAbsPrice] = React.useState('');
   const [szRecipeId, setSzRecipeId] = React.useState('');
   const [szTargetWE, setSzTargetWE] = React.useState(22);
+  const [tooltip, setTooltip] = React.useState(null);
   const SOLL = 22;
   const now = Date.now();
 
@@ -2879,7 +2880,18 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
             const isArchiv = r.archiv;
             const barColor = isArchiv ? '#cbd5e1' : weColor(r.wePct);
             return (
-              <div key={r.id} style={{display:'flex',alignItems:'center',marginBottom:9,opacity:isArchiv?0.6:1}}>
+              <div key={r.id} style={{display:'flex',alignItems:'center',marginBottom:9,opacity:isArchiv?0.6:1}}
+                onMouseEnter={e=>setTooltip({x:e.clientX,y:e.clientY,lines:[
+                  {label:r.name,bold:true},
+                  {label:'WE',value:fmt(r.weEuro)},
+                  {label:'WE%',value:r.wePct.toFixed(1)+'%'},
+                  {label:'VK Brutto',value:fmt(r.vkBrutto)},
+                  {label:'DB Netto',value:fmt(r.dbNetto)},
+                  {label:'MwSt',value:r.mwst+'%'},
+                ]})}
+                onMouseMove={e=>setTooltip(t=>t?{...t,x:e.clientX,y:e.clientY}:t)}
+                onMouseLeave={()=>setTooltip(null)}
+              >
                 <div style={{width:150,fontSize:13,color:isArchiv?'#5e6e7f':'#374151',textAlign:'right',paddingRight:14,flexShrink:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',fontStyle:isArchiv?'italic':'normal'}}>{r.name}</div>
                 <div style={{flex:1,height:26,position:'relative'}}>
                   <div style={{width:barPct+'%',minWidth:4,height:'100%',background:barColor,borderRadius:4,display:'flex',alignItems:'center',paddingLeft:8}}>
@@ -2932,7 +2944,17 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
             const barPct = (r.dbNetto/maxDB)*100;
             const dbColor = r.dbNetto>=7?'#16a34a':r.dbNetto>=4?'#d97706':'#dc2626';
             return (
-              <div key={r.id} style={{display:'flex',alignItems:'center',marginBottom:9}}>
+              <div key={r.id} style={{display:'flex',alignItems:'center',marginBottom:9}}
+                onMouseEnter={e=>setTooltip({x:e.clientX,y:e.clientY,lines:[
+                  {label:r.name,bold:true},
+                  {label:'DB Netto',value:fmt(r.dbNetto)},
+                  {label:'WE',value:fmt(r.weEuro)+' ('+r.wePct.toFixed(1)+'%)'},
+                  {label:'VK Brutto',value:fmt(r.vkBrutto)},
+                  ...(r.anzahl?[{label:'Stückzahl',value:r.anzahl+'/Tag'}]:[]),
+                ]})}
+                onMouseMove={e=>setTooltip(t=>t?{...t,x:e.clientX,y:e.clientY}:t)}
+                onMouseLeave={()=>setTooltip(null)}
+              >
                 <div style={{width:150,fontSize:13,color:'#374151',textAlign:'right',paddingRight:14,flexShrink:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.name}</div>
                 <div style={{flex:1,height:26,position:'relative'}}>
                   <div style={{width:barPct+'%',minWidth:4,height:'100%',background:dbColor,borderRadius:4,display:'flex',alignItems:'center',paddingLeft:8}}>
@@ -3162,6 +3184,17 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
               </div>
             )}
           </div>
+        </div>
+      )}
+      {tooltip&&(
+        <div style={{position:'fixed',left:tooltip.x+14,top:tooltip.y-8,zIndex:999,background:'#1a1a1a',color:'#f1f5f9',borderRadius:8,padding:'10px 14px',fontSize:12,pointerEvents:'none',boxShadow:'0 8px 24px rgba(0,0,0,.3)',minWidth:160,lineHeight:1.7}}>
+          {tooltip.lines.map((l,i)=>l.bold
+            ? <div key={i} style={{fontWeight:700,fontSize:13,marginBottom:4,color:'#fff'}}>{l.label}</div>
+            : <div key={i} style={{display:'flex',justifyContent:'space-between',gap:20}}>
+                <span style={{color:'#94a3b8'}}>{l.label}</span>
+                <span style={{fontWeight:600}}>{l.value}</span>
+              </div>
+          )}
         </div>
       )}
     </div>
