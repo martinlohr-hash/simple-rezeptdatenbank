@@ -622,7 +622,7 @@ function useLS(key, seed) {
 
 // ── ARTICLE TAB ───────────────────────────────────────────────────────────────
 
-function ArticleModal({art, onSave, onClose, suppliers=[]}) {
+function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
   const isNew = !art.id;
   const [form, setForm] = useState({...art, varianten: art.varianten||[]});
   const f = (k,v) => setForm(p=>({...p,[k]:v}));
@@ -729,6 +729,7 @@ function ArticleModal({art, onSave, onClose, suppliers=[]}) {
           </div>}
         </div>
         <div className="modal-footer">
+          {!isNew && onDelete && <button className="btn btn-danger" style={{marginRight:'auto'}} onClick={()=>onDelete(form)}>Löschen</button>}
           <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
           <button className="btn btn-primary" onClick={()=>onSave({...form,id:form.id||('A'+uid())})}>Speichern</button>
         </div>
@@ -737,13 +738,32 @@ function ArticleModal({art, onSave, onClose, suppliers=[]}) {
   );
 }
 
-function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppliers=[], vps=[], pendingModal=null, onPendingClear, warnDays=90, alertDays=180}) {
+function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, recipes=[], suppliers=[], vps=[], pendingModal=null, onPendingClear, warnDays=90, alertDays=180, onNavigateToRecipe, onNavigateToVP}) {
   const [q, setQ] = useState('');
   const [showArchiv, setShowArchiv] = useState(false);
   const [showFav, setShowFav] = useState(false);
   const [modal, setModal] = useState(null);
   const [sort, setSort] = useState({col:'name',dir:'asc'});
   const [archiveWarning, setArchiveWarning] = useState(null);
+  const [deleteWarning, setDeleteWarning] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  const handleDeleteRequest = (art) => {
+    setModal(null);
+    const usedInRecipes = recipes.filter(r=>!r.archiv&&(r.zutaten||[]).some(z=>z.art===art.id));
+    const usedInVPs = vps.filter(vp=>!vp.archiv&&(vp.zutaten||[]).some(z=>z.art===art.id));
+    if (usedInRecipes.length||usedInVPs.length) {
+      setDeleteWarning({art, usedInRecipes, usedInVPs});
+    } else {
+      setDeleteConfirm(art);
+    }
+  };
+
+  const doDelete = (art) => {
+    setArticles(prev=>prev.filter(a=>a.id!==art.id));
+    del&&del('articles', art.id);
+    setDeleteConfirm(null);
+  };
 
   const toggleFav = (art) => {
     const updated = {...art, fav: !art.fav};
@@ -914,7 +934,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
           </tbody>
         </table>
       </div>
-      {modal && <ArticleModal art={modal} onSave={saveArt} onClose={()=>setModal(null)} suppliers={suppliers}/>}
+      {modal && <ArticleModal art={modal} onSave={saveArt} onClose={()=>setModal(null)} suppliers={suppliers} onDelete={handleDeleteRequest}/>}
       {archiveWarning&&(
         <div className="modal-overlay">
           <div className="modal" style={{maxWidth:420}}>
@@ -934,6 +954,64 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={()=>setArchiveWarning(null)}>Abbrechen</button>
               <button className="btn btn-danger" onClick={()=>{doSaveArt(archiveWarning.art);setArchiveWarning(null);}}>Trotzdem archivieren</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteWarning&&(
+        <div className="modal-overlay" onClick={()=>setDeleteWarning(null)}>
+          <div className="modal" style={{maxWidth:460}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Artikel kann nicht gelöscht werden</h3>
+              <button className="btn btn-ghost" onClick={()=>setDeleteWarning(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="warn-banner">
+                <span>⚠</span>
+                <div><strong>{deleteWarning.art.name}</strong> wird noch in aktiven Rezepten oder Vorprodukten verwendet. Bitte dort zuerst entfernen.</div>
+              </div>
+              {deleteWarning.usedInRecipes.length>0&&(
+                <div style={{marginTop:14}}>
+                  <div style={{fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:6}}>Rezepte</div>
+                  {deleteWarning.usedInRecipes.map(r=>(
+                    <button key={r.id} onClick={()=>{setDeleteWarning(null);onNavigateToRecipe&&onNavigateToRecipe(r);}}
+                      style={{display:'block',width:'100%',textAlign:'left',padding:'7px 12px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,cursor:'pointer',marginBottom:4,color:'#3b82f6',fontWeight:500}}>
+                      → {r.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {deleteWarning.usedInVPs.length>0&&(
+                <div style={{marginTop:14}}>
+                  <div style={{fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:6}}>Vorprodukte</div>
+                  {deleteWarning.usedInVPs.map(vp=>(
+                    <button key={vp.id} onClick={()=>{setDeleteWarning(null);onNavigateToVP&&onNavigateToVP(vp);}}
+                      style={{display:'block',width:'100%',textAlign:'left',padding:'7px 12px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,cursor:'pointer',marginBottom:4,color:'#e85d04',fontWeight:500}}>
+                      → {vp.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={()=>setDeleteWarning(null)}>Schließen</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteConfirm&&(
+        <div className="modal-overlay" onClick={()=>setDeleteConfirm(null)}>
+          <div className="modal" style={{maxWidth:380}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Artikel löschen?</h3>
+              <button className="btn btn-ghost" onClick={()=>setDeleteConfirm(null)}>✕</button>
+            </div>
+            <div className="modal-body" style={{fontSize:13,color:'#374151',lineHeight:1.7}}>
+              <strong>{deleteConfirm.name}</strong> wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={()=>setDeleteConfirm(null)}>Abbrechen</button>
+              <button className="btn btn-danger" onClick={()=>doDelete(deleteConfirm)}>Löschen</button>
             </div>
           </div>
         </div>
@@ -2995,8 +3073,10 @@ function App() {
             upsert&&upsert('articles', art);
           }}
         />}
-        {tab===1&&<ArticleTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} suppliers={suppliers} vps={vps}
+        {tab===1&&<ArticleTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} del={del} recipes={recipes} suppliers={suppliers} vps={vps}
           pendingModal={pendingModal} onPendingClear={()=>setPendingModal(null)} warnDays={warnDays} alertDays={alertDays}
+          onNavigateToRecipe={r=>{setPendingRecipeModal(r);setTab(3);}}
+          onNavigateToVP={vp=>{setPendingVPModal(vp);setTab(4);}}
         />}
         {tab===2&&<SupplierTab suppliers={suppliers} setSuppliers={setSuppliers} upsert={upsert}/>}
         {tab===3&&<RecipeTab recipes={recipes} setRecipes={setRecipes} upsert={upsert} del={del} articles={articles} templates={templates} deliveryRate={deliveryRate}
