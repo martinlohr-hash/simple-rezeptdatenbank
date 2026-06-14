@@ -1097,8 +1097,9 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
                     <span className="ampel green"><span className="dot"/>aktuell</span>
                   }
                 </td>
-                <td>
-                  <button className="btn btn-ghost btn-xs" onClick={()=>setModal({...a})}>✎</button>
+                <td style={{display:'flex',gap:2}}>
+                  <button className="btn btn-ghost btn-xs" onClick={()=>setModal({...a})} title="Bearbeiten">✎</button>
+                  <button className="btn btn-ghost btn-xs" onClick={()=>setModal({...a,id:undefined,name:a.name+' (Kopie)'})} title="Duplizieren" style={{color:'#94a3b8'}}>⎘</button>
                 </td>
               </tr>
             );
