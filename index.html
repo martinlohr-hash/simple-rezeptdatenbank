@@ -2234,6 +2234,8 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const [view, setView] = React.useState('margen');
   const [showRecipeChoice, setShowRecipeChoice] = React.useState(false);
   const [editArt, setEditArt] = React.useState(null);
+  const [dismissed, setDismissed] = useLS('simple_savings_dismissed', {});
+  const [savingIdx, setSavingIdx] = React.useState(0);
   const [szArtId, setSzArtId] = React.useState('');
   const [szPctChange, setSzPctChange] = React.useState(10);
   const [szMode, setSzMode] = React.useState('pct');
@@ -2293,7 +2295,12 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
     if(recipeRefs.length) savingsOpps.push({art,cheapestV,deltaPPU,annualSaving,recipeRefs});
   });
   savingsOpps.sort((a,b)=>b.annualSaving-a.annualSaving);
-  const topSaving = savingsOpps[0]||null;
+  const visibleOpps = savingsOpps.filter(op=>{
+    const key = `${op.art.id}__${op.cheapestV.lief}`;
+    return !dismissed[key] || dismissed[key] < now;
+  });
+  const clampedIdx = Math.min(savingIdx, Math.max(0, visibleOpps.length-1));
+  const currentSaving = visibleOpps[clampedIdx]||null;
 
   // Szenarien
   const szArt = szArtId ? articles.find(a=>a.id===szArtId) : null;
@@ -2374,29 +2381,47 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
           })}
         </div>
 
-        <div style={{background:topSaving?'#f0fdf4':'#f8fafc',border:`1px solid ${topSaving?'#bbf7d0':'#e2e8f0'}`,borderRadius:8,padding:'14px 16px'}}>
-          <div style={{fontSize:11,fontWeight:600,color:topSaving?'#166534':'#64748b',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>💡 Sparhinweis</div>
-          {topSaving ? (()=>{
-            const vpRefs = topSaving.recipeRefs.filter(r=>r.isVP);
-            const recRefs = topSaving.recipeRefs.filter(r=>!r.isVP);
+        <div style={{background:currentSaving?'#f0fdf4':'#f8fafc',border:`1px solid ${currentSaving?'#bbf7d0':'#e2e8f0'}`,borderRadius:8,padding:'14px 16px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:600,color:currentSaving?'#166534':'#64748b',textTransform:'uppercase',letterSpacing:'.5px'}}>💡 Sparhinweis</div>
+            {visibleOpps.length>1&&(
+              <div style={{display:'flex',alignItems:'center',gap:4}}>
+                <button onClick={()=>setSavingIdx(i=>Math.max(0,i-1))} disabled={clampedIdx===0}
+                  style={{background:'none',border:'none',cursor:clampedIdx===0?'default':'pointer',color:clampedIdx===0?'#d1d5db':'#64748b',fontSize:18,padding:'0 4px',lineHeight:1}}>‹</button>
+                <span style={{fontSize:11,color:'#94a3b8'}}>{clampedIdx+1} / {visibleOpps.length}</span>
+                <button onClick={()=>setSavingIdx(i=>Math.min(visibleOpps.length-1,i+1))} disabled={clampedIdx===visibleOpps.length-1}
+                  style={{background:'none',border:'none',cursor:clampedIdx===visibleOpps.length-1?'default':'pointer',color:clampedIdx===visibleOpps.length-1?'#d1d5db':'#64748b',fontSize:18,padding:'0 4px',lineHeight:1}}>›</button>
+              </div>
+            )}
+          </div>
+          {currentSaving ? (()=>{
+            const vpRefs = currentSaving.recipeRefs.filter(r=>r.isVP);
+            const recRefs = currentSaving.recipeRefs.filter(r=>!r.isVP);
             const bestRec = recRefs.length ? recRefs.reduce((mx,r)=>r.menge>mx.menge?r:mx,recRefs[0]) : null;
             const bestVP = vpRefs.length ? vpRefs.reduce((mx,r)=>r.menge>mx.menge?r:mx,vpRefs[0]) : null;
             let savingVal;
-            if (topSaving.annualSaving>0) {
-              savingVal = `${fmt(topSaving.annualSaving)} / Jahr`;
+            if (currentSaving.annualSaving>0) {
+              savingVal = `${fmt(currentSaving.annualSaving)} / Jahr`;
             } else if (bestRec) {
-              savingVal = `${fmt(topSaving.deltaPPU*bestRec.menge*100)} bei 100 Stück`;
+              savingVal = `${fmt(currentSaving.deltaPPU*bestRec.menge*100)} bei 100 Stück`;
             } else if (bestVP) {
-              savingVal = `${fmt(topSaving.deltaPPU*bestVP.menge)} pro Charge ${bestVP.name}`;
+              savingVal = `${fmt(currentSaving.deltaPPU*bestVP.menge)} pro Charge ${bestVP.name}`;
             } else { savingVal = '—'; }
-            const allNames = topSaving.recipeRefs.map(r=>r.name+(r.isVP?' (VP)':'')).join(', ');
+            const allNames = currentSaving.recipeRefs.map(r=>r.name+(r.isVP?' (VP)':'')).join(', ');
+            const dismissKey = `${currentSaving.art.id}__${currentSaving.cheapestV.lief}`;
             return (
               <div>
                 <div style={{fontSize:13,lineHeight:1.6}}>
-                  Wenn Du bei <strong>{topSaving.art.name}</strong> den Lieferanten auf <strong>{topSaving.cheapestV.lief}</strong> wechselst, spart das{' '}
+                  Wenn Du bei <strong>{currentSaving.art.name}</strong> den Lieferanten auf <strong>{currentSaving.cheapestV.lief}</strong> wechselst, spart das{' '}
                   <span style={{color:'#16a34a',fontWeight:700}}>{savingVal}</span>
                 </div>
-                <div style={{marginTop:8,fontSize:11,color:'#64748b'}}>{allNames}</div>
+                <div style={{marginTop:6,fontSize:11,color:'#64748b'}}>{allNames}</div>
+                <label style={{display:'flex',alignItems:'center',gap:6,marginTop:10,fontSize:11,color:'#94a3b8',cursor:'pointer'}}>
+                  <input type="checkbox" style={{width:'auto',cursor:'pointer'}} onChange={e=>{
+                    if (e.target.checked) setDismissed(prev=>({...prev,[dismissKey]:now+28*24*3600*1000}));
+                  }}/>
+                  4 Wochen nicht mehr anzeigen
+                </label>
               </div>
             );
           })() : (
