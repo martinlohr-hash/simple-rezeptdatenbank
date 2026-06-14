@@ -2428,7 +2428,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const now = Date.now();
 
   const reviewArt = useMemo(()=>{
-    const stale = articles.filter(a=>!a.archiv&&a.datum&&priceAge(a.datum,warnDays,alertDays,a.checkTage)!=='green');
+    const stale = articles.filter(a=>!a.archiv&&a.lief!=='SIMPLE'&&a.datum&&priceAge(a.datum,warnDays,alertDays,a.checkTage)!=='green');
     if (!stale.length) return null;
     return stale[Math.floor(Math.random()*stale.length)];
   // eslint-disable-next-line react-hooks/exhaustive-deps
