@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-14T00:00:00Z",
+  "title": "Design System: Simple Küchenkalkulation",
+  "extensions": {
+    "colorMeta": {
+      "signal-orange": {
+        "role": "primary",
+        "displayName": "Construction Orange",
+        "canonical": "oklch(57% 0.19 35)",
+        "tonalRamp": ["oklch(20% 0.10 35)", "oklch(30% 0.14 35)", "oklch(40% 0.17 35)", "oklch(48% 0.18 35)", "oklch(57% 0.19 35)", "oklch(68% 0.15 35)", "oklch(80% 0.10 35)", "oklch(93% 0.05 35)"]
+      },
+      "signal-orange-deep": {
+        "role": "primary",
+        "displayName": "Construction Orange Deep",
+        "canonical": "oklch(51% 0.19 35)",
+        "tonalRamp": ["oklch(15% 0.10 35)", "oklch(25% 0.13 35)", "oklch(35% 0.16 35)", "oklch(44% 0.18 35)", "oklch(51% 0.19 35)", "oklch(62% 0.15 35)", "oklch(77% 0.10 35)", "oklch(92% 0.04 35)"]
+      },
+      "ink-black": {
+        "role": "neutral",
+        "displayName": "Ink Black",
+        "canonical": "oklch(10% 0 0)",
+        "tonalRamp": ["oklch(10% 0 0)", "oklch(18% 0 0)", "oklch(28% 0 0)", "oklch(38% 0 0)", "oklch(50% 0 0)", "oklch(63% 0 0)", "oklch(77% 0 0)", "oklch(91% 0 0)"]
+      },
+      "ink-dark": {
+        "role": "neutral",
+        "displayName": "Ink Dark",
+        "canonical": "oklch(15% 0 0)",
+        "tonalRamp": ["oklch(10% 0 0)", "oklch(18% 0 0)", "oklch(28% 0 0)", "oklch(38% 0 0)", "oklch(50% 0 0)", "oklch(63% 0 0)", "oklch(77% 0 0)", "oklch(91% 0 0)"]
+      },
+      "status-danger": {
+        "role": "neutral",
+        "displayName": "Danger Red",
+        "canonical": "oklch(50% 0.20 25)",
+        "tonalRamp": ["oklch(20% 0.12 25)", "oklch(30% 0.15 25)", "oklch(38% 0.18 25)", "oklch(44% 0.20 25)", "oklch(50% 0.20 25)", "oklch(62% 0.16 25)", "oklch(76% 0.10 25)", "oklch(93% 0.04 25)"]
+      },
+      "status-success": {
+        "role": "neutral",
+        "displayName": "Success Green",
+        "canonical": "oklch(57% 0.17 145)",
+        "tonalRamp": ["oklch(20% 0.10 145)", "oklch(30% 0.13 145)", "oklch(40% 0.16 145)", "oklch(50% 0.17 145)", "oklch(57% 0.17 145)", "oklch(67% 0.14 145)", "oklch(80% 0.09 145)", "oklch(93% 0.04 145)"]
+      },
+      "status-warning": {
+        "role": "neutral",
+        "displayName": "Warning Amber",
+        "canonical": "oklch(60% 0.16 70)",
+        "tonalRamp": ["oklch(20% 0.09 70)", "oklch(30% 0.12 70)", "oklch(40% 0.14 70)", "oklch(50% 0.16 70)", "oklch(60% 0.16 70)", "oklch(70% 0.13 70)", "oklch(82% 0.08 70)", "oklch(93% 0.04 70)"]
+      },
+      "delivery-violet": {
+        "role": "tertiary",
+        "displayName": "Delivery Violet",
+        "canonical": "oklch(75% 0.18 286)",
+        "tonalRamp": ["oklch(20% 0.14 286)", "oklch(30% 0.17 286)", "oklch(40% 0.20 286)", "oklch(52% 0.21 286)", "oklch(63% 0.22 286)", "oklch(75% 0.18 286)", "oklch(85% 0.12 286)", "oklch(93% 0.06 286)"]
+      }
+    },
+    "shadows": [
+      {
+        "name": "modal",
+        "value": "0 24px 80px rgba(0,0,0,0.25)",
+        "purpose": "Modals only. The sole shadow in the system; its drama is earned by scarcity."
+      },
+      {
+        "name": "modal-overlay",
+        "value": "rgba(0,0,0,0.45)",
+        "purpose": "Modal backdrop overlay. Strong enough to suppress the page, not so strong it creates visual anxiety."
+      }
+    ],
+    "motion": [
+      {
+        "name": "duration-fast",
+        "value": "150ms",
+        "purpose": "Button hover, input focus, badge appearance."
+      },
+      {
+        "name": "duration-modal",
+        "value": "200ms",
+        "purpose": "Modal entry animation (opacity + scale)."
+      },
+      {
+        "name": "duration-tab",
+        "value": "150ms",
+        "purpose": "Tab content fade-in on switch."
+      },
+      {
+        "name": "ease-standard",
+        "value": "ease-out",
+        "purpose": "Default easing for all UI transitions. Starts fast, feels responsive."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "content-max",
+        "value": "1440px",
+        "purpose": "Max-width of the content area. No mobile breakpoints defined; desktop-first tool."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button Primary",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single most important action per toolbar. Construction Orange — used once per context.",
+      "html": "<button class=\"ds-btn-primary\">+ Artikel</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: #e85d04; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; transition: background-color 150ms ease-out, transform 150ms ease-out; } @media (hover: hover) and (pointer: fine) { .ds-btn-primary:hover { background: #c94e03; } } .ds-btn-primary:active { transform: scale(0.97); } .ds-btn-primary:focus-visible { outline: 2px solid #e85d04; outline-offset: 2px; }"
+    },
+    {
+      "name": "Button Secondary",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Non-destructive secondary action. Cancel, filter, navigation.",
+      "html": "<button class=\"ds-btn-secondary\">Abbrechen</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: #f1f5f9; color: #475569; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; transition: background-color 150ms ease-out, transform 150ms ease-out; } @media (hover: hover) and (pointer: fine) { .ds-btn-secondary:hover { background: #e2e8f0; } } .ds-btn-secondary:active { transform: scale(0.97); }"
+    },
+    {
+      "name": "Button Danger",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Irreversible destructive actions only. Delete, archive permanently.",
+      "html": "<button class=\"ds-btn-danger\">Löschen</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; transition: background-color 150ms ease-out, transform 150ms ease-out; } @media (hover: hover) and (pointer: fine) { .ds-btn-danger:hover { background: #fecaca; } } .ds-btn-danger:active { transform: scale(0.97); }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Pill-shaped status indicators. Purely informational — never interactive.",
+      "html": "<div style=\"display:flex;gap:8px;flex-wrap:wrap\"><span class=\"ds-badge ds-badge-gray\">Archiv</span><span class=\"ds-badge ds-badge-blue\">Standard</span><span class=\"ds-badge ds-badge-orange\">📅 3 veraltet</span><span class=\"ds-badge ds-badge-green\">✓ Synced</span><span class=\"ds-badge ds-badge-red\">2</span></div>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 600; white-space: nowrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-badge-gray { background: #f1f5f9; color: #64748b; } .ds-badge-blue { background: #eff6ff; color: #3b82f6; } .ds-badge-orange { background: #fff7ed; color: #ea580c; } .ds-badge-green { background: #f0fdf4; color: #16a34a; } .ds-badge-red { background: #fef2f2; color: #dc2626; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Standard text input with Construction Orange focus ring.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-label\">Artikelname</label><input class=\"ds-input\" type=\"text\" placeholder=\"Name eingeben…\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 4px; } .ds-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-input { padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1a1a1a; background: white; outline: none; width: 100%; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; } .ds-input:focus { border-color: #e85d04; box-shadow: 0 0 0 2px rgba(232, 93, 4, 0.13); } .ds-input::placeholder { color: #94a3b8; }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "card",
+      "refersTo": "stat-card",
+      "description": "Dashboard KPI tile. Display weight number, uppercase label, muted sub-line.",
+      "html": "<div class=\"ds-stat-card\"><div class=\"ds-stat-label\">Artikel aktiv</div><div class=\"ds-stat-value\">47</div><div class=\"ds-stat-sub\">3 mit Preiswarnung</div></div>",
+      "css": ".ds-stat-card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-width: 140px; } .ds-stat-label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; } .ds-stat-value { font-size: 22px; font-weight: 700; color: #1a1a1a; line-height: 1.2; } .ds-stat-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }"
+    },
+    {
+      "name": "Navigation Tabs",
+      "kind": "nav",
+      "refersTo": "tab-nav",
+      "description": "Dark tab bar with Construction Orange active indicator. Scrollable on narrow viewports.",
+      "html": "<div class=\"ds-tabs\"><div class=\"ds-tab\">Dashboard</div><div class=\"ds-tab ds-tab-active\">Artikel</div><div class=\"ds-tab\">Rezepte <span class=\"ds-badge ds-badge-red\" style=\"margin-left:6px;padding:1px 6px\">2</span></div><div class=\"ds-tab\">Rechnungen</div></div>",
+      "css": ".ds-tabs { display: flex; background: #1a1a1a; padding: 0 24px; gap: 2px; overflow-x: auto; } .ds-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 600; } .ds-badge-red { background: #fef2f2; color: #dc2626; } .ds-tab { display: flex; align-items: center; padding: 11px 16px; color: #777; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; white-space: nowrap; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; transition: color 150ms ease-out, border-color 150ms ease-out; } .ds-tab-active { color: #fff; border-bottom-color: #e85d04; } @media (hover: hover) and (pointer: fine) { .ds-tab:hover { color: #ccc; } }"
+    },
+    {
+      "name": "Ampel (Traffic Light)",
+      "kind": "custom",
+      "refersTo": "ampel",
+      "description": "Price-health status indicator. Always dot + text label together — never color alone.",
+      "html": "<div style=\"display:flex;gap:16px\"><div class=\"ds-ampel ds-ampel-green\"><span class=\"ds-dot\"></span>frisch</div><div class=\"ds-ampel ds-ampel-yellow\"><span class=\"ds-dot\"></span>veraltet</div><div class=\"ds-ampel ds-ampel-red\"><span class=\"ds-dot\"></span>überfällig</div></div>",
+      "css": ".ds-ampel { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; } .ds-ampel-green { color: #16a34a; } .ds-ampel-yellow { color: #d97706; } .ds-ampel-red { color: #dc2626; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Das Profi-Kochbuch",
+    "overview": "Like a professional cookbook — precisely structured, black-and-white with one deliberate accent color, nothing decorative. Every element earns its place by answering one question: how fast can a kitchen operator extract the information they need?\n\nThe system lives in the tension between density and clarity. Compressed enough to show a recipe's complete P&L on a single screen; legible enough to read at a glance under kitchen-office fluorescents. The dark header and nav bar frame the workspace like a professional instrument; everything below is white and structured. Orange is a signal, not a brand statement — its construction-site bluntness is intentional: orange means "attention here."\n\nThis system explicitly rejects: the undifferentiated gray flatness of Excel/Google Sheets; the blue-rounded-button, icon-heavy consumer language of POS systems (Toast, Lightspeed); the warm-photo food-app aesthetic of delivery platforms.",
+    "keyCharacteristics": [
+      "Dark chrome (header + nav) + light workspace — immediate structural hierarchy",
+      "System font throughout — no custom typefaces, no optical loading",
+      "One accent color used with strict economy; status colors are functional only",
+      "Tables and structured grids as the primary layout language",
+      "Compact sizing (13px body, 11px labels) — density is a feature"
+    ],
+    "rules": [
+      { "name": "The One-Signal Rule", "body": "Construction Orange appears on one element per visual zone at a time. If two orange elements compete, one of them is wrong.", "section": "colors" },
+      { "name": "The Functional-Color Rule", "body": "Status colors carry meaning, not style. Never apply danger/success/warning/info as background fills for non-status content.", "section": "colors" },
+      { "name": "The Compressed-Default Rule", "body": "Body text is 13px, not 14px or 16px. Every pixel of vertical space is shared. Do not increase base font size without re-testing all table layouts.", "section": "typography" },
+      { "name": "The Number-First Rule", "body": "Large numbers (stat values, VK, WE) use Display weight (700). Surrounding labels use Label weight (600, uppercase). The number is always visually dominant.", "section": "typography" },
+      { "name": "The Two-Tier Rule", "body": "One tier is flat (border-only). One tier is elevated (modal shadow). There is no middle tier. Never add box-shadow to cards, stat tiles, or table wrappers.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Construction Orange (#e85d04) exclusively on interactive elements requiring immediate attention.",
+      "Do use border: 1px solid #e2e8f0 as the default surface separator.",
+      "Do keep column headers at 11px uppercase 600-weight.",
+      "Do pair every status color with a text label or icon — never color alone.",
+      "Do keep body text at 13px.",
+      "Do give every modal a @starting-style entry animation (opacity + scale from 0.97).",
+      "Do guard all hover states with @media (hover: hover) and (pointer: fine).",
+      "Do always specify exact CSS transition properties, never transition: all."
+    ],
+    "donts": [
+      "Don't use gradients — not on buttons, headers, or stat values.",
+      "Don't add box-shadow to cards, stat tiles, or table wrappers. Only modals have shadows.",
+      "Don't make it look like Excel or Google Sheets: no flat gray backgrounds with undifferentiated row weight.",
+      "Don't make it look like a Restaurant POS (Toast, Lightspeed): no blue rounded buttons, no large icon-first tiles.",
+      "Don't use Delivery Violet (#a78bfa / #c4b5fd) for any element other than the Delivery VK metric.",
+      "Don't add decorative elements that carry no data and guide no action.",
+      "Don't use transition: all — always specify exact properties.",
+      "Don't add hover states without @media (hover: hover) and (pointer: fine) guard."
+    ]
+  }
+}
