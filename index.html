@@ -813,10 +813,11 @@ function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
   );
 }
 
-function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, recipes=[], suppliers=[], vps=[], pendingModal=null, onPendingClear, warnDays=90, alertDays=180, onNavigateToRecipe, onNavigateToVP}) {
+function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, recipes=[], suppliers=[], vps=[], pendingModal=null, onPendingClear, warnDays=90, alertDays=180, onNavigateToRecipe, onNavigateToVP, pendingStatusFilter=null, onPendingStatusFilterClear}) {
   const [q, setQ] = useState('');
   const [showArchiv, setShowArchiv] = useState(false);
   const [showFav, setShowFav] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [modal, setModal] = useState(null);
   const [sort, setSort] = useState({col:'name',dir:'asc'});
   const [archiveWarning, setArchiveWarning] = useState(null);
@@ -859,6 +860,11 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[pendingModal]);
 
+  useEffect(()=>{
+    if (pendingStatusFilter !== null) { setStatusFilter(pendingStatusFilter); onPendingStatusFilterClear&&onPendingStatusFilterClear(); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[pendingStatusFilter]);
+
   const toggleSort = (col) => setSort(s => s.col===col ? {col,dir:s.dir==='asc'?'desc':'asc'} : {col,dir:'asc'});
   const SortTh = ({col,children}) => (
     <th onClick={()=>toggleSort(col)} style={{cursor:'pointer',userSelect:'none',whiteSpace:'nowrap'}}>
@@ -873,6 +879,10 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
     const base = articles.filter(a=>{
       if (!showArchiv && a.archiv) return false;
       if (showFav && !a.fav) return false;
+      if (statusFilter !== 'all') {
+        const age = priceAge(a.datum, warnDays, alertDays, a.checkTage);
+        if (age !== statusFilter) return false;
+      }
       return !q || a.name.toLowerCase().includes(q.toLowerCase()) || (a.lief||'').toLowerCase().includes(q.toLowerCase());
     });
     const {col,dir} = sort;
@@ -888,7 +898,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
       if (va>vb) return dir==='asc'?1:-1;
       return 0;
     });
-  }, [articles, q, showArchiv, showFav, sort]);
+  }, [articles, q, showArchiv, showFav, statusFilter, warnDays, alertDays, sort]);
 
   const doSaveArt = (art) => {
     const existing = articles.find(a=>a.id===art.id);
@@ -938,11 +948,12 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
           <div className="stat-label">Lieferanten</div>
           <div className="stat-value">{new Set(articles.filter(a=>!a.archiv&&a.lief).map(a=>a.lief.toUpperCase())).size}</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" style={{cursor:'pointer',outline:statusFilter==='red'?'2px solid #dc2626':'none',outlineOffset:2}} onClick={()=>setStatusFilter(s=>s==='red'?'all':'red')}>
           <div className="stat-label">Preis veraltet (rot)</div>
           <div className="stat-value" style={{color:'#dc2626'}}>
             {articles.filter(a=>!a.archiv&&priceAge(a.datum,warnDays,alertDays,a.checkTage)==='red').length}
           </div>
+          {statusFilter==='red'&&<div style={{fontSize:10,color:'#dc2626',marginTop:2,fontWeight:600}}>● Filter aktiv</div>}
         </div>
       </div>
       <div className="toolbar">
@@ -950,6 +961,12 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
         <button onClick={()=>setShowFav(s=>!s)} style={{padding:'6px 12px',borderRadius:6,border:'1px solid',fontSize:13,cursor:'pointer',fontWeight:600,transition:'all .15s',borderColor:showFav?'#f59e0b':'#e2e8f0',background:showFav?'#fffbeb':'white',color:showFav?'#d97706':'#94a3b8'}}>
           ★ Favoriten
         </button>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:'7px 10px',borderRadius:6,border:'1px solid',fontSize:13,cursor:'pointer',fontWeight:500,borderColor:statusFilter!=='all'?'#dc2626':'#e2e8f0',background:statusFilter==='red'?'#fef2f2':statusFilter==='yellow'?'#fffbeb':statusFilter==='green'?'#f0fdf4':'white',color:statusFilter==='red'?'#dc2626':statusFilter==='yellow'?'#d97706':statusFilter==='green'?'#16a34a':'#475569',outline:'none'}}>
+          <option value="all">Alle Status</option>
+          <option value="red">● Veraltet</option>
+          <option value="yellow">● &gt;3 Mon.</option>
+          <option value="green">● Aktuell</option>
+        </select>
         <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
           <span className="switch"><input type="checkbox" checked={showArchiv} onChange={e=>setShowArchiv(e.target.checked)}/><span className="slider"></span></span>
           Archiv
@@ -3054,9 +3071,10 @@ function App() {
   const [warnDays,  setWarnDays]  = useLS('simple_warn_days',  90);
   const [alertDays, setAlertDays] = useLS('simple_alert_days', 180);
   const [appImpactModal, setAppImpactModal] = useState(null);
-  const [pendingModal,       setPendingModal]       = useState(null);
-  const [pendingRecipeModal, setPendingRecipeModal] = useState(null);
-  const [pendingVPModal,     setPendingVPModal]     = useState(null);
+  const [pendingModal,        setPendingModal]        = useState(null);
+  const [pendingRecipeModal,  setPendingRecipeModal]  = useState(null);
+  const [pendingVPModal,      setPendingVPModal]      = useState(null);
+  const [pendingStatusFilter, setPendingStatusFilter] = useState(null);
 
   const client = useMemo(()=>{
     if (!sbUrl||!sbKey) return null;
@@ -3163,7 +3181,7 @@ function App() {
         </div>
         <div style={{marginLeft:'auto',display:'flex',gap:10,alignItems:'center'}}>
           {warnCount>0&&<span className="badge badge-red">⚠ {warnCount} Margenalarm</span>}
-          {staleCount>0&&<span className="badge badge-orange">📅 {staleCount} Preise veraltet</span>}
+          {staleCount>0&&<span className="badge badge-orange" style={{cursor:'pointer'}} onClick={()=>{setPendingStatusFilter('red');setTab(1);}}>📅 {staleCount} Preise veraltet</span>}
           <span style={{fontSize:12,color:si.c,fontWeight:600,display:'flex',alignItems:'center',gap:5,cursor:'pointer'}} onClick={()=>setShowSettings(true)} title="Einstellungen">
             <span style={{width:7,height:7,borderRadius:'50%',background:si.c,display:'inline-block',flexShrink:0}}/>
             {si.label}
@@ -3208,6 +3226,7 @@ function App() {
           pendingModal={pendingModal} onPendingClear={()=>setPendingModal(null)} warnDays={warnDays} alertDays={alertDays}
           onNavigateToRecipe={r=>{setPendingRecipeModal(r);setTab(3);}}
           onNavigateToVP={vp=>{setPendingVPModal(vp);setTab(4);}}
+          pendingStatusFilter={pendingStatusFilter} onPendingStatusFilterClear={()=>setPendingStatusFilter(null)}
         />}
         {tab===2&&<SupplierTab suppliers={suppliers} setSuppliers={setSuppliers} upsert={upsert}/>}
         {tab===3&&<RecipeTab recipes={recipes} setRecipes={setRecipes} upsert={upsert} del={del} articles={articles} templates={templates} deliveryRate={deliveryRate}
