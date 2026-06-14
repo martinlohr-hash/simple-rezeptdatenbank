@@ -1430,7 +1430,7 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
   };
 
   const visibleRecipes = recipes.filter(r=>showArchiv||!r.archiv);
-  const getKat = r => r.kategorie ||
+  const getKat = r => (r.kategorie==='Sandwich'?'Sandwiches':r.kategorie) ||
     (['R001','R002','R003','R004','R005','R006','R007','R008'].includes(r.id) ? 'Sandwiches' :
      ['R009','R010','R011','R012','R013'].includes(r.id) ? 'Getränke' : 'Weitere');
   const KAT_LABELS = {Sandwiches:'🥪 Sandwiches', Getränke:'☕ Getränke', Weitere:'Weitere Rezepte'};
