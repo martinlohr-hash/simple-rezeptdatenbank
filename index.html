@@ -548,6 +548,29 @@ function uid() {
   return 'X'+(Math.random()*1e9|0).toString(36).toUpperCase();
 }
 
+const ART_KAT = {
+  A006:'Nonfood',A016:'Nonfood',A021:'Nonfood',A053:'Nonfood',
+  A054:'Nonfood',A055:'Nonfood',A073:'Nonfood',A086:'Nonfood',
+  A011:'Bev',A024:'Bev',A025:'Bev',A031:'Bev',A096:'Bev',
+};
+const getKat = a => a.kat || ART_KAT[a.id] || 'Food';
+
+const REZEPT_VORLAGEN = {
+  'Sandwich':[
+    {art:'A082',name:'Sandwichbrot',menge:0.1,einheit:'St.'},
+    {art:'A010',name:'Butter',menge:0.009,einheit:'kg'},
+    {art:'A028',name:'Gewürzpauschale',menge:1,einheit:'St.'},
+    {art:'A021',name:'Fettpapier',menge:1,einheit:'Stk'},
+    {art:'A053',name:'Papier für Tray',menge:1,einheit:'St'},
+  ],
+  'Kastenweißbrot':[
+    {art:'A037',name:'Kastenweißbrot',menge:0.166,einheit:'kg'},
+    {art:'A010',name:'Butter',menge:0.009,einheit:'kg'},
+    {art:'A028',name:'Gewürzpauschale',menge:1,einheit:'St.'},
+    {art:'A053',name:'Papier für Tray',menge:1,einheit:'St'},
+  ],
+};
+
 // ── STORAGE HOOK ──────────────────────────────────────────────────────────────
 
 function useLS(key, seed) {
@@ -596,8 +619,17 @@ function ArticleModal({art, onSave, onClose, suppliers=[]}) {
           <button className="btn btn-ghost" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
-          <div className="form-row"><label>Name</label>
-            <input type="text" value={form.name||''} onChange={e=>f('name',e.target.value)} placeholder="Artikelname"/>
+          <div className="form-grid">
+            <div className="form-row"><label>Name</label>
+              <input type="text" value={form.name||''} onChange={e=>f('name',e.target.value)} placeholder="Artikelname"/>
+            </div>
+            <div className="form-row"><label>Kategorie</label>
+              <select value={form.kat||getKat(form)} onChange={e=>f('kat',e.target.value)}>
+                <option value="Food">Food</option>
+                <option value="Bev">Bev</option>
+                <option value="Nonfood">Nonfood</option>
+              </select>
+            </div>
           </div>
           <div className="form-grid">
             <div className="form-row"><label>Packungsgröße</label>
@@ -927,13 +959,8 @@ function RecipeModal({recipe, onSave, onClose, articles=[]}) {
                 <option value={19}>19 % (Inhouse)</option>
               </select>
             </div>
-            <div className="form-grid" style={{gridTemplateColumns:'1fr 1fr'}}>
-              <div className="form-row"><label>Stückzahl / Woche</label>
-                <input type="number" value={form.anzahl||''} onChange={e=>f('anzahl',e.target.value)} placeholder="—"/>
-              </div>
-              <div className="form-row"><label>Brot</label>
-                <input type="text" value={form.brot||''} onChange={e=>f('brot',e.target.value)} placeholder="z.B. Sandwichbrot"/>
-              </div>
+            <div className="form-row"><label>Stückzahl / Woche</label>
+              <input type="number" value={form.anzahl||''} onChange={e=>f('anzahl',e.target.value)} placeholder="—"/>
             </div>
           </div>
 
@@ -941,8 +968,8 @@ function RecipeModal({recipe, onSave, onClose, articles=[]}) {
           <div className="section-title" style={{marginTop:8}}>Zutaten <span style={{fontSize:11,color:'#94a3b8',fontWeight:400,textTransform:'none'}}>(optional — WE wird dann automatisch berechnet)</span></div>
           <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:12,marginBottom:14}}>
             {form.zutaten.length > 0 && (
-              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase'}}>
-                <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span></span>
+              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 60px 65px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase'}}>
+                <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span style={{textAlign:'right'}}>€</span><span></span>
               </div>
             )}
             {form.zutaten.map((z,i)=>{
@@ -951,18 +978,22 @@ function RecipeModal({recipe, onSave, onClose, articles=[]}) {
               const hasVariants = sups.length > 1;
               const activePpu = art ? pricePerUnit(art, z.variantLief) : 0;
               const defaultPpu = art ? pricePerUnit(art) : 0;
+              const zeilKosten = art ? activePpu * z.menge : null;
               const saving = (hasVariants && z.variantLief && z.variantLief !== art.lief)
                 ? ((activePpu - defaultPpu) / defaultPpu * 100) : null;
               return (
                 <div key={i} style={{marginBottom:6}}>
-                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px auto',gap:8,alignItems:'center'}}>
+                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 60px 65px auto',gap:8,alignItems:'center'}}>
                     <select value={z.art||''} onChange={e=>{
                       const a2 = articles.find(a=>a.id===e.target.value);
                       setZutat(i,'art',e.target.value);
                       if(a2){ setZutat(i,'name',a2.name); setZutat(i,'variantLief',''); }
                     }} style={{fontSize:12}}>
                       <option value="">— Artikel wählen —</option>
-                      {activeArts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+                      {['Food','Bev','Nonfood'].map(cat=>{
+                        const grp = activeArts.filter(a=>getKat(a)===cat);
+                        return grp.length ? <optgroup key={cat} label={cat}>{grp.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</optgroup> : null;
+                      })}
                     </select>
                     {hasVariants ? (
                       <select value={z.variantLief||art.lief} onChange={e=>setZutat(i,'variantLief',e.target.value)} style={{fontSize:12,borderColor:'#a5b4fc'}}>
@@ -979,6 +1010,9 @@ function RecipeModal({recipe, onSave, onClose, articles=[]}) {
                     <input type="text" value={z.einheit||'St'}
                       onChange={e=>setZutat(i,'einheit',e.target.value)}
                       style={{fontSize:12,padding:'5px 8px'}}/>
+                    <div style={{textAlign:'right',fontSize:12,fontWeight:600,color:zeilKosten>0?'#374151':'#94a3b8',fontFamily:'monospace',whiteSpace:'nowrap'}}>
+                      {zeilKosten!=null&&zeilKosten>0 ? fmt(zeilKosten) : '—'}
+                    </div>
                     <button className="btn btn-danger btn-xs" onClick={()=>delZutat(i)}>✕</button>
                   </div>
                   {saving !== null && (
@@ -990,7 +1024,15 @@ function RecipeModal({recipe, onSave, onClose, articles=[]}) {
                 </div>
               );
             })}
-            <button className="btn btn-secondary btn-sm" style={{marginTop:4}} onClick={addZutat}>+ Zutat</button>
+            <div style={{display:'flex',gap:6,marginTop:6,alignItems:'center',flexWrap:'wrap'}}>
+              <span style={{fontSize:11,color:'#94a3b8'}}>Vorlage:</span>
+              {Object.keys(REZEPT_VORLAGEN).map(k=>(
+                <button key={k} className="btn btn-secondary btn-xs" onClick={()=>f('zutaten',[...form.zutaten,...REZEPT_VORLAGEN[k]])}>
+                  + {k}
+                </button>
+              ))}
+              <button className="btn btn-secondary btn-sm" style={{marginLeft:'auto'}} onClick={addZutat}>+ Zutat</button>
+            </div>
           </div>
 
           {/* ── WE manuell (nur wenn keine Zutaten) ── */}
@@ -1274,7 +1316,10 @@ function VPModal({vp, articles, onSave, onClose}) {
                       if(a2){ setZutat(i,'name',a2.name); setZutat(i,'variantLief',''); }
                     }} style={{fontSize:12}}>
                       <option value="">— Artikel wählen —</option>
-                      {activeArts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+                      {['Food','Bev','Nonfood'].map(cat=>{
+                        const grp = activeArts.filter(a=>getKat(a)===cat);
+                        return grp.length ? <optgroup key={cat} label={cat}>{grp.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</optgroup> : null;
+                      })}
                     </select>
                     {hasVariants ? (
                       <select value={z.variantLief||art.lief} onChange={e=>setZutat(i,'variantLief',e.target.value)} style={{fontSize:12,borderColor:'#a5b4fc'}}>
