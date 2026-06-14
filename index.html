@@ -961,12 +961,6 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
         <button onClick={()=>setShowFav(s=>!s)} style={{padding:'6px 12px',borderRadius:6,border:'1px solid',fontSize:13,cursor:'pointer',fontWeight:600,transition:'all .15s',borderColor:showFav?'#f59e0b':'#e2e8f0',background:showFav?'#fffbeb':'white',color:showFav?'#d97706':'#94a3b8'}}>
           ★ Favoriten
         </button>
-        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{padding:'7px 10px',borderRadius:6,border:'1px solid',fontSize:13,cursor:'pointer',fontWeight:500,borderColor:statusFilter!=='all'?'#dc2626':'#e2e8f0',background:statusFilter==='red'?'#fef2f2':statusFilter==='yellow'?'#fffbeb':statusFilter==='green'?'#f0fdf4':'white',color:statusFilter==='red'?'#dc2626':statusFilter==='yellow'?'#d97706':statusFilter==='green'?'#16a34a':'#475569',outline:'none'}}>
-          <option value="all">Alle Status</option>
-          <option value="red">● Veraltet</option>
-          <option value="yellow">● &gt;3 Mon.</option>
-          <option value="green">● Aktuell</option>
-        </select>
         <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
           <span className="switch"><input type="checkbox" checked={showArchiv} onChange={e=>setShowArchiv(e.target.checked)}/><span className="slider"></span></span>
           Archiv
@@ -985,7 +979,12 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
             <SortTh col="ppu">EK/Einheit</SortTh>
             <SortTh col="lief">Lieferant</SortTh>
             <SortTh col="datum">Preisdatum</SortTh>
-            <th>Status</th><th></th>
+            <th onClick={()=>setStatusFilter(s=>s==='all'?'red':s==='red'?'yellow':s==='yellow'?'green':'all')} style={{cursor:'pointer',userSelect:'none',whiteSpace:'nowrap',color:statusFilter==='red'?'#dc2626':statusFilter==='yellow'?'#d97706':statusFilter==='green'?'#16a34a':'#64748b'}}>
+              STATUS{' '}
+              <span style={{fontSize:10,opacity:statusFilter==='all'?.25:1}}>
+                {statusFilter==='red'?'▼ Veraltet':statusFilter==='yellow'?'▼ >3 Mon.':statusFilter==='green'?'▼ Aktuell':'▲'}
+              </span>
+            </th><th></th>
           </tr></thead>
           <tbody>
           {filtered.map(a=>{
