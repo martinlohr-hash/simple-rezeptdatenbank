@@ -2183,94 +2183,117 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal">
         <div className="modal-header">
-          <h3>⚙ Einstellungen – Supabase</h3>
+          <h3>Einstellungen</h3>
           <button className="btn btn-ghost" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
-          {syncError&&<div className="warn-banner" style={{marginBottom:14}}>⚠ {syncError}</div>}
-          <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:6,padding:'10px 14px',marginBottom:16,fontSize:13,color:'#166534',lineHeight:1.6}}>
-            <strong>Einmalig einrichten:</strong><br/>
-            1. <a href="https://supabase.com" target="_blank" rel="noopener" style={{color:'inherit'}}>supabase.com</a> → kostenloses Konto + neues Projekt<br/>
-            2. Settings → API → Project URL + anon key kopieren<br/>
-            3. SQL Editor → Inhalt von <strong>simple-kalkulation-schema.sql</strong> einfügen → Run
+
+          {/* Verbindungsstatus */}
+          <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:8,marginBottom:22,
+            background:isConnected?'#f0fdf4':'#fff7ed',border:`1px solid ${isConnected?'#bbf7d0':'#fed7aa'}`}}>
+            <span style={{width:8,height:8,borderRadius:'50%',background:isConnected?'#16a34a':'#f97316',flexShrink:0,display:'inline-block'}}/>
+            <span style={{fontSize:13,fontWeight:600,color:isConnected?'#166534':'#c2410c',flex:1}}>
+              {isConnected?'Verbunden mit Supabase':'Keine Datenbankverbindung'}
+            </span>
+            {syncError&&<span style={{fontSize:12,color:'#dc2626'}}>{syncError}</span>}
           </div>
+
+          {/* Datenbank */}
+          <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Datenbank</div>
           <div className="form-row"><label>Supabase Project URL</label>
             <input type="text" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://xxxxxxxxxxxx.supabase.co"/>
           </div>
-          <div className="form-row"><label>Anon Key</label>
+          <div className="form-row" style={{marginBottom:10}}><label>Anon Key</label>
             <div style={{display:'flex',gap:8}}>
               <input type={showKey?'text':'password'} value={key} onChange={e=>setKey(e.target.value)} placeholder="eyJhbGci…" style={{flex:1}}/>
-              <button className="btn btn-secondary btn-sm" onClick={()=>setShowKey(s=>!s)}>{showKey?'Verbergen':'Zeigen'}</button>
+              <button className="btn btn-secondary btn-sm" onClick={()=>setShowKey(s=>!s)}>{showKey?'Verbergen':'Anzeigen'}</button>
             </div>
             <div style={{fontSize:11,color:'#5e6e7f',marginTop:4}}>Bleibt lokal im Browser. Der anon-Key ist für Browser-Apps konzipiert.</div>
           </div>
-          {testMsg&&<div style={{padding:'8px 12px',borderRadius:6,marginBottom:12,fontSize:13,
+          <details style={{marginBottom:16}}>
+            <summary style={{fontSize:12,color:'#5e6e7f',cursor:'pointer',userSelect:'none',listStyle:'none',display:'flex',alignItems:'center',gap:5}}>
+              <span style={{fontSize:10}}>▶</span> Noch kein Konto? Einrichtung anzeigen
+            </summary>
+            <div style={{marginTop:10,padding:'12px 14px',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:7,fontSize:12,color:'#166534',lineHeight:1.8}}>
+              1. <a href="https://supabase.com" target="_blank" rel="noopener" style={{color:'#166534',fontWeight:600}}>supabase.com</a> – kostenloses Konto + neues Projekt anlegen<br/>
+              2. Settings → API → Project URL und anon key kopieren<br/>
+              3. SQL Editor → Inhalt von <strong>simple-kalkulation-schema.sql</strong> einfügen → Run
+            </div>
+          </details>
+
+          {testMsg&&<div style={{padding:'8px 12px',borderRadius:7,marginBottom:16,fontSize:13,
             background:testMsg.startsWith('✓')?'#f0fdf4':'#fef2f2',
             color:testMsg.startsWith('✓')?'#166534':'#dc2626'}}>{testMsg}</div>}
-          <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'12px 14px',marginTop:14}}>
-            <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Delivery-Kalkulation</div>
-            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
-              <span style={{fontSize:13,color:'#566373'}}>Uber-Provision</span>
-              <input type="number" value={deliveryRate||30} min={0} max={100} step={1}
-                onChange={e=>setDeliveryRate(parseFloat(e.target.value)||0)}
-                style={{width:70,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13}}/>
-              <span style={{fontSize:13,color:'#566373'}}>%</span>
-            </div>
-            <div style={{fontSize:11,color:'#5e6e7f'}}>Uber kassiert X% vom Brutto-VK. Delivery-VK wird auf Rezeptkarten berechnet damit DB Netto gleichbleibt.</div>
+
+          <hr style={{border:'none',borderTop:'1px solid #f1f5f9',margin:'6px 0 20px'}}/>
+
+          {/* Delivery */}
+          <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Delivery-Provision</div>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
+            <span style={{fontSize:13,color:'#374151',flex:1}}>Uber Eats Provision</span>
+            <input type="number" value={deliveryRate||30} min={0} max={100} step={1}
+              onChange={e=>setDeliveryRate(parseFloat(e.target.value)||0)}
+              style={{width:64,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:7,fontSize:14,fontWeight:600,textAlign:'right'}}/>
+            <span style={{fontSize:13,color:'#566373'}}>%</span>
           </div>
-          <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'12px 14px',marginTop:14}}>
-            <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Preis-Aktualität</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:8}}>
-              <div>
-                <div style={{fontSize:11,fontWeight:600,color:'#d97706',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:4}}>Warnung (gelb) nach</div>
-                <div style={{display:'flex',alignItems:'center',gap:6}}>
-                  <input type="number" value={warnDays||90} min={1} step={1}
-                    onChange={e=>setWarnDays(parseInt(e.target.value)||90)}
-                    style={{width:70,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13}}/>
-                  <span style={{fontSize:13,color:'#566373'}}>Tagen</span>
-                </div>
-              </div>
-              <div>
-                <div style={{fontSize:11,fontWeight:600,color:'#dc2626',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:4}}>Alarm (rot) nach</div>
-                <div style={{display:'flex',alignItems:'center',gap:6}}>
-                  <input type="number" value={alertDays||180} min={1} step={1}
-                    onChange={e=>setAlertDays(parseInt(e.target.value)||180)}
-                    style={{width:70,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13}}/>
-                  <span style={{fontSize:13,color:'#566373'}}>Tagen</span>
-                </div>
+          <div style={{fontSize:11,color:'#5e6e7f',marginBottom:20}}>Delivery-VK wird so berechnet, dass der DB Netto gleichbleibt.</div>
+
+          <hr style={{border:'none',borderTop:'1px solid #f1f5f9',margin:'0 0 20px'}}/>
+
+          {/* Preis-Aktualität */}
+          <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Preis-Aktualität</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:8}}>
+            <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'12px 14px'}}>
+              <div style={{fontSize:11,fontWeight:600,color:'#92400e',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:8}}>Warnung (gelb) nach</div>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <input type="number" value={warnDays||90} min={1} step={1}
+                  onChange={e=>setWarnDays(parseInt(e.target.value)||90)}
+                  style={{width:60,padding:'5px 8px',border:'1px solid #fde68a',borderRadius:6,fontSize:14,fontWeight:600,background:'white',textAlign:'right'}}/>
+                <span style={{fontSize:13,color:'#92400e'}}>Tage</span>
               </div>
             </div>
-            <div style={{fontSize:11,color:'#5e6e7f'}}>Pro Artikel überschreibbar (z.B. Tagespreis = 1 Tag).</div>
+            <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'12px 14px'}}>
+              <div style={{fontSize:11,fontWeight:600,color:'#991b1b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:8}}>Alarm (rot) nach</div>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <input type="number" value={alertDays||180} min={1} step={1}
+                  onChange={e=>setAlertDays(parseInt(e.target.value)||180)}
+                  style={{width:60,padding:'5px 8px',border:'1px solid #fecaca',borderRadius:6,fontSize:14,fontWeight:600,background:'white',textAlign:'right'}}/>
+                <span style={{fontSize:13,color:'#991b1b'}}>Tage</span>
+              </div>
+            </div>
           </div>
-          {isConnected&&(
-            <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'12px 14px',marginTop:14}}>
-              <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Datenmigration</div>
-              <div style={{fontSize:12,color:'#566373',marginBottom:10}}>Lokale Daten (Artikel, Rezepte, VPs) einmalig nach Supabase hochladen.</div>
-              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                <button className="btn btn-secondary btn-sm" onClick={seed} disabled={seeding}>
-                  {seeding?'Lädt…':'⬆ Lokale Daten migrieren'}
-                </button>
-                <button className="btn btn-secondary btn-sm" onClick={async()=>{
-                  setSeeding2(true);
-                  try { await onSeedMissing(); setTestMsg('✓ Fehlende Einträge ergänzt!'); }
-                  catch(e) { setTestMsg('✗ '+e.message); }
-                  setSeeding2(false);
-                }} disabled={seeding2}>
-                  {seeding2?'Lädt…':'✦ Fehlende Seed-Daten ergänzen'}
-                </button>
-              </div>
-              <div style={{fontSize:11,color:'#5e6e7f',marginTop:8}}>
-                „Fehlende Seed-Daten": ergänzt neue Rezepte/VPs und Zutaten-Details – überschreibt keine bestehenden Daten.
-              </div>
+          <div style={{fontSize:11,color:'#5e6e7f',marginBottom: isConnected ? 0 : 4}}>Pro Artikel einzeln überschreibbar (z.B. Tagespreis = 1 Tag).</div>
+
+          {isConnected&&(<>
+            <hr style={{border:'none',borderTop:'1px solid #f1f5f9',margin:'20px 0'}}/>
+            <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:6}}>Datenmigration</div>
+            <div style={{fontSize:12,color:'#566373',marginBottom:10}}>Lokale Seed-Daten einmalig nach Supabase hochladen.</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              <button className="btn btn-secondary btn-sm" onClick={seed} disabled={seeding}>
+                {seeding?'Lädt…':'⬆ Lokale Daten migrieren'}
+              </button>
+              <button className="btn btn-secondary btn-sm" onClick={async()=>{
+                setSeeding2(true);
+                try { await onSeedMissing(); setTestMsg('✓ Fehlende Einträge ergänzt!'); }
+                catch(e) { setTestMsg('✗ '+e.message); }
+                setSeeding2(false);
+              }} disabled={seeding2}>
+                {seeding2?'Lädt…':'✦ Fehlende Seed-Daten ergänzen'}
+              </button>
             </div>
-          )}
+            <div style={{fontSize:11,color:'#5e6e7f',marginTop:8}}>
+              „Fehlende Seed-Daten" ergänzt neue Rezepte/VPs ohne bestehende Daten zu überschreiben.
+            </div>
+          </>)}
         </div>
-        <div className="modal-footer">
+        <div className="modal-footer" style={{justifyContent:'space-between'}}>
           <button className="btn btn-secondary btn-sm" onClick={test} disabled={testing||!url||!key}>
             {testing?'Teste…':'Verbindung testen'}
           </button>
-          <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
-          <button className="btn btn-primary" onClick={save} disabled={!url||!key}>Speichern & neu laden</button>
+          <div style={{display:'flex',gap:8}}>
+            <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
+            <button className="btn btn-primary" onClick={save} disabled={!url||!key}>Speichern</button>
+          </div>
         </div>
       </div>
     </div>
@@ -3274,7 +3297,7 @@ function App() {
             <span style={{width:7,height:7,borderRadius:'50%',background:si.c,display:'inline-block',flexShrink:0}}/>
             {si.label}
           </span>
-          <button className="btn btn-ghost" style={{color:'#888',fontSize:18,padding:'4px 8px'}} onClick={()=>setShowSettings(true)} title="Einstellungen">⚙</button>
+          <button className="btn btn-ghost" style={{color:'#aaa',fontSize:22,padding:'4px 8px',lineHeight:1}} onClick={()=>setShowSettings(true)} title="Einstellungen">⚙</button>
         </div>
       </div>
       <div className="tabs">
