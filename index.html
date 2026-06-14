@@ -2354,10 +2354,10 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const MAX_WE = 50;
   const weColor = pct => pct<=SOLL ? '#16a34a' : pct<=30 ? '#d97706' : '#dc2626';
 
-  const sortedDB = [...recipes].sort((a,b)=>b.dbNetto-a.dbNetto);
+  const sortedDB = [...recipes].filter(r=>!r.archiv&&r.mwst!==19).sort((a,b)=>b.dbNetto-a.dbNetto);
   const maxDB = sortedDB[0]?.dbNetto || 1;
-  const avgDB = recipes.length ? recipes.reduce((s,r)=>s+r.dbNetto,0)/recipes.length : 0;
-  const totalDB = recipes.filter(r=>r.anzahl).reduce((s,r)=>s+r.dbNetto*(r.anzahl||0),0);
+  const avgDB = sortedDB.length ? sortedDB.reduce((s,r)=>s+r.dbNetto,0)/sortedDB.length : 0;
+  const totalDB = sortedDB.filter(r=>r.anzahl).reduce((s,r)=>s+r.dbNetto*(r.anzahl||0),0);
 
   const staleArts = articles
     .filter(a=>!a.archiv&&a.datum&&priceAge(a.datum,warnDays,alertDays,a.checkTage)!=='green')
@@ -2700,7 +2700,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
           })}
         </div>
         <div style={{marginTop:12,fontSize:12,color:'#94a3b8'}}>
-          DB Netto = VK Brutto ÷ (1+MwSt) − Wareneinsatz. Grün ≥ 7 €, Orange ≥ 4 €, Rot {'<'} 4 €.
+          DB Netto = VK Brutto ÷ (1+MwSt) − Wareneinsatz. Grün ≥ 7 €, Orange ≥ 4 €, Rot {'<'} 4 €. Nur Sandwiches (To-go, 7% MwSt) – Getränke ausgeblendet.
         </div>
       </>)}
 
