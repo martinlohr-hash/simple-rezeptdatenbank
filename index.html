@@ -95,6 +95,15 @@ input:checked+.slider:before{transform:translateX(16px)}
   .btn-danger:hover{background:#fecaca}
   .invoice-drop:hover{border-color:#e85d04;background:#fff7f3}
 }
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:900;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none}
+.toast{border-radius:8px;padding:10px 14px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,.12);pointer-events:all;min-width:220px;max-width:340px;border:1px solid;animation:toastIn 180ms ease-out}
+.toast-success{background:#f0fdf4;border-color:#86efac;color:#15803d}
+.toast-error{background:#fef2f2;border-color:#fca5a5;color:#b91c1c}
+.toast-msg{flex:1;line-height:1.4}
+.toast-x{flex-shrink:0;cursor:pointer;font-size:16px;line-height:1;padding:0 2px;background:none;border:none;color:currentColor;opacity:.5;transition:opacity 120ms ease-out}
+.toast-x:hover{opacity:1}
+@keyframes toastIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.toast{animation:none}}
 </style>
 </head>
 <body>
@@ -706,6 +715,23 @@ function useLS(key, seed) {
   return [data, set];
 }
 
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+
+function Toasts({toasts, onDismiss}) {
+  if (!toasts.length) return null;
+  return (
+    <div className="toast-wrap" aria-live="polite" aria-atomic="false">
+      {toasts.map(t => (
+        <div key={t.id} className={`toast toast-${t.type}`} role="status">
+          <span style={{flexShrink:0,fontSize:14,fontWeight:700}}>{t.type==='success'?'✓':'✕'}</span>
+          <span className="toast-msg">{t.msg}</span>
+          <button className="toast-x" onClick={()=>onDismiss(t.id)} aria-label="Schließen">×</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── ARTICLE TAB ───────────────────────────────────────────────────────────────
 
 function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
@@ -864,7 +890,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
     localStorage.setItem('simple_favs', JSON.stringify(newFavs));
     // fav-Feld nicht an Supabase schicken (Spalte existiert nicht)
     const {fav:_, ...artForSupabase} = updated;
-    upsert && upsert('articles', artForSupabase);
+    upsert && upsert('articles', artForSupabase, {silent:true});
   };
 
   useEffect(()=>{
@@ -919,7 +945,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
       const entry = {id:'L'+uid(),datum:new Date().toISOString(),typ:'Preisänderung',
         produkt:art.name,altPreis:existing.ek,neuPreis:art.ek,quelle:'Manuell',status:'ok'};
       setPriceLog(prev=>[entry,...prev]);
-      upsert&&upsert('price_log', entry);
+      upsert&&upsert('price_log', entry, {silent:true});
       const impacts = computeImpact(art.id, art, articles, recipes);
       if (impacts.length) setImpactModal({
         title:`Preisauswirkung – ${art.name}`,
@@ -1337,10 +1363,10 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
                 <div style={{fontSize:10,color:'#888',marginBottom:4}}>VK Netto</div>
                 <div style={{fontSize:17,fontWeight:700}}>{fmt(vkNetto)}</div>
               </div>
-              <div style={{borderLeft:'1px solid #333',paddingLeft:8}}>
-                <div style={{fontSize:10,color:'#a78bfa',marginBottom:4}}>Delivery VK</div>
-                <div style={{fontSize:17,fontWeight:700,color:'#c4b5fd'}}>{fmt(suggestedDeliveryVK)}</div>
-                <div style={{fontSize:9,color:'#666',marginTop:2}}>{deliveryRate}% Provision</div>
+              <div style={{background:'#f5f3ff',border:'1px solid #ddd6fe',borderRadius:5,padding:'5px 8px'}}>
+                <div style={{fontSize:10,color:'#6d28d9',marginBottom:4}}>Delivery VK</div>
+                <div style={{fontSize:17,fontWeight:700,color:'#5b21b6'}}>{fmt(suggestedDeliveryVK)}</div>
+                <div style={{fontSize:9,color:'#7c3aed',marginTop:2}}>{deliveryRate}% Provision</div>
               </div>
             </div>
           )}
@@ -1692,7 +1718,7 @@ function VPTab({vps, setVPs, articles, setArticles, upsert, pendingModal=null, o
       const ex = prev.find(a=>a.id===artId||a._vpId===vp.id);
       return ex ? prev.map(a=>(a.id===artId||a._vpId===vp.id)?art:a) : [...prev,art];
     });
-    upsert&&upsert('articles', art);
+    upsert&&upsert('articles', art, {silent:true});
     setModal(null);
   };
 
@@ -1844,7 +1870,7 @@ Antworte NUR mit gültigem JSON:
     const impacts = computeImpact(cur.id, newArt, articles, recipes);
     setArticles(prev=>prev.map(a=>a.id===cur.id?newArt:a));
     setPriceLog(prev=>[log,...prev]);
-    if(upsert){upsert('articles',newArt);upsert('price_log',log);}
+    if(upsert){upsert('articles',newArt);upsert('price_log',log,{silent:true});}
     setConfirmed(prev=>({...prev,[p.name]:true}));
     if (impacts.length) setImpactModal({
       title:`Preisauswirkung – ${cur.name}`,
@@ -1890,7 +1916,7 @@ Antworte NUR mit gültigem JSON:
       return newArt;
     }));
     setPriceLog(prev=>[...logs,...prev]);
-    if(upsert){upsert('articles',updatedArts);upsert('price_log',logs);}
+    if(upsert){upsert('articles',updatedArts);upsert('price_log',logs,{silent:true});}
     setConfirmed(updates.reduce((o,u)=>({...o,[u.p.name]:true}),{}));
   };
 
@@ -3109,6 +3135,13 @@ function App() {
   const [pendingRecipeModal,  setPendingRecipeModal]  = useState(null);
   const [pendingVPModal,      setPendingVPModal]      = useState(null);
   const [pendingStatusFilter, setPendingStatusFilter] = useState(null);
+  const [toasts, setToasts] = useState([]);
+  const addToast = useCallback((type, msg) => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, {id, type, msg}]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), type === 'error' ? 7000 : 2500);
+  }, []);
+  const dismissToast = useCallback(id => setToasts(prev => prev.filter(t => t.id !== id)), []);
 
   const client = useMemo(()=>{
     if (!sbUrl||!sbKey) return null;
@@ -3153,23 +3186,23 @@ function App() {
   },[client]);
 
   // ── Upsert helper (called explicitly by save functions via props) ──
-  const upsert = useCallback(async (table, item) => {
+  const upsert = useCallback(async (table, item, {silent}={}) => {
     if (!client) return;
     setSyncStatus('syncing');
     const {error} = await client.from(table).upsert(
       Array.isArray(item) ? item : [item]
     );
-    if (error) { setSyncStatus('error'); setSyncError(error.message); }
-    else setSyncStatus('ok');
-  },[client]);
+    if (error) { setSyncStatus('error'); setSyncError(error.message); addToast('error', `Fehler: ${error.message}`); }
+    else { setSyncStatus('ok'); if (!silent) addToast('success', 'Gespeichert'); }
+  },[client, addToast]);
 
   const del = useCallback(async (table, id) => {
     if (!client) return;
     setSyncStatus('syncing');
     const {error} = await client.from(table).delete().eq('id', id);
-    if (error) { setSyncStatus('error'); setSyncError(error.message); }
-    else setSyncStatus('ok');
-  },[client]);
+    if (error) { setSyncStatus('error'); setSyncError(error.message); addToast('error', `Fehler: ${error.message}`); }
+    else { setSyncStatus('ok'); addToast('success', 'Gelöscht'); }
+  },[client, addToast]);
 
   // Seed-merge for local mode
   useEffect(()=>{
@@ -3243,7 +3276,7 @@ function App() {
               const entry = {id:'L'+uid(),datum:new Date().toISOString(),typ:'Preisänderung',
                 produkt:art.name,altPreis:existing.ek,neuPreis:art.ek,quelle:'Manuell',status:'ok'};
               setPriceLog(prev=>[entry,...prev]);
-              upsert&&upsert('price_log', entry);
+              upsert&&upsert('price_log', entry, {silent:true});
               const impacts = computeImpact(art.id, art, articles, recipes);
               if (impacts.length) setAppImpactModal({
                 title:`Preisauswirkung – ${art.name}`,
@@ -3314,6 +3347,7 @@ function App() {
           }
         }}
       />}
+      <Toasts toasts={toasts} onDismiss={dismissToast}/>
     </div>
   );
 }
