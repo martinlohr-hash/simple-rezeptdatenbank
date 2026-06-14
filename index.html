@@ -2413,6 +2413,7 @@ function VorlagenTab({templates, setTemplates, articles}) {
 
 function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, suppliers=[], warnDays=90, alertDays=180}) {
   const [view, setView] = React.useState('margen');
+  const [showArchivMargen, setShowArchivMargen] = React.useState(false);
   const [showRecipeChoice, setShowRecipeChoice] = React.useState(false);
   const [editArt, setEditArt] = React.useState(null);
   const [dismissed, setDismissed] = useLS('simple_savings_dismissed', {});
@@ -2434,10 +2435,11 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   },[]);
 
   // Exclude 19%-MwSt recipes (Sonderfälle like "Big J Uber") from WE-Durchschnitt
-  const mainRecs = recipes.filter(r => r.mwst !== 19);
+  const activeRecs = recipes.filter(r => !r.archiv && r.mwst !== 19);
+  const mainRecs = showArchivMargen ? recipes.filter(r => r.mwst !== 19) : activeRecs;
   const sortedMargen = [...mainRecs].sort((a,b) => b.wePct - a.wePct);
-  const avgWe = mainRecs.length ? mainRecs.reduce((s,r)=>s+r.wePct,0)/mainRecs.length : 0;
-  const ueberSollCount = mainRecs.filter(r=>r.wePct>SOLL).length;
+  const avgWe = activeRecs.length ? activeRecs.reduce((s,r)=>s+r.wePct,0)/activeRecs.length : 0;
+  const ueberSollCount = activeRecs.filter(r=>r.wePct>SOLL).length;
   const bestDBRec = [...recipes].sort((a,b)=>b.dbNetto-a.dbNetto)[0];
   const MAX_WE = 50;
   const weColor = pct => pct<=SOLL ? '#16a34a' : pct<=30 ? '#d97706' : '#dc2626';
@@ -2708,7 +2710,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
           </div>
           <div className="stat-card">
             <div className="stat-label">Über {SOLL} % Soll</div>
-            <div className="stat-value" style={{color:ueberSollCount>0?'#dc2626':'#16a34a'}}>{ueberSollCount} / {mainRecs.length}</div>
+            <div className="stat-value" style={{color:ueberSollCount>0?'#dc2626':'#16a34a'}}>{ueberSollCount} / {activeRecs.length}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Bester DB</div>
@@ -2717,19 +2719,30 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
           </div>
         </div>
 
+        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
+          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#64748b',cursor:'pointer',userSelect:'none'}}>
+            <span className="switch" style={{flexShrink:0}}>
+              <input type="checkbox" checked={showArchivMargen} onChange={e=>setShowArchivMargen(e.target.checked)}/>
+              <span className="slider"/>
+            </span>
+            Archivierte anzeigen
+          </label>
+        </div>
         <div className="card" style={{padding:'20px 24px'}}>
           {sortedMargen.map(r=>{
             const barPct = Math.min(r.wePct/MAX_WE*100, 100);
             const sollPos = SOLL/MAX_WE*100;
+            const isArchiv = r.archiv;
+            const barColor = isArchiv ? '#cbd5e1' : weColor(r.wePct);
             return (
-              <div key={r.id} style={{display:'flex',alignItems:'center',marginBottom:9}}>
-                <div style={{width:150,fontSize:13,color:'#374151',textAlign:'right',paddingRight:14,flexShrink:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.name}</div>
+              <div key={r.id} style={{display:'flex',alignItems:'center',marginBottom:9,opacity:isArchiv?0.6:1}}>
+                <div style={{width:150,fontSize:13,color:isArchiv?'#94a3b8':'#374151',textAlign:'right',paddingRight:14,flexShrink:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',fontStyle:isArchiv?'italic':'normal'}}>{r.name}</div>
                 <div style={{flex:1,height:26,position:'relative'}}>
-                  <div style={{width:barPct+'%',minWidth:4,height:'100%',background:weColor(r.wePct),borderRadius:4,display:'flex',alignItems:'center',paddingLeft:8}}>
+                  <div style={{width:barPct+'%',minWidth:4,height:'100%',background:barColor,borderRadius:4,display:'flex',alignItems:'center',paddingLeft:8}}>
                     {barPct>18&&<span style={{fontSize:11,fontWeight:700,color:'white'}}>{r.wePct.toFixed(1)}%</span>}
                   </div>
                   <div style={{position:'absolute',top:0,bottom:0,left:sollPos+'%',borderLeft:'2px dashed #94a3b8',pointerEvents:'none'}}/>
-                  {barPct<=18&&<span style={{position:'absolute',left:barPct+'%',top:'50%',transform:'translateY(-50%)',paddingLeft:6,fontSize:11,color:'#374151',fontWeight:600}}>{r.wePct.toFixed(1)}%</span>}
+                  {barPct<=18&&<span style={{position:'absolute',left:barPct+'%',top:'50%',transform:'translateY(-50%)',paddingLeft:6,fontSize:11,color:isArchiv?'#94a3b8':'#374151',fontWeight:600}}>{r.wePct.toFixed(1)}%</span>}
                 </div>
               </div>
             );
