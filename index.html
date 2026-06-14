@@ -992,8 +992,10 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
                   <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 50px 65px auto',gap:8,alignItems:'center'}}>
                     <select value={z.art||''} onChange={e=>{
                       const a2 = articles.find(a=>a.id===e.target.value);
-                      setZutat(i,'art',e.target.value);
-                      if(a2){ setZutat(i,'name',a2.name); setZutat(i,'einheit',a2.e); setZutat(i,'variantLief',''); }
+                      f('zutaten', form.zutaten.map((z2,j)=>j!==i ? z2 : {
+                        ...z2, art:e.target.value,
+                        ...(a2?{name:a2.name,einheit:a2.e,variantLief:''}:{})
+                      }));
                     }} style={{fontSize:12}}>
                       <option value="">— Artikel wählen —</option>
                       {['Food','Bev','Nonfood'].map(cat=>{
@@ -1326,8 +1328,10 @@ function VPModal({vp, articles, onSave, onClose}) {
                   <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px auto',gap:8,alignItems:'center'}}>
                     <select value={z.art||''} onChange={e=>{
                       const a2 = articles.find(a=>a.id===e.target.value);
-                      setZutat(i,'art',e.target.value);
-                      if(a2){ setZutat(i,'name',a2.name); setZutat(i,'variantLief',''); }
+                      f('zutaten', form.zutaten.map((z2,j)=>j!==i ? z2 : {
+                        ...z2, art:e.target.value,
+                        ...(a2?{name:a2.name,einheit:a2.e,variantLief:''}:{})
+                      }));
                     }} style={{fontSize:12}}>
                       <option value="">— Artikel wählen —</option>
                       {['Food','Bev','Nonfood'].map(cat=>{
@@ -1956,8 +1960,10 @@ function VorlagenModal({tpl, articles, onSave, onClose}) {
                 <div key={i} style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 50px 65px auto',gap:8,alignItems:'center',marginBottom:6}}>
                   <select value={z.art||''} onChange={e=>{
                     const a2=articles.find(a=>a.id===e.target.value);
-                    setZutat(i,'art',e.target.value);
-                    if(a2){setZutat(i,'name',a2.name);setZutat(i,'einheit',a2.e);}
+                    f('zutaten', form.zutaten.map((z2,j)=>j!==i ? z2 : {
+                      ...z2, art:e.target.value,
+                      ...(a2?{name:a2.name,einheit:a2.e}:{})
+                    }));
                   }} style={{fontSize:12}}>
                     <option value="">— Artikel wählen —</option>
                     {['Food','Bev','Nonfood'].map(cat=>{
