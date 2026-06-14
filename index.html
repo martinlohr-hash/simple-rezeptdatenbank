@@ -1563,13 +1563,14 @@ function PriceLogTab({priceLog, setPriceLog}) {
 
 // ── SETTINGS MODAL ───────────────────────────────────────────────────────────
 
-function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, isConnected, syncError}) {
+function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onSeedMissing, isConnected, syncError}) {
   const [url, setUrl] = useState(sbUrl);
   const [key, setKey] = useState(sbKey);
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testMsg, setTestMsg] = useState('');
   const [seeding, setSeeding] = useState(false);
+  const [seeding2, setSeeding2] = useState(false);
 
   const test = async () => {
     if (!url||!key) return;
@@ -1624,9 +1625,22 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, isC
             <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'12px 14px'}}>
               <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Datenmigration</div>
               <div style={{fontSize:12,color:'#64748b',marginBottom:10}}>Lokale Daten (Artikel, Rezepte, VPs) einmalig nach Supabase hochladen.</div>
-              <button className="btn btn-secondary btn-sm" onClick={seed} disabled={seeding}>
-                {seeding?'Lädt…':'⬆ Lokale Daten migrieren'}
-              </button>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                <button className="btn btn-secondary btn-sm" onClick={seed} disabled={seeding}>
+                  {seeding?'Lädt…':'⬆ Lokale Daten migrieren'}
+                </button>
+                <button className="btn btn-secondary btn-sm" onClick={async()=>{
+                  setSeeding2(true);
+                  try { await onSeedMissing(); setTestMsg('✓ Fehlende Einträge ergänzt!'); }
+                  catch(e) { setTestMsg('✗ '+e.message); }
+                  setSeeding2(false);
+                }} disabled={seeding2}>
+                  {seeding2?'Lädt…':'✦ Fehlende Seed-Daten ergänzen'}
+                </button>
+              </div>
+              <div style={{fontSize:11,color:'#94a3b8',marginTop:8}}>
+                „Fehlende Seed-Daten": ergänzt neue Rezepte/VPs und Zutaten-Details – überschreibt keine bestehenden Daten.
+              </div>
             </div>
           )}
         </div>
@@ -2225,6 +2239,30 @@ function App() {
             client.from('vorprodukte').upsert(vps),
             client.from('suppliers').upsert(suppliers),
           ]);
+        }}
+        onSeedMissing={async()=>{
+          const recipeIds = new Set(recipes.map(r=>r.id));
+          const missingRecipes = RECIPES_SEED.filter(r=>!recipeIds.has(r.id));
+          if (missingRecipes.length) {
+            const {error} = await client.from('recipes').upsert(missingRecipes);
+            if (error) throw error;
+            setRecipes(prev=>[...prev,...missingRecipes]);
+          }
+          const drinksWithZutaten = RECIPES_SEED.filter(r=>(r.zutaten||[]).length>0);
+          for (const r of drinksWithZutaten) {
+            const existing = recipes.find(x=>x.id===r.id);
+            if (existing && !(existing.zutaten||[]).length) {
+              await client.from('recipes').update({zutaten:r.zutaten}).eq('id',r.id);
+              setRecipes(prev=>prev.map(x=>x.id===r.id?{...x,zutaten:r.zutaten}:x));
+            }
+          }
+          const vpIds = new Set(vps.map(v=>v.id));
+          const missingVPs = VPS_SEED.filter(v=>!vpIds.has(v.id));
+          if (missingVPs.length) {
+            const {error} = await client.from('vorprodukte').upsert(missingVPs);
+            if (error) throw error;
+            setVPs(prev=>[...prev,...missingVPs]);
+          }
         }}
       />}
     </div>
