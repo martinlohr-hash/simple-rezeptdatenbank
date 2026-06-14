@@ -3216,7 +3216,6 @@ function App() {
         {TABS.map((t,i)=>(
           <div key={t} className={`tab${tab===i?' active':''}`} onClick={()=>setTab(i)}>
             {t}
-            {i===1&&articles.filter(a=>!a.archiv).length>0&&<span className="badge badge-gray" style={{marginLeft:6,padding:'1px 6px'}}>{articles.filter(a=>!a.archiv).length}</span>}
             {i===3&&warnCount>0&&<span className="badge badge-red" style={{marginLeft:6,padding:'1px 6px'}}>{warnCount}</span>}
           </div>
         ))}
