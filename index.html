@@ -244,11 +244,41 @@ const RECIPES_SEED = [
   {id:'R007',name:'Kim-Cheese SW',vkBrutto:10.50,vkUber:null,weEuro:2.59,wePct:24.7,dbNetto:7.22,mwst:7,anzahl:null,brot:'Sandwichbrot'},
   {id:'R008',name:'Mortadella SW',vkBrutto:9.90,vkUber:13.90,weEuro:3.27,wePct:33.0,dbNetto:5.98,mwst:7,anzahl:null,brot:'Sandwichbrot'},
   // Getränke
-  {id:'R009',name:'Hafermilch (kl.)',vkBrutto:3.50,vkUber:null,weEuro:0.68,wePct:19.4,dbNetto:2.60,mwst:19,anzahl:null,brot:null},
-  {id:'R010',name:'Milchkaffee',vkBrutto:3.70,vkUber:null,weEuro:0.59,wePct:15.9,dbNetto:2.86,mwst:19,anzahl:null,brot:null},
-  {id:'R011',name:'Hafermilch (gr.)',vkBrutto:4.90,vkUber:null,weEuro:1.34,wePct:27.3,dbNetto:3.24,mwst:19,anzahl:null,brot:null},
-  {id:'R012',name:'Fritz Kola',vkBrutto:3.50,vkUber:null,weEuro:0.78,wePct:22.3,dbNetto:2.49,mwst:19,anzahl:null,brot:null},
-  {id:'R013',name:'Viva con Aqua',vkBrutto:3.00,vkUber:null,weEuro:0.46,wePct:15.3,dbNetto:2.35,mwst:19,anzahl:null,brot:null},
+  {id:'R009',name:'Hafermilch (kl.)',vkBrutto:3.50,vkUber:null,weEuro:0.68,wePct:19.4,dbNetto:2.60,mwst:19,anzahl:null,brot:null,zutaten:[
+    {art:'A011',name:'Cafe',menge:0.01,einheit:'kg'},
+    {art:'A031',name:'Hafermilch',menge:0.11,einheit:'l'},
+    {art:'A028',name:'Gewürzpauschale',menge:0.5,einheit:'St.'},
+    {art:'A006',name:'Becher',menge:1,einheit:'St.'},
+    {art:'A016',name:'deckel',menge:0.3,einheit:'St.'},
+  ]},
+  {id:'R010',name:'Milchkaffee',vkBrutto:3.70,vkUber:null,weEuro:0.59,wePct:15.9,dbNetto:2.86,mwst:19,anzahl:null,brot:null,zutaten:[
+    {art:'A011',name:'Cafe',menge:0.01,einheit:'kg'},
+    {art:'A046',name:'Milch',menge:0.16,einheit:'kg'},
+    {art:'A028',name:'Gewürzpauschale',menge:0.005,einheit:'St.'},
+    {art:'A006',name:'Becher',menge:1,einheit:'St.'},
+    {art:'A016',name:'deckel',menge:0.3,einheit:'St.'},
+  ]},
+  {id:'R011',name:'Hafermilch (gr.)',vkBrutto:4.90,vkUber:null,weEuro:1.34,wePct:27.3,dbNetto:3.24,mwst:19,anzahl:null,brot:null,zutaten:[
+    {art:'A011',name:'Cafe',menge:0.034,einheit:'kg'},
+    {art:'A031',name:'Hafermilch',menge:0.12,einheit:'l'},
+    {art:'A006',name:'Becher',menge:1,einheit:'St.'},
+    {art:'A016',name:'deckel',menge:0.33,einheit:'St.'},
+    {art:'A028',name:'Gewürzpauschale',menge:0.5,einheit:'St.'},
+  ]},
+  {id:'R012',name:'Fritz Kola',vkBrutto:3.50,vkUber:null,weEuro:0.78,wePct:22.3,dbNetto:2.49,mwst:19,anzahl:null,brot:null,zutaten:[
+    {art:'A024',name:'Fritz Kola',menge:1,einheit:'Kst'},
+    {art:'A025',name:'Fritz Pfand',menge:0.5,einheit:'St.'},
+  ]},
+  {id:'R013',name:'Viva con Aqua',vkBrutto:3.00,vkUber:null,weEuro:0.46,wePct:15.3,dbNetto:2.35,mwst:19,anzahl:null,brot:null,zutaten:[
+    {art:'A096',name:'Viva con Aqua',menge:1,einheit:'Kst'},
+    {art:'A025',name:'Fritz Pfand',menge:0.5,einheit:'St.'},
+  ]},
+  // Archiv – Sandwiches
+  {id:'R014',name:'Tomatensandwich',vkBrutto:9.50,vkUber:null,weEuro:2.71,wePct:28.6,dbNetto:6.17,mwst:7,anzahl:null,brot:'Kastenweißbrot',archiv:true,zutaten:[]},
+  {id:'R015',name:'Meatballsandwich',vkBrutto:9.90,vkUber:12.90,weEuro:1.98,wePct:20.0,dbNetto:7.27,mwst:7,anzahl:null,brot:null,archiv:true,zutaten:[]},
+  {id:'R016',name:'Vegan Mushroom Sandwich',vkBrutto:9.50,vkUber:null,weEuro:1.82,wePct:19.2,dbNetto:7.06,mwst:7,anzahl:150,brot:'Kastenweißbrot',archiv:true,zutaten:[]},
+  {id:'R017',name:'Crispy Chicken',vkBrutto:10.50,vkUber:null,weEuro:2.27,wePct:21.6,dbNetto:7.55,mwst:7,anzahl:null,brot:null,archiv:true,zutaten:[]},
+  {id:'R018',name:'EggDrop SW',vkBrutto:9.90,vkUber:null,weEuro:1.97,wePct:19.9,dbNetto:7.28,mwst:7,anzahl:null,brot:null,archiv:true,zutaten:[]},
 ];
 
 const VPS_SEED = [
@@ -386,6 +416,15 @@ const VPS_SEED = [
      {art:'A040',name:'Knoblauch Pulver',menge:0.05,einheit:'kg'},
      {art:'A104',name:'Zwiebel Pulver',menge:0.05,einheit:'kg'},
      {art:'A103',name:'Zucker',menge:0.03,einheit:'kg'},
+   ]},
+  {id:'VP18',name:'Tomatensugo-VP',outputKg:1.56,kosten:3.98,preisKg:2.55,
+   zutaten:[
+     {art:'A106',name:'Zwiebeln rot',menge:0.18,einheit:'kg'},
+     {art:'A103',name:'Zucker',menge:0.07,einheit:'kg'},
+     {art:'A020',name:'essig',menge:0.01,einheit:'l'},
+     {art:'A027',name:'Gestückelte Tomaten (Pomito)',menge:0.8,einheit:'kg'},
+     {art:'A059',name:'Passierte Tomaten (Pomito)',menge:0.5,einheit:'kg'},
+     {art:'A028',name:'Gewürzpauschale',menge:2,einheit:'St.'},
    ]},
 ];
 
