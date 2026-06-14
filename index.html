@@ -543,7 +543,7 @@ function calcWEWithArts(recipe, arts) {
   return recipe.zutaten.reduce((sum, z) => {
     const art = arts.find(a => a.id === z.art);
     if (!art || !z.menge) return sum;
-    return sum + pricePerUnit(art, z.variantLief) * z.menge;
+    return sum + pricePerUnit(art, z.variantLief) * z.menge * toBaseMultiplier(z.einheit);
   }, 0);
 }
 
@@ -584,6 +584,23 @@ const ART_KAT = {
   A011:'Bev',A024:'Bev',A025:'Bev',A031:'Bev',A096:'Bev',
 };
 const getKat = a => a.kat || ART_KAT[a.id] || 'Food';
+
+function toBaseMultiplier(einheit) {
+  const m = {g:0.001,mg:0.000001,ml:0.001,cl:0.01,dl:0.1};
+  return m[einheit]??1;
+}
+function isWeightUnit(e){return ['kg','KG','Kg','g'].includes(e||'');}
+function isVolumeUnit(e){return ['l','L','ml','cl','dl'].includes(e||'');}
+function getIngUnits(artE){
+  if(isWeightUnit(artE)) return ['g','kg'];
+  if(isVolumeUnit(artE)) return ['ml','cl','l'];
+  return [artE||'St'];
+}
+function defaultIngUnit(artE){
+  if(isWeightUnit(artE)) return 'g';
+  if(isVolumeUnit(artE)) return 'ml';
+  return artE||'St';
+}
 
 const TEMPLATES_SEED = [
   {id:'TPL01', name:'Sandwich', zutaten:[
@@ -1040,7 +1057,7 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
     return form.zutaten.reduce((sum,z)=>{
       const art = articles.find(a=>a.id===z.art);
       if (!art || !z.menge) return sum;
-      return sum + pricePerUnit(art, z.variantLief) * z.menge;
+      return sum + pricePerUnit(art, z.variantLief) * z.menge * toBaseMultiplier(z.einheit);
     }, 0);
   }, [form.zutaten, articles]);
 
@@ -1109,7 +1126,7 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
               const hasVariants = sups.length > 1;
               const activePpu = art ? pricePerUnit(art, z.variantLief) : 0;
               const defaultPpu = art ? pricePerUnit(art) : 0;
-              const zeilKosten = art ? activePpu * z.menge : null;
+              const zeilKosten = art ? activePpu * z.menge * toBaseMultiplier(z.einheit) : null;
               const saving = (hasVariants && z.variantLief && z.variantLief !== art.lief)
                 ? ((activePpu - defaultPpu) / defaultPpu * 100) : null;
               const cheapest = hasVariants ? sups.reduce((m,s)=>{
@@ -1124,7 +1141,7 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
                       const a2 = articles.find(a=>a.id===e.target.value);
                       f('zutaten', form.zutaten.map((z2,j)=>j!==i ? z2 : {
                         ...z2, art:e.target.value,
-                        ...(a2?{name:a2.name,einheit:a2.e,variantLief:''}:{})
+                        ...(a2?{name:a2.name,einheit:defaultIngUnit(a2.e),variantLief:''}:{})
                       }));
                     }} style={{fontSize:12}}>
                       <option value="">— Artikel wählen —</option>
@@ -1145,7 +1162,7 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
                     <input type="number" value={z.menge||''} step="0.001"
                       onChange={e=>setZutat(i,'menge',parseFloat(e.target.value)||0)}
                       style={{fontSize:12,padding:'5px 8px'}}/>
-                    <span style={{fontSize:12,color:'#64748b',padding:'5px 4px',textAlign:'center'}}>{art?.e||z.einheit||'—'}</span>
+                    {(()=>{const uOpts=getIngUnits(art?.e);const allU=uOpts.includes(z.einheit)?uOpts:[z.einheit,...uOpts].filter(Boolean);return<select value={z.einheit||''} onChange={e=>setZutat(i,'einheit',e.target.value)} style={{fontSize:12,padding:'3px 4px',width:'100%'}}>{allU.map(u=><option key={u} value={u}>{u}</option>)}</select>;})()}
                     <div style={{textAlign:'right',fontSize:12,fontWeight:600,color:zeilKosten>0?'#374151':'#94a3b8',fontFamily:'monospace',whiteSpace:'nowrap'}}>
                       {zeilKosten!=null&&zeilKosten>0 ? fmt(zeilKosten) : '—'}
                     </div>
@@ -1154,7 +1171,7 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
                   {saving !== null && (
                     <div style={{fontSize:11,color:saving<0?'#16a34a':'#dc2626',paddingLeft:4,marginTop:2}}>
                       {saving<0?'▼ Einsparung':'▲ Aufpreis'} {Math.abs(saving).toFixed(1)}% vs. Standard ({fmt(defaultPpu)}/{art.e})
-                      {' · '}{fmt(activePpu*z.menge)} statt {fmt(defaultPpu*z.menge)}
+                      {' · '}{fmt(activePpu*z.menge*toBaseMultiplier(z.einheit))} statt {fmt(defaultPpu*z.menge*toBaseMultiplier(z.einheit))}
                     </div>
                   )}
                   {cheaperAvailable && !saving && (
@@ -1364,7 +1381,7 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
                       <tbody>
                         {detail.zutaten.map((z,i)=>{
                           const art = articles.find(a=>a.id===z.art);
-                          const kosten = art ? pricePerUnit(art, z.variantLief)*z.menge : null;
+                          const kosten = art ? pricePerUnit(art, z.variantLief)*z.menge*toBaseMultiplier(z.einheit) : null;
                           return (
                             <tr key={i} style={{borderTop:'1px solid #f1f5f9'}}>
                               <td style={{padding:'6px 10px'}}>{z.name||z.art||'—'}{z.variantLief&&z.variantLief!==art?.lief&&<span style={{color:'#94a3b8',marginLeft:4}}>({z.variantLief})</span>}</td>
@@ -1418,7 +1435,7 @@ function VPModal({vp, articles, onSave, onClose}) {
     return form.zutaten.reduce((sum,z)=>{
       const art = articles.find(a=>a.id===z.art);
       if (!art) return sum;
-      return sum + pricePerUnit(art, z.variantLief)*z.menge;
+      return sum + pricePerUnit(art, z.variantLief)*z.menge*toBaseMultiplier(z.einheit);
     },0);
   },[form.zutaten,articles]);
 
@@ -1460,7 +1477,7 @@ function VPModal({vp, articles, onSave, onClose}) {
                       const a2 = articles.find(a=>a.id===e.target.value);
                       f('zutaten', form.zutaten.map((z2,j)=>j!==i ? z2 : {
                         ...z2, art:e.target.value,
-                        ...(a2?{name:a2.name,einheit:a2.e,variantLief:''}:{})
+                        ...(a2?{name:a2.name,einheit:defaultIngUnit(a2.e),variantLief:''}:{})
                       }));
                     }} style={{fontSize:12}}>
                       <option value="">— Artikel wählen —</option>
@@ -1483,15 +1500,13 @@ function VPModal({vp, articles, onSave, onClose}) {
                     <input type="number" value={z.menge||''} step="0.001"
                       onChange={e=>setZutat(i,'menge',parseFloat(e.target.value)||0)}
                       style={{fontSize:12,padding:'5px 8px'}}/>
-                    <input type="text" value={z.einheit||'kg'}
-                      onChange={e=>setZutat(i,'einheit',e.target.value)}
-                      style={{fontSize:12,padding:'5px 8px'}}/>
+                    {(()=>{const uOpts=getIngUnits(art?.e);const allU=uOpts.includes(z.einheit)?uOpts:[z.einheit,...uOpts].filter(Boolean);return<select value={z.einheit||''} onChange={e=>setZutat(i,'einheit',e.target.value)} style={{fontSize:12,padding:'5px 8px',width:'100%'}}>{allU.map(u=><option key={u} value={u}>{u}</option>)}</select>;})()}
                     <button className="btn btn-danger btn-xs" onClick={()=>delZutat(i)}>✕</button>
                   </div>
                   {saving !== null && (
                     <div style={{fontSize:11,color:saving<0?'#16a34a':'#dc2626',paddingLeft:4,marginTop:2}}>
                       {saving<0?'▼ Einsparung':'▲ Aufpreis'} {Math.abs(saving).toFixed(1)}% vs. Standard ({fmt(defaultPpu)}/{art.e})
-                      {' · '}{fmt(activePpu*z.menge)} statt {fmt(defaultPpu*z.menge)}
+                      {' · '}{fmt(activePpu*z.menge*toBaseMultiplier(z.einheit))} statt {fmt(defaultPpu*z.menge*toBaseMultiplier(z.einheit))}
                     </div>
                   )}
                 </div>
@@ -2231,7 +2246,7 @@ function VorlagenModal({tpl, articles, onSave, onClose}) {
                     const a2=articles.find(a=>a.id===e.target.value);
                     f('zutaten', form.zutaten.map((z2,j)=>j!==i ? z2 : {
                       ...z2, art:e.target.value,
-                      ...(a2?{name:a2.name,einheit:a2.e}:{})
+                      ...(a2?{name:a2.name,einheit:defaultIngUnit(a2.e)}:{})
                     }));
                   }} style={{fontSize:12}}>
                     <option value="">— Artikel wählen —</option>
@@ -2246,7 +2261,7 @@ function VorlagenModal({tpl, articles, onSave, onClose}) {
                     style={{fontSize:12,padding:'5px 8px'}}/>
                   <span style={{fontSize:12,color:'#64748b',padding:'5px 4px',textAlign:'center'}}>{art?.e||z.einheit||'—'}</span>
                   <div style={{textAlign:'right',fontSize:12,fontWeight:600,color:'#374151',fontFamily:'monospace'}}>
-                    {art&&z.menge ? fmt(ppu*z.menge) : '—'}
+                    {art&&z.menge ? fmt(ppu*z.menge*toBaseMultiplier(z.einheit)) : '—'}
                   </div>
                   <button className="btn btn-danger btn-xs" onClick={()=>delZutat(i)}>✕</button>
                 </div>
