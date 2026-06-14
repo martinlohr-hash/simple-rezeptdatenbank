@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS articles (
   archiv      BOOLEAN DEFAULT false,
   varianten   JSONB DEFAULT '[]'::jsonb,
   "_vpId"     TEXT,
+  kat         TEXT DEFAULT 'Food',
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
@@ -91,6 +92,8 @@ CREATE TRIGGER trg_recipes_updated     BEFORE UPDATE ON recipes     FOR EACH ROW
 CREATE TRIGGER trg_vorprodukte_updated BEFORE UPDATE ON vorprodukte FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_suppliers_updated   BEFORE UPDATE ON suppliers   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- Archiv-Spalten (Migration für bestehende Datenbanken)
-ALTER TABLE recipes      ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;
-ALTER TABLE vorprodukte  ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;
+-- Migrationen für bestehende Datenbanken
+ALTER TABLE recipes      ADD COLUMN IF NOT EXISTS archiv  BOOLEAN DEFAULT false;
+ALTER TABLE vorprodukte  ADD COLUMN IF NOT EXISTS archiv  BOOLEAN DEFAULT false;
+ALTER TABLE articles     ADD COLUMN IF NOT EXISTS kat     TEXT DEFAULT 'Food';
+ALTER TABLE recipes      ADD COLUMN IF NOT EXISTS zutaten JSONB DEFAULT '[]'::jsonb;
