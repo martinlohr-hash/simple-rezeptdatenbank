@@ -1508,6 +1508,7 @@ function InvoiceTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
   const [confirmed, setConfirmed] = useState({});
   const [matchOverrides, setMatchOverrides] = useState({});
   const [newArtModal, setNewArtModal] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null); // {p, i, match, newEk}
   const dropRef = useRef();
 
   const handleFile = (f) => { setFile(f); setResult(null); setConfirmed({}); setMatchOverrides({}); };
@@ -1582,15 +1583,14 @@ Preise in Euro als Dezimalzahl. Falls Bruttopreis, vermerke es im Namen mit (bru
     setScanning(false);
   };
 
-  const confirmOne = (p, i) => {
-    const match = getRowMatch(p, i);
-    if (!match) return;
-    const ppu = p.preisProEinheit||p.preisNetto;
-    const newArt = {...match, ek:ppu*match.g, datum:new Date().toISOString().slice(0,10)};
+  const doConfirmOne = (p, match, newEk) => {
+    // Find current article in state to avoid stale reference
+    const cur = articles.find(a=>a.id===match.id) || match;
+    const newArt = {...cur, ek: parseFloat(newEk)||cur.ek, datum:new Date().toISOString().slice(0,10)};
     const log = {id:'L'+uid(),datum:new Date().toISOString(),typ:'Rechnung-Import',
-      produkt:match.name,altPreis:pricePerUnit(match),neuPreis:ppu,
+      produkt:cur.name, altPreis:pricePerUnit(cur), neuPreis:parseFloat(newEk)/cur.g,
       quelle:'Rechnung: '+(file?.name||''), status:'bestätigt'};
-    setArticles(prev=>prev.map(a=>a.id===match.id?newArt:a));
+    setArticles(prev=>prev.map(a=>a.id===cur.id?newArt:a));
     setPriceLog(prev=>[log,...prev]);
     if(upsert){upsert('articles',newArt);upsert('price_log',log);}
     setConfirmed(prev=>({...prev,[p.name]:true}));
@@ -1672,6 +1672,46 @@ Preise in Euro als Dezimalzahl. Falls Bruttopreis, vermerke es im Namen mit (bru
       {result && result[0]?.error && (
         <div className="warn-banner">⚠ Fehler: {result[0].error}</div>
       )}
+      {confirmModal&&(
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setConfirmModal(null)}>
+          <div className="modal" style={{maxWidth:400}}>
+            <div className="modal-header">
+              <h3>Preis aktualisieren</h3>
+              <button className="btn btn-ghost" onClick={()=>setConfirmModal(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'10px 14px',marginBottom:16}}>
+                <div style={{fontSize:13,fontWeight:600}}>{confirmModal.match.name}</div>
+                <div style={{fontSize:12,color:'#64748b',marginTop:2}}>
+                  Aktuell: {fmt(confirmModal.match.ek)} für {confirmModal.match.g} {confirmModal.match.e}
+                  {' '}= {fmt(pricePerUnit(confirmModal.match))} / {confirmModal.match.e}
+                </div>
+              </div>
+              <div className="form-row">
+                <label>Neuer EK (für {confirmModal.match.g} {confirmModal.match.e})</label>
+                <input type="number" step="0.01" value={confirmModal.newEk}
+                  onChange={e=>setConfirmModal(prev=>({...prev,newEk:e.target.value}))}
+                  style={{fontWeight:600}}/>
+              </div>
+              {confirmModal.newEk>0&&(
+                <div style={{fontSize:12,color:'#6366f1',marginTop:4}}>
+                  → {fmt(parseFloat(confirmModal.newEk)/(confirmModal.match.g||1))} / {confirmModal.match.e}
+                </div>
+              )}
+              <div style={{fontSize:12,color:'#94a3b8',marginTop:10}}>
+                Rechnungspreis: {fmt(confirmModal.p.preisProEinheit||confirmModal.p.preisNetto)} {confirmModal.p.einheit&&`(${confirmModal.p.einheit})`}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={()=>setConfirmModal(null)}>Abbrechen</button>
+              <button className="btn btn-primary" onClick={()=>{
+                doConfirmOne(confirmModal.p, confirmModal.match, confirmModal.newEk);
+                setConfirmModal(null);
+              }}>Speichern</button>
+            </div>
+          </div>
+        </div>
+      )}
       {newArtModal&&(
         <ArticleModal
           art={{name:newArtModal.name,g:1,e:newArtModal.einheit||'KG',ek:newArtModal.ek||0,lief:'',datum:new Date().toISOString().slice(0,10),archiv:false}}
@@ -1730,7 +1770,10 @@ Preise in Euro als Dezimalzahl. Falls Bruttopreis, vermerke es im Namen mit (bru
                   </td>
                   <td>
                     {isDone?<span className="badge badge-green">✓ Übernommen</span>:
-                     eff?<button className="btn btn-primary btn-xs" onClick={()=>confirmOne(p,i)}>Übernehmen</button>:
+                     eff?<button className="btn btn-primary btn-xs" onClick={()=>{
+                       const cur=articles.find(a=>a.id===eff.id)||eff;
+                       setConfirmModal({p,i,match:cur,newEk:ppu*cur.g});
+                     }}>Übernehmen</button>:
                      <button className="btn btn-secondary btn-xs" onClick={()=>setNewArtModal({posIndex:i,name:p.name.trim(),ek:ppu,einheit:p.einheit||'KG'})}>+ Neu</button>}
                   </td>
                 </tr>
