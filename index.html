@@ -3170,7 +3170,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
 
 // ── APP ───────────────────────────────────────────────────────────────────────
 
-const TABS = ['Dashboard','Artikel','Lieferanten','Rezepte','Vorprodukte','Rechnungen','Preislog','Vorlagen'];
+const TABS = ['Dashboard','Artikel','Rechnungen','Rezepte','Vorprodukte','Lieferanten','Preislog','Vorlagen'];
 
 function App() {
   const [tab, setTab] = useState(0);
@@ -3353,14 +3353,14 @@ function App() {
           onNavigateToVP={vp=>{setPendingVPModal(vp);setTab(4);}}
           pendingStatusFilter={pendingStatusFilter} onPendingStatusFilterClear={()=>setPendingStatusFilter(null)}
         />}
-        {tab===2&&<SupplierTab suppliers={suppliers} setSuppliers={setSuppliers} upsert={upsert}/>}
+        {tab===2&&<InvoiceTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} suppliers={suppliers} recipes={recipes}/>}
         {tab===3&&<RecipeTab recipes={recipes} setRecipes={setRecipes} upsert={upsert} del={del} articles={articles} templates={templates} deliveryRate={deliveryRate}
           pendingModal={pendingRecipeModal} onPendingClear={()=>setPendingRecipeModal(null)}
         />}
         {tab===4&&<VPTab vps={vps} setVPs={setVPs} articles={articles} setArticles={setArticles} upsert={upsert}
           pendingModal={pendingVPModal} onPendingClear={()=>setPendingVPModal(null)}
         />}
-        {tab===5&&<InvoiceTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} suppliers={suppliers} recipes={recipes}/>}
+        {tab===5&&<SupplierTab suppliers={suppliers} setSuppliers={setSuppliers} upsert={upsert}/>}
         {tab===6&&<PriceLogTab priceLog={priceLog} setPriceLog={setPriceLog}/>}
         {tab===7&&<VorlagenTab templates={templates} setTemplates={setTemplates} articles={articles}/>}
       </div>
