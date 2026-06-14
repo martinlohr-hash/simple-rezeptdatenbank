@@ -547,6 +547,64 @@ function calcWEWithArts(recipe, arts) {
   }, 0);
 }
 
+function computeImpact(artId, newArt, allArticles, recipes) {
+  const newArts = allArticles.map(a => a.id === artId ? newArt : a);
+  return recipes.filter(r => !r.archiv && (r.zutaten||[]).some(z => z.art === artId)).map(r => {
+    const weOld = calcWEWithArts(r, allArticles);
+    const weNew = calcWEWithArts(r, newArts);
+    const vkNetto = r.vkBrutto / (1 + r.mwst/100);
+    return {recipe:r, weOld, weNew, dbOld:vkNetto-weOld, dbNew:vkNetto-weNew};
+  }).filter(imp => Math.abs(imp.weNew - imp.weOld) > 0.001);
+}
+
+function ImpactModal({title, subtitle, impacts, onClose}) {
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal modal-lg">
+        <div className="modal-header">
+          <h3>{title}</h3>
+          <button className="btn btn-ghost" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {subtitle&&<div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'10px 14px',marginBottom:16,fontSize:13,color:'#374151'}}>{subtitle}</div>}
+          {impacts.length===0?(
+            <div className="empty">Keine Rezepte betroffen</div>
+          ):(
+            <table>
+              <thead><tr>
+                <th>Rezept</th>
+                <th style={{textAlign:'right'}}>WE alt</th>
+                <th style={{textAlign:'right'}}>WE neu</th>
+                <th style={{textAlign:'right'}}>DB alt</th>
+                <th style={{textAlign:'right'}}>DB neu</th>
+                <th style={{textAlign:'right'}}>Δ DB</th>
+              </tr></thead>
+              <tbody>
+                {impacts.map(imp=>{
+                  const dDB=imp.dbNew-imp.dbOld, dWE=imp.weNew-imp.weOld;
+                  return (
+                    <tr key={imp.recipe.id}>
+                      <td><strong>{imp.recipe.name}</strong></td>
+                      <td style={{textAlign:'right'}}>{fmt(imp.weOld)}</td>
+                      <td style={{textAlign:'right',fontWeight:600,color:dWE>0?'#dc2626':'#16a34a'}}>{fmt(imp.weNew)}</td>
+                      <td style={{textAlign:'right'}}>{fmt(imp.dbOld)}</td>
+                      <td style={{textAlign:'right',fontWeight:600}}>{fmt(imp.dbNew)}</td>
+                      <td style={{textAlign:'right',fontWeight:700,color:dDB<0?'#dc2626':'#16a34a'}}>{dDB>=0?'+':''}{fmt(dDB)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-primary" onClick={onClose}>Verstanden</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function relDate(isoStr) {
   if (!isoStr) return '';
   const days = Math.floor((Date.now() - new Date(isoStr)) / 86400000);
@@ -764,6 +822,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
   const [archiveWarning, setArchiveWarning] = useState(null);
   const [deleteWarning, setDeleteWarning] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [impactModal, setImpactModal] = useState(null);
 
   const handleDeleteRequest = (art) => {
     setModal(null);
@@ -831,6 +890,12 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
         produkt:art.name,altPreis:existing.ek,neuPreis:art.ek,quelle:'Manuell',status:'ok'};
       setPriceLog(prev=>[entry,...prev]);
       upsert&&upsert('price_log', entry);
+      const impacts = computeImpact(art.id, art, articles, recipes);
+      if (impacts.length) setImpactModal({
+        title:`Preisauswirkung – ${art.name}`,
+        subtitle:`${fmt(existing.ek)} → ${fmt(art.ek)} (${art.ek>existing.ek?'+':''}${((art.ek-existing.ek)/existing.ek*100).toFixed(1)}%)`,
+        impacts
+      });
     }
     setArticles(prev=>existing ? prev.map(a=>a.id===art.id?art:a) : [...prev,art]);
     upsert&&upsert('articles', art);
@@ -1033,6 +1098,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
           </div>
         </div>
       )}
+      {impactModal&&<ImpactModal {...impactModal} onClose={()=>setImpactModal(null)}/>}
     </div>
   );
 }
@@ -1625,7 +1691,7 @@ function VPTab({vps, setVPs, articles, setArticles, upsert, pendingModal=null, o
 
 // ── INVOICE TAB ───────────────────────────────────────────────────────────────
 
-function InvoiceTab({articles, setArticles, priceLog, setPriceLog, upsert, suppliers=[]}) {
+function InvoiceTab({articles, setArticles, priceLog, setPriceLog, upsert, suppliers=[], recipes=[]}) {
   const [apiKey, setApiKey] = useLS('sk_simple_apikey','');
   const [showKey, setShowKey] = useState(false);
   const [file, setFile] = useState(null);
@@ -1635,6 +1701,7 @@ function InvoiceTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
   const [matchOverrides, setMatchOverrides] = useState({});
   const [newArtModal, setNewArtModal] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null); // {p, i, match, newEk}
+  const [impactModal, setImpactModal] = useState(null);
   const dropRef = useRef();
 
   const handleFile = (f) => { setFile(f); setResult(null); setConfirmed({}); setMatchOverrides({}); };
@@ -1716,10 +1783,16 @@ Preise in Euro als Dezimalzahl. Falls Bruttopreis, vermerke es im Namen mit (bru
     const log = {id:'L'+uid(),datum:new Date().toISOString(),typ:'Rechnung-Import',
       produkt:cur.name, altPreis:pricePerUnit(cur), neuPreis:parseFloat(newEk)/cur.g,
       quelle:'Rechnung: '+(file?.name||''), status:'bestätigt'};
+    const impacts = computeImpact(cur.id, newArt, articles, recipes);
     setArticles(prev=>prev.map(a=>a.id===cur.id?newArt:a));
     setPriceLog(prev=>[log,...prev]);
     if(upsert){upsert('articles',newArt);upsert('price_log',log);}
     setConfirmed(prev=>({...prev,[p.name]:true}));
+    if (impacts.length) setImpactModal({
+      title:`Preisauswirkung – ${cur.name}`,
+      subtitle:`${fmt(pricePerUnit(cur))} → ${fmt(parseFloat(newEk)/(cur.g||1))} / ${cur.e}`,
+      impacts
+    });
   };
 
   const confirmAll = () => {
@@ -1734,6 +1807,20 @@ Preise in Euro als Dezimalzahl. Falls Bruttopreis, vermerke es im Namen mit (bru
       if(d==null||Math.abs(d)<=3) return null;
       return {p,match,ppu};
     }).filter(Boolean);
+    if (updates.length && recipes.length) {
+      const changedIds = new Set(updates.map(u=>u.match.id));
+      const newArts = articles.map(a=>{const upd=updates.find(u=>u.match.id===a.id);return upd?{...a,ek:upd.ppu*a.g}:a;});
+      const combinedImpacts = recipes.filter(r=>!r.archiv&&(r.zutaten||[]).some(z=>changedIds.has(z.art))).map(r=>{
+        const weOld=calcWEWithArts(r,articles), weNew=calcWEWithArts(r,newArts);
+        const vkNetto=r.vkBrutto/(1+r.mwst/100);
+        return {recipe:r, weOld, weNew, dbOld:vkNetto-weOld, dbNew:vkNetto-weNew};
+      }).filter(imp=>Math.abs(imp.weNew-imp.weOld)>0.001);
+      if (combinedImpacts.length) setImpactModal({
+        title:'Preisauswirkungen – Rechnungsimport',
+        subtitle:`${updates.length} Artikel aktualisiert`,
+        impacts: combinedImpacts
+      });
+    }
     setArticles(prev=>prev.map(a=>{
       const upd = updates.find(u=>u.match.id===a.id);
       if(!upd) return a;
@@ -1909,6 +1996,7 @@ Preise in Euro als Dezimalzahl. Falls Bruttopreis, vermerke es im Namen mit (bru
           </table>
         </div>
       )}
+      {impactModal&&<ImpactModal {...impactModal} onClose={()=>setImpactModal(null)}/>}
     </div>
   );
 }
@@ -2945,6 +3033,7 @@ function App() {
   const [deliveryRate, setDeliveryRate] = useLS('simple_delivery_rate', 30);
   const [warnDays,  setWarnDays]  = useLS('simple_warn_days',  90);
   const [alertDays, setAlertDays] = useLS('simple_alert_days', 180);
+  const [appImpactModal, setAppImpactModal] = useState(null);
   const [pendingModal,       setPendingModal]       = useState(null);
   const [pendingRecipeModal, setPendingRecipeModal] = useState(null);
   const [pendingVPModal,     setPendingVPModal]     = useState(null);
@@ -3083,6 +3172,12 @@ function App() {
                 produkt:art.name,altPreis:existing.ek,neuPreis:art.ek,quelle:'Manuell',status:'ok'};
               setPriceLog(prev=>[entry,...prev]);
               upsert&&upsert('price_log', entry);
+              const impacts = computeImpact(art.id, art, articles, recipes);
+              if (impacts.length) setAppImpactModal({
+                title:`Preisauswirkung – ${art.name}`,
+                subtitle:`${fmt(existing.ek)} → ${fmt(art.ek)} (${art.ek>existing.ek?'+':''}${((art.ek-existing.ek)/existing.ek*100).toFixed(1)}%)`,
+                impacts
+              });
             }
             setArticles(prev=>existing?prev.map(a=>a.id===art.id?art:a):[...prev,art]);
             upsert&&upsert('articles', art);
@@ -3100,10 +3195,11 @@ function App() {
         {tab===4&&<VPTab vps={vps} setVPs={setVPs} articles={articles} setArticles={setArticles} upsert={upsert}
           pendingModal={pendingVPModal} onPendingClear={()=>setPendingVPModal(null)}
         />}
-        {tab===5&&<InvoiceTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} suppliers={suppliers}/>}
+        {tab===5&&<InvoiceTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} suppliers={suppliers} recipes={recipes}/>}
         {tab===6&&<PriceLogTab priceLog={priceLog} setPriceLog={setPriceLog}/>}
         {tab===7&&<VorlagenTab templates={templates} setTemplates={setTemplates} articles={articles}/>}
       </div>
+      {appImpactModal&&<ImpactModal {...appImpactModal} onClose={()=>setAppImpactModal(null)}/>}
       {showSettings&&<SettingsModal
         sbUrl={sbUrl} setSbUrl={setSbUrl}
         sbKey={sbKey} setSbKey={setSbKey}
