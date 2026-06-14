@@ -888,7 +888,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
       if (va>vb) return dir==='asc'?1:-1;
       return 0;
     });
-  }, [articles, q, showArchiv, sort]);
+  }, [articles, q, showArchiv, showFav, sort]);
 
   const doSaveArt = (art) => {
     const existing = articles.find(a=>a.id===art.id);
