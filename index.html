@@ -718,9 +718,16 @@ function ArticleModal({art, onSave, onClose, suppliers=[]}) {
 function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppliers=[], vps=[], pendingModal=null, onPendingClear}) {
   const [q, setQ] = useState('');
   const [showArchiv, setShowArchiv] = useState(false);
+  const [showFav, setShowFav] = useState(false);
   const [modal, setModal] = useState(null);
   const [sort, setSort] = useState({col:'name',dir:'asc'});
   const [archiveWarning, setArchiveWarning] = useState(null);
+
+  const toggleFav = (art) => {
+    const updated = {...art, fav: !art.fav};
+    setArticles(prev => prev.map(a => a.id === art.id ? updated : a));
+    upsert && upsert('articles', updated);
+  };
 
   useEffect(()=>{
     if (pendingModal !== null) { setModal(pendingModal); onPendingClear&&onPendingClear(); }
@@ -740,6 +747,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
   const filtered = useMemo(()=>{
     const base = articles.filter(a=>{
       if (!showArchiv && a.archiv) return false;
+      if (showFav && !a.fav) return false;
       return !q || a.name.toLowerCase().includes(q.toLowerCase()) || (a.lief||'').toLowerCase().includes(q.toLowerCase());
     });
     const {col,dir} = sort;
@@ -815,6 +823,9 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
       </div>
       <div className="toolbar">
         <input className="search" placeholder="Suche Artikel oder Lieferant…" value={q} onChange={e=>setQ(e.target.value)}/>
+        <button onClick={()=>setShowFav(s=>!s)} style={{padding:'6px 12px',borderRadius:6,border:'1px solid',fontSize:13,cursor:'pointer',fontWeight:600,transition:'all .15s',borderColor:showFav?'#f59e0b':'#e2e8f0',background:showFav?'#fffbeb':'white',color:showFav?'#d97706':'#94a3b8'}}>
+          ★ Favoriten
+        </button>
         <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
           <span className="switch"><input type="checkbox" checked={showArchiv} onChange={e=>setShowArchiv(e.target.checked)}/><span className="slider"></span></span>
           Archiv
@@ -826,6 +837,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
       <div className="card">
         <table>
           <thead><tr>
+            <th style={{width:32}}></th>
             <SortTh col="name">Name</SortTh>
             <th>Größe</th>
             <SortTh col="ek">EK Netto</SortTh>
@@ -844,6 +856,11 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
             const ppuMax = hasVariants ? Math.max(...suppliers.map(s=>s.ek/(a.g||1))) : ppu;
             return (
               <tr key={a.id} style={a.archiv?{opacity:.5}:{}}>
+                <td style={{padding:'4px 6px',textAlign:'center'}}>
+                  <button onClick={()=>toggleFav(a)} style={{background:'none',border:'none',cursor:'pointer',fontSize:16,lineHeight:1,color:a.fav?'#f59e0b':'#d1d5db',padding:2}} title={a.fav?'Aus Favoriten entfernen':'Zu Favoriten hinzufügen'}>
+                    {a.fav?'★':'☆'}
+                  </button>
+                </td>
                 <td><strong>{a.name}</strong></td>
                 <td style={{color:'#64748b'}}>{a.g} {a.e}</td>
                 <td>{fmt(a.ek)}</td>
@@ -878,7 +895,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
               </tr>
             );
           })}
-          {filtered.length===0&&<tr><td colSpan={8}><div className="empty">Keine Artikel gefunden</div></td></tr>}
+          {filtered.length===0&&<tr><td colSpan={9}><div className="empty">Keine Artikel gefunden</div></td></tr>}
           </tbody>
         </table>
       </div>
