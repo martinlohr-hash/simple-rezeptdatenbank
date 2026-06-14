@@ -546,6 +546,16 @@ function calcWEWithArts(recipe, arts) {
   }, 0);
 }
 
+function relDate(isoStr) {
+  if (!isoStr) return '';
+  const days = Math.floor((Date.now() - new Date(isoStr)) / 86400000);
+  if (days === 0) return 'heute';
+  if (days === 1) return 'gestern';
+  if (days < 7) return `vor ${days} Tagen`;
+  if (days < 30) return `vor ${Math.floor(days/7)} Wo.`;
+  return new Date(isoStr).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
+}
+
 function allSuppliers(art) {
   // Returns [{lief, ek, datum, isDefault}] — default first
   const main = {lief: art.lief||'', ek: art.ek, datum: art.datum||'', isDefault: true};
@@ -2048,7 +2058,7 @@ function VorlagenTab({templates, setTemplates, articles}) {
 
 // ── DASHBOARD TAB ─────────────────────────────────────────────────────────────
 
-function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, suppliers=[]}) {
+function DashboardTab({recipes, articles, priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, suppliers=[]}) {
   const [view, setView] = React.useState('margen');
   const [showRecipeChoice, setShowRecipeChoice] = React.useState(false);
   const [editArt, setEditArt] = React.useState(null);
@@ -2086,6 +2096,28 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, on
     .filter(a=>a.days>90)
     .sort((a,b)=>b.days-a.days);
 
+  // Letzte Aktivität
+  const lastChanges = priceLog.slice(0, 3);
+
+  // Sparhinweis: billigster Lieferanten-Wechsel
+  const savingsOpps = [];
+  articles.filter(a=>!a.archiv&&(a.varianten||[]).length>0).forEach(art=>{
+    const defPPU = art.g>0 ? art.ek/art.g : art.ek;
+    let cheapestV=null, cheapestPPU=defPPU;
+    (art.varianten||[]).forEach(v=>{const p=v.ek/(art.g||1);if(p<cheapestPPU-0.0001){cheapestPPU=p;cheapestV=v;}});
+    if(!cheapestV) return;
+    const deltaPPU=defPPU-cheapestPPU;
+    let annualSaving=0; const recipeRefs=[];
+    recipes.filter(r=>!r.archiv&&(r.zutaten||[]).some(z=>z.art===art.id)).forEach(rec=>{
+      const totalMenge=(rec.zutaten||[]).filter(z=>z.art===art.id).reduce((s,z)=>s+(z.menge||0),0);
+      recipeRefs.push({name:rec.name,anzahl:rec.anzahl||null,menge:totalMenge});
+      if(rec.anzahl) annualSaving+=deltaPPU*totalMenge*rec.anzahl*52;
+    });
+    if(recipeRefs.length) savingsOpps.push({art,cheapestV,deltaPPU,annualSaving,recipeRefs});
+  });
+  savingsOpps.sort((a,b)=>b.annualSaving-a.annualSaving);
+  const topSaving = savingsOpps[0]||null;
+
   // Szenarien
   const modifiedArts = szArtId ? articles.map(a=>a.id===szArtId?{...a,ek:a.ek*(1+szPctChange/100)}:a) : articles;
   const activeRecs = recipes.filter(r=>!r.archiv);
@@ -2097,7 +2129,10 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, on
     const weNew = calcWEWithArts(r, modifiedArts);
     const wePctOld = vkNetto>0 ? weOld/vkNetto*100 : 0;
     const wePctNew = vkNetto>0 ? weNew/vkNetto*100 : 0;
-    return {r, weOld, weNew, wePctOld, wePctNew, dbOld:vkNetto-weOld, dbNew:vkNetto-weNew};
+    const dbOld=vkNetto-weOld, dbNew=vkNetto-weNew, dDB=dbNew-dbOld;
+    return {r, weOld, weNew, wePctOld, wePctNew, dbOld, dbNew, dDB,
+      annualDelta: r.anzahl ? dDB*r.anzahl*52 : null,
+      per100Delta: dDB*100};
   });
   const szRecipe = recipes.find(r=>r.id===szRecipeId);
   const szRecipeWE = szRecipe ? calcWEWithArts(szRecipe, articles) : 0;
@@ -2122,8 +2157,57 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, on
       <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:2}}>
         <h2 style={{fontSize:22,fontWeight:700,letterSpacing:'-.4px'}}>Rezept-Cockpit</h2>
       </div>
-      <div style={{fontSize:12,color:'#94a3b8',marginBottom:18}}>
+      <div style={{fontSize:12,color:'#94a3b8',marginBottom:14}}>
         Stand: {heute} · {articles.filter(a=>!a.archiv).length} aktive Artikel
+      </div>
+
+      {/* ── Welcome / Activity ── */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:24}}>
+        <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:8,padding:'14px 16px'}}>
+          <div style={{fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Letzte Aktivität</div>
+          {lastChanges.length===0 ? (
+            <div style={{fontSize:13,color:'#94a3b8',padding:'8px 0'}}>Noch keine Änderungen aufgezeichnet</div>
+          ) : lastChanges.map((c,i)=>{
+            const isUp = c.neuPreis > c.altPreis;
+            const pctChg = c.altPreis>0 ? (c.neuPreis-c.altPreis)/c.altPreis*100 : 0;
+            return (
+              <div key={i} style={{display:'flex',alignItems:'center',gap:8,paddingBottom:i<lastChanges.length-1?8:0,marginBottom:i<lastChanges.length-1?8:0,borderBottom:i<lastChanges.length-1?'1px solid #f1f5f9':'none'}}>
+                <span style={{fontSize:15,color:isUp?'#dc2626':'#16a34a',flexShrink:0,lineHeight:1}}>{isUp?'↑':'↓'}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.produkt}</div>
+                  <div style={{fontSize:11,color:'#94a3b8'}}>
+                    {fmt(c.altPreis)} → {fmt(c.neuPreis)}
+                    <span style={{color:isUp?'#dc2626':'#16a34a',fontWeight:700,marginLeft:4}}>{isUp?'+':''}{pctChg.toFixed(1)}%</span>
+                  </div>
+                </div>
+                <div style={{fontSize:11,color:'#94a3b8',flexShrink:0}}>{relDate(c.datum)}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{background:topSaving?'#f0fdf4':'#f8fafc',border:`1px solid ${topSaving?'#bbf7d0':'#e2e8f0'}`,borderRadius:8,padding:'14px 16px'}}>
+          <div style={{fontSize:11,fontWeight:600,color:topSaving?'#166534':'#64748b',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>💡 Sparhinweis</div>
+          {topSaving ? (()=>{
+            const best = topSaving.recipeRefs.reduce((mx,r)=>r.menge>mx.menge?r:mx, topSaving.recipeRefs[0]);
+            const savingVal = topSaving.annualSaving>0
+              ? `${fmt(topSaving.annualSaving)} / Jahr`
+              : `${fmt(topSaving.deltaPPU*best.menge*100)} bei 100 Stück`;
+            const recNames = topSaving.recipeRefs.map(r=>r.name).join(', ');
+            const noCount = topSaving.recipeRefs.every(r=>!r.anzahl);
+            return (
+              <div>
+                <div style={{fontSize:13,lineHeight:1.6}}>
+                  Wenn Du bei <strong>{topSaving.art.name}</strong> den Lieferanten auf <strong>{topSaving.cheapestV.lief}</strong> wechselst, spart das{' '}
+                  <span style={{color:'#16a34a',fontWeight:700}}>{savingVal}</span>
+                </div>
+                <div style={{marginTop:8,fontSize:11,color:'#64748b'}}>{recNames}{noCount&&' (keine Stückzahlen hinterlegt → Hochrechnung auf 100 Stk.)'}</div>
+              </div>
+            );
+          })() : (
+            <div style={{fontSize:13,color:'#94a3b8',lineHeight:1.6,padding:'8px 0'}}>Füge alternative Lieferanten zu deinen Artikeln hinzu um Einsparpotenziale zu entdecken</div>
+          )}
+        </div>
       </div>
 
       {/* ── Aktionskarten ── */}
@@ -2389,13 +2473,13 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, on
                     <th>WE% Szenario</th>
                     <th>Δ WE%</th>
                     <th>DB aktuell</th>
-                    <th>DB Szenario</th>
                     <th>Δ DB</th>
+                    <th>Δ / Jahr</th>
+                    <th>Δ / 100 Stk</th>
                   </tr></thead>
                   <tbody>
-                    {szResults.map(({r,wePctOld,wePctNew,dbOld,dbNew})=>{
+                    {szResults.map(({r,wePctOld,wePctNew,dbOld,dDB,annualDelta,per100Delta})=>{
                       const dWE = wePctNew-wePctOld;
-                      const dDB = dbNew-dbOld;
                       return (
                         <tr key={r.id}>
                           <td><strong>{r.name}</strong></td>
@@ -2403,8 +2487,13 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, on
                           <td><span className={`ampel ${ampelWE(wePctNew)}`}><span className="dot"/>{fmtPct(wePctNew)}</span></td>
                           <td style={{fontFamily:'monospace',fontWeight:700,color:dWE>0?'#dc2626':'#16a34a'}}>{dWE>0?'+':''}{fmtPct(dWE)}</td>
                           <td style={{fontFamily:'monospace'}}>{fmt(dbOld)}</td>
-                          <td style={{fontFamily:'monospace'}}>{fmt(dbNew)}</td>
                           <td style={{fontFamily:'monospace',fontWeight:700,color:dDB<0?'#dc2626':'#16a34a'}}>{dDB>=0?'+':''}{fmt(dDB)}</td>
+                          <td style={{fontFamily:'monospace',fontWeight:700,color:annualDelta!=null?(annualDelta<0?'#dc2626':annualDelta>0?'#16a34a':'#64748b'):'#94a3b8'}}>
+                            {annualDelta!=null ? <>{annualDelta>=0?'+':''}{fmt(annualDelta)}</> : <span style={{color:'#94a3b8',fontWeight:400}}>—</span>}
+                          </td>
+                          <td style={{fontFamily:'monospace',fontWeight:700,color:per100Delta<0?'#dc2626':per100Delta>0?'#16a34a':'#64748b'}}>
+                            {per100Delta>=0?'+':''}{fmt(per100Delta)}
+                          </td>
                         </tr>
                       );
                     })}
@@ -2621,7 +2710,7 @@ function App() {
         ))}
       </div>
       <div className="content">
-        {tab===0&&<DashboardTab recipes={recipes} articles={articles} suppliers={suppliers}
+        {tab===0&&<DashboardTab recipes={recipes} articles={articles} suppliers={suppliers} priceLog={priceLog}
           onNewArticle={()=>{setPendingModal({name:'',g:1,e:'KG',ek:0,lief:'',datum:'',archiv:false});setTab(1);}}
           onNewRecipe={()=>{setPendingRecipeModal({});setTab(3);}}
           onNewVP={()=>{setPendingVPModal({});setTab(4);}}
