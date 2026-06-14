@@ -557,6 +557,16 @@ function relDate(isoStr) {
   return new Date(isoStr).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
 }
 
+function priceAge(datum, warnDays, alertDays, checkTage) {
+  if (!datum) return null;
+  const days = Math.floor((Date.now() - new Date(datum)) / 86400000);
+  const w = checkTage || warnDays;
+  const r = checkTage ? checkTage * 2 : alertDays;
+  if (days > r) return 'red';
+  if (days > w) return 'yellow';
+  return 'green';
+}
+
 function allSuppliers(art) {
   // Returns [{lief, ek, datum, isDefault}] — default first
   const main = {lief: art.lief||'', ek: art.ek, datum: art.datum||'', isDefault: true};
@@ -661,6 +671,18 @@ function ArticleModal({art, onSave, onClose, suppliers=[]}) {
               </select>
             </div>
           </div>
+          <div className="form-row"><label>Preis prüfen alle</label>
+            <select value={form.checkTage||''} onChange={e=>f('checkTage', e.target.value ? parseInt(e.target.value) : null)}>
+              <option value="">Standard (globale Einstellung)</option>
+              <option value="1">Täglich (Tagespreis)</option>
+              <option value="3">3 Tage</option>
+              <option value="7">7 Tage (wöchentlich)</option>
+              <option value="14">14 Tage</option>
+              <option value="30">30 Tage (monatlich)</option>
+              <option value="90">90 Tage (quartalsweise)</option>
+              <option value="180">180 Tage (halbjährlich)</option>
+            </select>
+          </div>
 
           {/* ── Lieferanten-Preise ── */}
           <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,padding:12,marginBottom:14}}>
@@ -715,7 +737,7 @@ function ArticleModal({art, onSave, onClose, suppliers=[]}) {
   );
 }
 
-function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppliers=[], vps=[], pendingModal=null, onPendingClear}) {
+function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppliers=[], vps=[], pendingModal=null, onPendingClear, warnDays=90, alertDays=180}) {
   const [q, setQ] = useState('');
   const [showArchiv, setShowArchiv] = useState(false);
   const [showFav, setShowFav] = useState(false);
@@ -791,13 +813,6 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
     doSaveArt(art);
   };
 
-  const priceAge = (datum) => {
-    if (!datum) return null;
-    const days = Math.floor((Date.now() - new Date(datum)) / 86400000);
-    if (days > 180) return 'red';
-    if (days > 90) return 'yellow';
-    return 'green';
-  };
 
   return (
     <div className="tab-content">
@@ -815,9 +830,9 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
           <div className="stat-value">{new Set(articles.filter(a=>!a.archiv&&a.lief).map(a=>a.lief.toUpperCase())).size}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Preis > 6 Mon. alt</div>
+          <div className="stat-label">Preis veraltet (rot)</div>
           <div className="stat-value" style={{color:'#dc2626'}}>
-            {articles.filter(a=>!a.archiv&&priceAge(a.datum)==='red').length}
+            {articles.filter(a=>!a.archiv&&priceAge(a.datum,warnDays,alertDays,a.checkTage)==='red').length}
           </div>
         </div>
       </div>
@@ -849,7 +864,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
           <tbody>
           {filtered.map(a=>{
             const ppu = pricePerUnit(a);
-            const age = priceAge(a.datum);
+            const age = priceAge(a.datum, warnDays, alertDays, a.checkTage);
             const suppliers = allSuppliers(a);
             const hasVariants = (a.varianten||[]).length > 0;
             const ppuMin = hasVariants ? Math.min(...suppliers.map(s=>s.ek/(a.g||1))) : ppu;
@@ -1847,7 +1862,7 @@ function PriceLogTab({priceLog, setPriceLog}) {
 
 // ── SETTINGS MODAL ───────────────────────────────────────────────────────────
 
-function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onSeedMissing, isConnected, syncError, deliveryRate, setDeliveryRate}) {
+function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onSeedMissing, isConnected, syncError, deliveryRate, setDeliveryRate, warnDays, setWarnDays, alertDays, setAlertDays}) {
   const [url, setUrl] = useState(sbUrl);
   const [key, setKey] = useState(sbKey);
   const [showKey, setShowKey] = useState(false);
@@ -1915,6 +1930,30 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
               <span style={{fontSize:13,color:'#64748b'}}>%</span>
             </div>
             <div style={{fontSize:11,color:'#94a3b8'}}>Uber kassiert X% vom Brutto-VK. Delivery-VK wird auf Rezeptkarten berechnet damit DB Netto gleichbleibt.</div>
+          </div>
+          <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'12px 14px',marginTop:14}}>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Preis-Aktualität</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:8}}>
+              <div>
+                <div style={{fontSize:11,fontWeight:600,color:'#d97706',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:4}}>Warnung (gelb) nach</div>
+                <div style={{display:'flex',alignItems:'center',gap:6}}>
+                  <input type="number" value={warnDays||90} min={1} step={1}
+                    onChange={e=>setWarnDays(parseInt(e.target.value)||90)}
+                    style={{width:70,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13}}/>
+                  <span style={{fontSize:13,color:'#64748b'}}>Tagen</span>
+                </div>
+              </div>
+              <div>
+                <div style={{fontSize:11,fontWeight:600,color:'#dc2626',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:4}}>Alarm (rot) nach</div>
+                <div style={{display:'flex',alignItems:'center',gap:6}}>
+                  <input type="number" value={alertDays||180} min={1} step={1}
+                    onChange={e=>setAlertDays(parseInt(e.target.value)||180)}
+                    style={{width:70,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13}}/>
+                  <span style={{fontSize:13,color:'#64748b'}}>Tagen</span>
+                </div>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:'#94a3b8'}}>Pro Artikel überschreibbar (z.B. Tagespreis = 1 Tag).</div>
           </div>
           {isConnected&&(
             <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'12px 14px',marginTop:14}}>
@@ -2191,7 +2230,7 @@ function VorlagenTab({templates, setTemplates, articles}) {
 
 // ── DASHBOARD TAB ─────────────────────────────────────────────────────────────
 
-function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, suppliers=[]}) {
+function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, suppliers=[], warnDays=90, alertDays=180}) {
   const [view, setView] = React.useState('margen');
   const [showRecipeChoice, setShowRecipeChoice] = React.useState(false);
   const [editArt, setEditArt] = React.useState(null);
@@ -2205,7 +2244,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const now = Date.now();
 
   const reviewArt = useMemo(()=>{
-    const stale = articles.filter(a=>!a.archiv&&a.datum&&Math.floor((now-new Date(a.datum))/86400000)>90);
+    const stale = articles.filter(a=>!a.archiv&&a.datum&&priceAge(a.datum,warnDays,alertDays,a.checkTage)!=='green');
     if (!stale.length) return null;
     return stale[Math.floor(Math.random()*stale.length)];
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2226,9 +2265,8 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const totalDB = recipes.filter(r=>r.anzahl).reduce((s,r)=>s+r.dbNetto*(r.anzahl||0),0);
 
   const staleArts = articles
-    .filter(a=>!a.archiv&&a.datum)
+    .filter(a=>!a.archiv&&a.datum&&priceAge(a.datum,warnDays,alertDays,a.checkTage)!=='green')
     .map(a=>({...a, days:Math.floor((now-new Date(a.datum))/86400000)}))
-    .filter(a=>a.days>90)
     .sort((a,b)=>b.days-a.days);
 
   // Letzte Aktivität
@@ -2407,7 +2445,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
           <div style={{background:'#f0fdf4',border:'2px solid #bbf7d0',borderRadius:12,padding:'22px 20px'}}>
             <div style={{fontSize:28,marginBottom:10}}>✓</div>
             <div style={{fontSize:16,fontWeight:700,color:'#166534',marginBottom:4}}>Preise aktuell</div>
-            <div style={{fontSize:12,color:'#16a34a'}}>Alle Artikel in den letzten 90 Tagen geprüft</div>
+            <div style={{fontSize:12,color:'#16a34a'}}>Alle Artikel innerhalb ihrer Prüfintervalle aktuell</div>
           </div>
         )}
       </div>
@@ -2551,20 +2589,20 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
       {view==='preisalarm'&&(<>
         <div className="stats-row" style={{marginBottom:20}}>
           <div className="stat-card">
-            <div className="stat-label">Veraltet (90–180d)</div>
-            <div className="stat-value" style={{color:'#d97706'}}>{staleArts.filter(a=>a.days<=180).length}</div>
+            <div className="stat-label">Warnung (gelb)</div>
+            <div className="stat-value" style={{color:'#d97706'}}>{articles.filter(a=>!a.archiv&&priceAge(a.datum,warnDays,alertDays,a.checkTage)==='yellow').length}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Kritisch ({'>'} 180d)</div>
-            <div className="stat-value" style={{color:'#dc2626'}}>{staleArts.filter(a=>a.days>180).length}</div>
+            <div className="stat-label">Kritisch (rot)</div>
+            <div className="stat-value" style={{color:'#dc2626'}}>{articles.filter(a=>!a.archiv&&priceAge(a.datum,warnDays,alertDays,a.checkTage)==='red').length}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Ohne Preisdatum</div>
             <div className="stat-value">{articles.filter(a=>!a.archiv&&!a.datum).length}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Aktuelle Preise ({'<'} 90d)</div>
-            <div className="stat-value" style={{color:'#16a34a'}}>{articles.filter(a=>!a.archiv&&a.datum&&Math.floor((now-new Date(a.datum))/86400000)<=90).length}</div>
+            <div className="stat-label">Preise aktuell</div>
+            <div className="stat-value" style={{color:'#16a34a'}}>{articles.filter(a=>!a.archiv&&priceAge(a.datum,warnDays,alertDays,a.checkTage)==='green').length}</div>
           </div>
         </div>
         <div className="card">
@@ -2580,7 +2618,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
                   <td>{new Date(a.datum).toLocaleDateString('de-DE')}</td>
                   <td>{fmt(a.ek)}</td>
                   <td style={{fontFamily:'monospace'}}>{a.days}d</td>
-                  <td><span className={`ampel ${a.days>180?'red':'yellow'}`}><span className="dot"/>{a.days>180?'Kritisch':'Veraltet'}</span></td>
+                  <td><span className={`ampel ${priceAge(a.datum,warnDays,alertDays,a.checkTage)==='red'?'red':'yellow'}`}><span className="dot"/>{priceAge(a.datum,warnDays,alertDays,a.checkTage)==='red'?'Kritisch':'Veraltet'}</span></td>
                   <td><button className="btn btn-primary btn-xs" onClick={()=>setEditArt({...a})}>Preis aktualisieren</button></td>
                 </tr>
               ))}
@@ -2787,6 +2825,8 @@ function App() {
   const [suppliers,  setSuppliers]  = useLS('simple_suppliers',  SUPPLIERS_SEED);
   const [templates,  setTemplates]  = useLS('simple_templates',  TEMPLATES_SEED);
   const [deliveryRate, setDeliveryRate] = useLS('simple_delivery_rate', 30);
+  const [warnDays,  setWarnDays]  = useLS('simple_warn_days',  90);
+  const [alertDays, setAlertDays] = useLS('simple_alert_days', 180);
   const [pendingModal,       setPendingModal]       = useState(null);
   const [pendingRecipeModal, setPendingRecipeModal] = useState(null);
   const [pendingVPModal,     setPendingVPModal]     = useState(null);
@@ -2874,7 +2914,7 @@ function App() {
     : {c:'#16a34a', label:'Supabase ✓'};
 
   const warnCount  = recipes.filter(r=>r.wePct>38).length;
-  const staleCount = articles.filter(a=>!a.archiv&&a.datum&&Math.floor((Date.now()-new Date(a.datum))/86400000)>180).length;
+  const staleCount = articles.filter(a=>!a.archiv&&priceAge(a.datum,warnDays,alertDays,a.checkTage)==='red').length;
 
   if (loading && client) return (
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:16,background:'#f3f4f6'}}>
@@ -2913,7 +2953,7 @@ function App() {
         ))}
       </div>
       <div className="content">
-        {tab===0&&<DashboardTab recipes={recipes} articles={articles} vps={vps} suppliers={suppliers} priceLog={priceLog}
+        {tab===0&&<DashboardTab recipes={recipes} articles={articles} vps={vps} suppliers={suppliers} priceLog={priceLog} warnDays={warnDays} alertDays={alertDays}
           onNewArticle={()=>{setPendingModal({name:'',g:1,e:'KG',ek:0,lief:'',datum:'',archiv:false});setTab(1);}}
           onNewRecipe={()=>{setPendingRecipeModal({});setTab(3);}}
           onNewVP={()=>{setPendingVPModal({});setTab(4);}}
@@ -2931,7 +2971,7 @@ function App() {
           }}
         />}
         {tab===1&&<ArticleTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} suppliers={suppliers} vps={vps}
-          pendingModal={pendingModal} onPendingClear={()=>setPendingModal(null)}
+          pendingModal={pendingModal} onPendingClear={()=>setPendingModal(null)} warnDays={warnDays} alertDays={alertDays}
         />}
         {tab===2&&<SupplierTab suppliers={suppliers} setSuppliers={setSuppliers} upsert={upsert}/>}
         {tab===3&&<RecipeTab recipes={recipes} setRecipes={setRecipes} upsert={upsert} del={del} articles={articles} templates={templates} deliveryRate={deliveryRate}
@@ -2950,6 +2990,7 @@ function App() {
         isConnected={!!client}
         syncError={syncStatus==='error'?syncError:''}
         deliveryRate={deliveryRate} setDeliveryRate={setDeliveryRate}
+        warnDays={warnDays} setWarnDays={setWarnDays} alertDays={alertDays} setAlertDays={setAlertDays}
         onClose={()=>setShowSettings(false)}
         onSeedDb={async()=>{
           await Promise.all([
