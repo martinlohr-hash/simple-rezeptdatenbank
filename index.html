@@ -2033,9 +2033,10 @@ function VorlagenTab({templates, setTemplates, articles}) {
 
 // ── DASHBOARD TAB ─────────────────────────────────────────────────────────────
 
-function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, onEditArticle}) {
+function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, suppliers=[]}) {
   const [view, setView] = React.useState('margen');
   const [showRecipeChoice, setShowRecipeChoice] = React.useState(false);
+  const [editArt, setEditArt] = React.useState(null);
   const SOLL = 22;
   const now = Date.now();
 
@@ -2291,7 +2292,7 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, on
         <div className="card">
           <table>
             <thead><tr>
-              <th>Artikel</th><th>Lieferant</th><th>Letzter Preis</th><th>EK</th><th>Alter</th><th>Status</th>
+              <th>Artikel</th><th>Lieferant</th><th>Letzter Preis</th><th>EK</th><th>Alter</th><th>Status</th><th></th>
             </tr></thead>
             <tbody>
               {staleArts.map(a=>(
@@ -2302,12 +2303,17 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, on
                   <td>{fmt(a.ek)}</td>
                   <td style={{fontFamily:'monospace'}}>{a.days}d</td>
                   <td><span className={`ampel ${a.days>180?'red':'yellow'}`}><span className="dot"/>{a.days>180?'Kritisch':'Veraltet'}</span></td>
+                  <td><button className="btn btn-primary btn-xs" onClick={()=>setEditArt({...a})}>Preis aktualisieren</button></td>
                 </tr>
               ))}
-              {!staleArts.length&&<tr><td colSpan={6} className="empty">Alle Preise aktuell</td></tr>}
+              {!staleArts.length&&<tr><td colSpan={7} className="empty">Alle Preise aktuell</td></tr>}
             </tbody>
           </table>
         </div>
+        {editArt&&<ArticleModal art={editArt} suppliers={suppliers}
+          onSave={art=>{onSaveArticle&&onSaveArticle(art);setEditArt(null);}}
+          onClose={()=>setEditArt(null)}
+        />}
       </>)}
     </div>
   );
@@ -2459,11 +2465,22 @@ function App() {
         ))}
       </div>
       <div className="content">
-        {tab===0&&<DashboardTab recipes={recipes} articles={articles}
+        {tab===0&&<DashboardTab recipes={recipes} articles={articles} suppliers={suppliers}
           onNewArticle={()=>{setPendingModal({name:'',g:1,e:'KG',ek:0,lief:'',datum:'',archiv:false});setTab(1);}}
           onNewRecipe={()=>{setPendingRecipeModal({});setTab(3);}}
           onNewVP={()=>{setPendingVPModal({});setTab(4);}}
           onEditArticle={art=>{setPendingModal(art);setTab(1);}}
+          onSaveArticle={art=>{
+            const existing = articles.find(a=>a.id===art.id);
+            if (existing && existing.ek !== art.ek) {
+              const entry = {id:'L'+uid(),datum:new Date().toISOString(),typ:'Preisänderung',
+                produkt:art.name,altPreis:existing.ek,neuPreis:art.ek,quelle:'Manuell',status:'ok'};
+              setPriceLog(prev=>[entry,...prev]);
+              upsert&&upsert('price_log', entry);
+            }
+            setArticles(prev=>existing?prev.map(a=>a.id===art.id?art:a):[...prev,art]);
+            upsert&&upsert('articles', art);
+          }}
         />}
         {tab===1&&<ArticleTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} suppliers={suppliers} vps={vps}
           pendingModal={pendingModal} onPendingClear={()=>setPendingModal(null)}
