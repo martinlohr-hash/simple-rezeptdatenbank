@@ -1417,7 +1417,7 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
                   const a = ampelWE(r.wePct);
                   return (
                     <tr key={r.id} style={r.archiv?{opacity:.45}:{}}>
-                      <td><strong>{r.name}</strong></td>
+                      <td><strong style={{cursor:'pointer',textDecoration:'underline',textDecorationColor:'#e2e8f0'}} onClick={()=>setDetail(r)}>{r.name}</strong></td>
                       <td>{fmt(r.vkBrutto)}</td>
                       <td>{r.vkUber ? fmt(r.vkUber) : <span style={{color:'#94a3b8'}}>—</span>}</td>
                       <td>{fmt(r.weEuro)}</td>
@@ -1430,7 +1430,6 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
                         </span>
                       </td>
                       <td style={{whiteSpace:'nowrap'}}>
-                        <button className="btn btn-ghost btn-xs" onClick={()=>setDetail(r)}>Details</button>
                         <button className="btn btn-ghost btn-xs" onClick={()=>setModal(r)}>✎</button>
                       </td>
                     </tr>
