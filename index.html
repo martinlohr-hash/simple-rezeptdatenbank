@@ -2435,11 +2435,11 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   },[]);
 
   // Exclude 19%-MwSt recipes (Sonderfälle like "Big J Uber") from WE-Durchschnitt
-  const activeRecs = recipes.filter(r => !r.archiv && r.mwst !== 19);
-  const mainRecs = showArchivMargen ? recipes.filter(r => r.mwst !== 19) : activeRecs;
+  const activeSWRecs = recipes.filter(r => !r.archiv && r.mwst !== 19);
+  const mainRecs = showArchivMargen ? recipes.filter(r => r.mwst !== 19) : activeSWRecs;
   const sortedMargen = [...mainRecs].sort((a,b) => b.wePct - a.wePct);
-  const avgWe = activeRecs.length ? activeRecs.reduce((s,r)=>s+r.wePct,0)/activeRecs.length : 0;
-  const ueberSollCount = activeRecs.filter(r=>r.wePct>SOLL).length;
+  const avgWe = activeSWRecs.length ? activeSWRecs.reduce((s,r)=>s+r.wePct,0)/activeSWRecs.length : 0;
+  const ueberSollCount = activeSWRecs.filter(r=>r.wePct>SOLL).length;
   const bestDBRec = [...recipes].sort((a,b)=>b.dbNetto-a.dbNetto)[0];
   const MAX_WE = 50;
   const weColor = pct => pct<=SOLL ? '#16a34a' : pct<=30 ? '#d97706' : '#dc2626';
@@ -2710,7 +2710,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
           </div>
           <div className="stat-card">
             <div className="stat-label">Über {SOLL} % Soll</div>
-            <div className="stat-value" style={{color:ueberSollCount>0?'#dc2626':'#16a34a'}}>{ueberSollCount} / {activeRecs.length}</div>
+            <div className="stat-value" style={{color:ueberSollCount>0?'#dc2626':'#16a34a'}}>{ueberSollCount} / {activeSWRecs.length}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Bester DB</div>
