@@ -2058,7 +2058,7 @@ function VorlagenTab({templates, setTemplates, articles}) {
 
 // ── DASHBOARD TAB ─────────────────────────────────────────────────────────────
 
-function DashboardTab({recipes, articles, priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, suppliers=[]}) {
+function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, suppliers=[]}) {
   const [view, setView] = React.useState('margen');
   const [showRecipeChoice, setShowRecipeChoice] = React.useState(false);
   const [editArt, setEditArt] = React.useState(null);
@@ -2099,7 +2099,7 @@ function DashboardTab({recipes, articles, priceLog=[], onNewArticle, onNewRecipe
   // Letzte Aktivität
   const lastChanges = priceLog.slice(0, 3);
 
-  // Sparhinweis: billigster Lieferanten-Wechsel
+  // Sparhinweis: billigster Lieferanten-Wechsel (Rezepte + VPs)
   const savingsOpps = [];
   articles.filter(a=>!a.archiv&&(a.varianten||[]).length>0).forEach(art=>{
     const defPPU = art.g>0 ? art.ek/art.g : art.ek;
@@ -2110,8 +2110,12 @@ function DashboardTab({recipes, articles, priceLog=[], onNewArticle, onNewRecipe
     let annualSaving=0; const recipeRefs=[];
     recipes.filter(r=>!r.archiv&&(r.zutaten||[]).some(z=>z.art===art.id)).forEach(rec=>{
       const totalMenge=(rec.zutaten||[]).filter(z=>z.art===art.id).reduce((s,z)=>s+(z.menge||0),0);
-      recipeRefs.push({name:rec.name,anzahl:rec.anzahl||null,menge:totalMenge});
+      recipeRefs.push({name:rec.name,anzahl:rec.anzahl||null,menge:totalMenge,isVP:false});
       if(rec.anzahl) annualSaving+=deltaPPU*totalMenge*rec.anzahl*52;
+    });
+    vps.filter(vp=>!vp.archiv&&(vp.zutaten||[]).some(z=>z.art===art.id)).forEach(vp=>{
+      const totalMenge=(vp.zutaten||[]).filter(z=>z.art===art.id).reduce((s,z)=>s+(z.menge||0),0);
+      recipeRefs.push({name:vp.name,anzahl:null,menge:totalMenge,isVP:true,outputKg:vp.outputKg||1});
     });
     if(recipeRefs.length) savingsOpps.push({art,cheapestV,deltaPPU,annualSaving,recipeRefs});
   });
@@ -2133,6 +2137,13 @@ function DashboardTab({recipes, articles, priceLog=[], onNewArticle, onNewRecipe
     return {r, weOld, weNew, wePctOld, wePctNew, dbOld, dbNew, dDB,
       annualDelta: r.anzahl ? dDB*r.anzahl*52 : null,
       per100Delta: dDB*100};
+  });
+  const affectedVPs = szArtId ? vps.filter(vp=>!vp.archiv&&(vp.zutaten||[]).some(z=>z.art===szArtId)) : [];
+  const szVPResults = affectedVPs.map(vp=>{
+    const kostenOld = calcWEWithArts({zutaten:vp.zutaten,weEuro:vp.kosten}, articles);
+    const kostenNew = calcWEWithArts({zutaten:vp.zutaten,weEuro:vp.kosten}, modifiedArts);
+    const dKosten = kostenNew-kostenOld;
+    return {vp, kostenOld, kostenNew, dKosten, dPreisKg:vp.outputKg>0?dKosten/vp.outputKg:0};
   });
   const szRecipe = recipes.find(r=>r.id===szRecipeId);
   const szRecipeWE = szRecipe ? calcWEWithArts(szRecipe, articles) : 0;
@@ -2189,19 +2200,26 @@ function DashboardTab({recipes, articles, priceLog=[], onNewArticle, onNewRecipe
         <div style={{background:topSaving?'#f0fdf4':'#f8fafc',border:`1px solid ${topSaving?'#bbf7d0':'#e2e8f0'}`,borderRadius:8,padding:'14px 16px'}}>
           <div style={{fontSize:11,fontWeight:600,color:topSaving?'#166534':'#64748b',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>💡 Sparhinweis</div>
           {topSaving ? (()=>{
-            const best = topSaving.recipeRefs.reduce((mx,r)=>r.menge>mx.menge?r:mx, topSaving.recipeRefs[0]);
-            const savingVal = topSaving.annualSaving>0
-              ? `${fmt(topSaving.annualSaving)} / Jahr`
-              : `${fmt(topSaving.deltaPPU*best.menge*100)} bei 100 Stück`;
-            const recNames = topSaving.recipeRefs.map(r=>r.name).join(', ');
-            const noCount = topSaving.recipeRefs.every(r=>!r.anzahl);
+            const vpRefs = topSaving.recipeRefs.filter(r=>r.isVP);
+            const recRefs = topSaving.recipeRefs.filter(r=>!r.isVP);
+            const bestRec = recRefs.length ? recRefs.reduce((mx,r)=>r.menge>mx.menge?r:mx,recRefs[0]) : null;
+            const bestVP = vpRefs.length ? vpRefs.reduce((mx,r)=>r.menge>mx.menge?r:mx,vpRefs[0]) : null;
+            let savingVal;
+            if (topSaving.annualSaving>0) {
+              savingVal = `${fmt(topSaving.annualSaving)} / Jahr`;
+            } else if (bestRec) {
+              savingVal = `${fmt(topSaving.deltaPPU*bestRec.menge*100)} bei 100 Stück`;
+            } else if (bestVP) {
+              savingVal = `${fmt(topSaving.deltaPPU*bestVP.menge)} pro Charge ${bestVP.name}`;
+            } else { savingVal = '—'; }
+            const allNames = topSaving.recipeRefs.map(r=>r.name+(r.isVP?' (VP)':'')).join(', ');
             return (
               <div>
                 <div style={{fontSize:13,lineHeight:1.6}}>
                   Wenn Du bei <strong>{topSaving.art.name}</strong> den Lieferanten auf <strong>{topSaving.cheapestV.lief}</strong> wechselst, spart das{' '}
                   <span style={{color:'#16a34a',fontWeight:700}}>{savingVal}</span>
                 </div>
-                <div style={{marginTop:8,fontSize:11,color:'#64748b'}}>{recNames}{noCount&&' (keine Stückzahlen hinterlegt → Hochrechnung auf 100 Stk.)'}</div>
+                <div style={{marginTop:8,fontSize:11,color:'#64748b'}}>{allNames}</div>
               </div>
             );
           })() : (
@@ -2459,13 +2477,16 @@ function DashboardTab({recipes, articles, priceLog=[], onNewArticle, onNewRecipe
             </div>
             {szArtId&&(()=>{
               const art = articles.find(a=>a.id===szArtId);
+              const total = affectedRecs.length+szVPResults.length;
               return <div style={{fontSize:12,color:'#64748b',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'8px 12px',marginBottom:14}}>
                 <strong>{art.name}</strong>: {fmt(art.ek)} → {fmt(art.ek*(1+szPctChange/100))}
-                {' '}(je {art.g} {art.e}){' '}·{' '}<strong>{affectedRecs.length}</strong> betroffene Rezept{affectedRecs.length!==1?'e':''}
+                {' '}(je {art.g} {art.e}){' '}·{' '}
+                <strong>{total}</strong> betroffene{affectedRecs.length>0?` Rezept${affectedRecs.length!==1?'e':''}`:''}{szVPResults.length>0&&affectedRecs.length>0?' + ':''}
+                {szVPResults.length>0?<strong>{szVPResults.length} VP{szVPResults.length!==1?'s':''}</strong>:null}
               </div>;
             })()}
             {szArtId && affectedRecs.length>0 && (
-              <div className="card">
+              <div className="card" style={{marginBottom:szVPResults.length>0?14:0}}>
                 <table>
                   <thead><tr>
                     <th>Rezept</th>
@@ -2501,9 +2522,38 @@ function DashboardTab({recipes, articles, priceLog=[], onNewArticle, onNewRecipe
                 </table>
               </div>
             )}
-            {szArtId && affectedRecs.length===0 && (
+            {szArtId && szVPResults.length>0 && (
+              <div>
+                {affectedRecs.length>0&&<div style={{fontSize:11,fontWeight:600,color:'#64748b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:8}}>Betroffene Vorprodukte</div>}
+                <div className="card">
+                  <table>
+                    <thead><tr>
+                      <th>Vorprodukt</th>
+                      <th>Kosten / Charge aktuell</th>
+                      <th>Kosten / Charge Szenario</th>
+                      <th>Δ Kosten</th>
+                      <th>Output</th>
+                      <th>Δ / kg Output</th>
+                    </tr></thead>
+                    <tbody>
+                      {szVPResults.map(({vp,kostenOld,kostenNew,dKosten,dPreisKg})=>(
+                        <tr key={vp.id}>
+                          <td><strong>{vp.name}</strong></td>
+                          <td style={{fontFamily:'monospace'}}>{fmt(kostenOld)}</td>
+                          <td style={{fontFamily:'monospace'}}>{fmt(kostenNew)}</td>
+                          <td style={{fontFamily:'monospace',fontWeight:700,color:dKosten>0?'#dc2626':'#16a34a'}}>{dKosten>=0?'+':''}{fmt(dKosten)}</td>
+                          <td style={{color:'#64748b'}}>{vp.outputKg} kg</td>
+                          <td style={{fontFamily:'monospace',fontWeight:700,color:dPreisKg>0?'#dc2626':'#16a34a'}}>{dPreisKg>=0?'+':''}{fmt(dPreisKg)}/kg</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {szArtId && affectedRecs.length===0 && szVPResults.length===0 && (
               <div className="empty" style={{background:'white',border:'1px solid #e2e8f0',borderRadius:8}}>
-                Dieser Artikel wird in keinem aktiven Rezept mit Zutaten verwendet
+                Dieser Artikel wird in keinem aktiven Rezept oder Vorprodukt mit Zutaten verwendet
               </div>
             )}
             {!szArtId && (
@@ -2710,7 +2760,7 @@ function App() {
         ))}
       </div>
       <div className="content">
-        {tab===0&&<DashboardTab recipes={recipes} articles={articles} suppliers={suppliers} priceLog={priceLog}
+        {tab===0&&<DashboardTab recipes={recipes} articles={articles} vps={vps} suppliers={suppliers} priceLog={priceLog}
           onNewArticle={()=>{setPendingModal({name:'',g:1,e:'KG',ek:0,lief:'',datum:'',archiv:false});setTab(1);}}
           onNewRecipe={()=>{setPendingRecipeModal({});setTab(3);}}
           onNewVP={()=>{setPendingVPModal({});setTab(4);}}
