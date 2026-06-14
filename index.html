@@ -2661,11 +2661,11 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
 
   return (
     <div className="tab-content">
-      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:2}}>
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:14}}>
         <h2 style={{fontSize:28,fontWeight:700,letterSpacing:'-.5px'}}>Rezept-Cockpit</h2>
-      </div>
-      <div style={{fontSize:12,color:'#5e6e7f',marginBottom:14}}>
-        Stand: {heute} · {articles.filter(a=>!a.archiv).length} aktive Artikel
+        <div style={{fontSize:12,color:'#5e6e7f',textAlign:'right'}}>
+          Stand: {heute} · {articles.filter(a=>!a.archiv).length} aktive Artikel
+        </div>
       </div>
 
       {/* ── Welcome / Activity ── */}
