@@ -537,6 +537,15 @@ function pricePerUnit(art, variantLief) {
   return ek / art.g;
 }
 
+function calcWEWithArts(recipe, arts) {
+  if (!recipe.zutaten || !recipe.zutaten.length) return recipe.weEuro || 0;
+  return recipe.zutaten.reduce((sum, z) => {
+    const art = arts.find(a => a.id === z.art);
+    if (!art || !z.menge) return sum;
+    return sum + pricePerUnit(art, z.variantLief) * z.menge;
+  }, 0);
+}
+
 function allSuppliers(art) {
   // Returns [{lief, ek, datum, isDefault}] — default first
   const main = {lief: art.lief||'', ek: art.ek, datum: art.datum||'', isDefault: true};
@@ -2043,6 +2052,10 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, on
   const [view, setView] = React.useState('margen');
   const [showRecipeChoice, setShowRecipeChoice] = React.useState(false);
   const [editArt, setEditArt] = React.useState(null);
+  const [szArtId, setSzArtId] = React.useState('');
+  const [szPctChange, setSzPctChange] = React.useState(10);
+  const [szRecipeId, setSzRecipeId] = React.useState('');
+  const [szTargetWE, setSzTargetWE] = React.useState(22);
   const SOLL = 22;
   const now = Date.now();
 
@@ -2072,6 +2085,23 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, on
     .map(a=>({...a, days:Math.floor((now-new Date(a.datum))/86400000)}))
     .filter(a=>a.days>90)
     .sort((a,b)=>b.days-a.days);
+
+  // Szenarien
+  const modifiedArts = szArtId ? articles.map(a=>a.id===szArtId?{...a,ek:a.ek*(1+szPctChange/100)}:a) : articles;
+  const activeRecs = recipes.filter(r=>!r.archiv);
+  const affectedRecs = szArtId ? activeRecs.filter(r=>(r.zutaten||[]).some(z=>z.art===szArtId)) : [];
+  const szResults = affectedRecs.map(r=>{
+    const mwstF = 1+r.mwst/100;
+    const vkNetto = r.vkBrutto/mwstF;
+    const weOld = calcWEWithArts(r, articles);
+    const weNew = calcWEWithArts(r, modifiedArts);
+    const wePctOld = vkNetto>0 ? weOld/vkNetto*100 : 0;
+    const wePctNew = vkNetto>0 ? weNew/vkNetto*100 : 0;
+    return {r, weOld, weNew, wePctOld, wePctNew, dbOld:vkNetto-weOld, dbNew:vkNetto-weNew};
+  });
+  const szRecipe = recipes.find(r=>r.id===szRecipeId);
+  const szRecipeWE = szRecipe ? calcWEWithArts(szRecipe, articles) : 0;
+  const szNeededVK = szRecipeWE>0&&szTargetWE>0 ? szRecipeWE/(szTargetWE/100)*(1+(szRecipe?.mwst||7)/100) : 0;
 
   const heute = new Date().toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 
@@ -2178,6 +2208,7 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, on
         <SubBtn k="margen" label="Margen"/>
         <SubBtn k="db" label="Deckungsbeitrag"/>
         <SubBtn k="preisalarm" label="Preisalarm"/>
+        <SubBtn k="szenarien" label="Was wäre wenn …"/>
       </div>
 
       {view==='margen'&&(<>
@@ -2321,6 +2352,125 @@ function DashboardTab({recipes, articles, onNewArticle, onNewRecipe, onNewVP, on
           onClose={()=>setEditArt(null)}
         />}
       </>)}
+
+      {view==='szenarien'&&(
+        <div>
+          {/* ── Artikelpreis-Simulation ── */}
+          <div style={{marginBottom:32}}>
+            <div className="section-title">Artikelpreis-Simulation</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 200px',gap:14,marginBottom:14}}>
+              <div className="form-row" style={{margin:0}}>
+                <label>Artikel</label>
+                <select value={szArtId} onChange={e=>setSzArtId(e.target.value)} style={{fontSize:13}}>
+                  <option value="">— Artikel wählen —</option>
+                  {[...articles].filter(a=>!a.archiv).sort((a,b)=>a.name.localeCompare(b.name,'de')).map(a=>(
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-row" style={{margin:0}}>
+                <label>Preisänderung (%)</label>
+                <input type="number" value={szPctChange} onChange={e=>setSzPctChange(parseFloat(e.target.value)||0)} step="1"/>
+              </div>
+            </div>
+            {szArtId&&(()=>{
+              const art = articles.find(a=>a.id===szArtId);
+              return <div style={{fontSize:12,color:'#64748b',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'8px 12px',marginBottom:14}}>
+                <strong>{art.name}</strong>: {fmt(art.ek)} → {fmt(art.ek*(1+szPctChange/100))}
+                {' '}(je {art.g} {art.e}){' '}·{' '}<strong>{affectedRecs.length}</strong> betroffene Rezept{affectedRecs.length!==1?'e':''}
+              </div>;
+            })()}
+            {szArtId && affectedRecs.length>0 && (
+              <div className="card">
+                <table>
+                  <thead><tr>
+                    <th>Rezept</th>
+                    <th>WE% aktuell</th>
+                    <th>WE% Szenario</th>
+                    <th>Δ WE%</th>
+                    <th>DB aktuell</th>
+                    <th>DB Szenario</th>
+                    <th>Δ DB</th>
+                  </tr></thead>
+                  <tbody>
+                    {szResults.map(({r,wePctOld,wePctNew,dbOld,dbNew})=>{
+                      const dWE = wePctNew-wePctOld;
+                      const dDB = dbNew-dbOld;
+                      return (
+                        <tr key={r.id}>
+                          <td><strong>{r.name}</strong></td>
+                          <td><span className={`ampel ${ampelWE(wePctOld)}`}><span className="dot"/>{fmtPct(wePctOld)}</span></td>
+                          <td><span className={`ampel ${ampelWE(wePctNew)}`}><span className="dot"/>{fmtPct(wePctNew)}</span></td>
+                          <td style={{fontFamily:'monospace',fontWeight:700,color:dWE>0?'#dc2626':'#16a34a'}}>{dWE>0?'+':''}{fmtPct(dWE)}</td>
+                          <td style={{fontFamily:'monospace'}}>{fmt(dbOld)}</td>
+                          <td style={{fontFamily:'monospace'}}>{fmt(dbNew)}</td>
+                          <td style={{fontFamily:'monospace',fontWeight:700,color:dDB<0?'#dc2626':'#16a34a'}}>{dDB>=0?'+':''}{fmt(dDB)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {szArtId && affectedRecs.length===0 && (
+              <div className="empty" style={{background:'white',border:'1px solid #e2e8f0',borderRadius:8}}>
+                Dieser Artikel wird in keinem aktiven Rezept mit Zutaten verwendet
+              </div>
+            )}
+            {!szArtId && (
+              <div className="empty" style={{background:'white',border:'1px solid #e2e8f0',borderRadius:8}}>
+                Wähle einen Artikel um Preisänderungen auf deine Rezepte zu simulieren
+              </div>
+            )}
+          </div>
+
+          {/* ── VK-Zielrechner ── */}
+          <div>
+            <div className="section-title">VK-Zielrechner</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 180px',gap:14,marginBottom:14}}>
+              <div className="form-row" style={{margin:0}}>
+                <label>Rezept</label>
+                <select value={szRecipeId} onChange={e=>setSzRecipeId(e.target.value)} style={{fontSize:13}}>
+                  <option value="">— Rezept wählen —</option>
+                  {activeRecs.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </div>
+              <div className="form-row" style={{margin:0}}>
+                <label>Ziel-Wareneinsatz</label>
+                <input type="number" value={szTargetWE} onChange={e=>setSzTargetWE(parseFloat(e.target.value)||0)} step="0.5" min="1" max="99"/>
+              </div>
+            </div>
+            {szRecipe ? (
+              <div className="stats-row">
+                <div className="stat-card">
+                  <div className="stat-label">Wareneinsatz</div>
+                  <div className="stat-value" style={{fontSize:18}}>{fmt(szRecipeWE)}</div>
+                  <div className="stat-sub">{szRecipe.zutaten?.length ? `aus ${szRecipe.zutaten.length} Zutaten` : 'manuell hinterlegt'}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Aktueller VK</div>
+                  <div className="stat-value" style={{fontSize:18}}>{fmt(szRecipe.vkBrutto)}</div>
+                  <div className="stat-sub">WE: {fmtPct(szRecipe.wePct)}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">VK bei {szTargetWE}% WE</div>
+                  <div className="stat-value" style={{fontSize:18,color:'#e85d04'}}>{szNeededVK>0?fmt(szNeededVK):'—'}</div>
+                  <div className="stat-sub">MwSt: {szRecipe.mwst}%</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Gerundeter VK</div>
+                  <div className="stat-value" style={{fontSize:18}}>{szNeededVK>0?fmt(Math.ceil(szNeededVK*2)/2):'—'}</div>
+                  <div className="stat-sub">auf 0,50 € aufgerundet</div>
+                </div>
+              </div>
+            ) : (
+              <div className="empty" style={{background:'white',border:'1px solid #e2e8f0',borderRadius:8}}>
+                Wähle ein Rezept um den nötigen VK für einen Ziel-Wareneinsatz zu berechnen
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
