@@ -1204,8 +1204,8 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
             const ppuMin = hasVariants ? Math.min(...suppliers.map(s=>s.ek/(a.g||1))) : ppu;
             const ppuMax = hasVariants ? Math.max(...suppliers.map(s=>s.ek/(a.g||1))) : ppu;
             return (
-              <tr key={a.id} style={a.archiv?{opacity:.5}:{}}>
-                <td style={{padding:'4px 6px',textAlign:'center'}}>
+              <tr key={a.id} style={{...(a.archiv?{opacity:.5}:{}),cursor:'pointer'}} onClick={()=>setModal({...a})}>
+                <td style={{padding:'4px 6px',textAlign:'center'}} onClick={e=>e.stopPropagation()}>
                   <button onClick={()=>toggleFav(a)} style={{background:'none',border:'none',cursor:'pointer',fontSize:16,lineHeight:1,color:a.fav?'#f59e0b':'#d1d5db',padding:2}} title={a.fav?'Aus Favoriten entfernen':'Zu Favoriten hinzufügen'}>
                     {a.fav?'★':'☆'}
                   </button>
@@ -1238,7 +1238,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
                     <span className="ampel green"><span className="dot"/>aktuell</span>
                   }
                 </td>
-                <td style={{display:'flex',gap:2}}>
+                <td style={{display:'flex',gap:2}} onClick={e=>e.stopPropagation()}>
                   <button className="btn btn-ghost btn-xs" onClick={()=>setModal({...a})} title="Bearbeiten">✎</button>
                   <button className="btn btn-ghost btn-xs" onClick={()=>setModal({...a,id:undefined,name:a.name+' (Kopie)',kat:getKat(a)})} title="Duplizieren" style={{color:'#94a3b8',fontSize:15}}>⎘</button>
                 </td>
