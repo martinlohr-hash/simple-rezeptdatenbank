@@ -818,6 +818,7 @@ function QuickPriceModal({art, onSave, onClose}) {
 function MobileArticleView({articles, warnDays, alertDays, onEdit}) {
   const [q, setQ] = useState('');
   const [lief, setLief] = useState('all');
+  const [showFav, setShowFav] = useState(false);
 
   const liefOptions = useMemo(()=>
     [...new Set(articles.filter(a=>!a.archiv&&a.lief).map(a=>a.lief))].sort(),
@@ -827,17 +828,26 @@ function MobileArticleView({articles, warnDays, alertDays, onEdit}) {
   const filtered = useMemo(()=>
     articles
       .filter(a=>!a.archiv)
+      .filter(a=>!showFav||a.fav)
       .filter(a=>lief==='all'||(a.lief||'')===lief)
       .filter(a=>!q||a.name.toLowerCase().includes(q.toLowerCase()))
       .sort((a,b)=>a.name.localeCompare(b.name,'de')),
-    [articles, q, lief]
+    [articles, q, lief, showFav]
   );
 
   return (
     <div>
-      <input type="text" placeholder="Artikel suchen…" value={q} onChange={e=>setQ(e.target.value)}
-        style={{width:'100%',fontSize:16,padding:'12px 14px',marginBottom:12,borderRadius:8,border:'1px solid #e2e8f0',outline:'none',WebkitAppearance:'none',boxSizing:'border-box'}}
-      />
+      <div style={{display:'flex',gap:8,marginBottom:12}}>
+        <input type="text" placeholder="Artikel suchen…" value={q} onChange={e=>setQ(e.target.value)}
+          style={{flex:1,fontSize:16,padding:'12px 14px',borderRadius:8,border:'1px solid #e2e8f0',outline:'none',WebkitAppearance:'none',boxSizing:'border-box'}}
+        />
+        <button onClick={()=>setShowFav(s=>!s)} style={{
+          flexShrink:0,padding:'0 16px',borderRadius:8,border:'1px solid',fontSize:18,cursor:'pointer',
+          borderColor:showFav?'#f59e0b':'#e2e8f0',
+          background:showFav?'#fffbeb':'white',
+          color:showFav?'#f59e0b':'#d1d5db',
+        }} title="Nur Favoriten">★</button>
+      </div>
       <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:10,marginBottom:8,WebkitOverflowScrolling:'touch'}}>
         {['all',...liefOptions].map(l=>(
           <button key={l} onClick={()=>setLief(l)} style={{
