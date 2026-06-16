@@ -126,6 +126,29 @@ input:checked+.slider:before{transform:translateX(16px)}
   .toast-wrap{bottom:12px;right:12px;left:12px}
   .toast{min-width:0;max-width:100%}
 }
+/* ── MOBILE SHELL ────────────────────────────────────────────────────────────*/
+.mob-header{display:none;position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid #e2e8f0;padding:0 20px;height:52px;align-items:center;justify-content:space-between}
+.mob-header-title{font-size:19px;font-weight:700;letter-spacing:-.3px;color:#1a1a1a}
+.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:#fff;border-top:1px solid #e2e8f0;padding-bottom:env(safe-area-inset-bottom,0)}
+.mob-nav-inner{display:flex}
+.mob-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 4px;cursor:pointer;font-size:10px;font-weight:600;color:#94a3b8;letter-spacing:.3px;border:none;background:none;-webkit-tap-highlight-color:transparent;outline:none}
+.mob-nav-item.active{color:#e85d04}
+.mob-nav-icon{display:flex;align-items:center;justify-content:center;line-height:1}
+/* ── MOBILE ARTICLE CARDS ───────────────────────────────────────────────────*/
+.mob-art-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mob-stat-chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.mob-stat-chip{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 8px 8px;text-align:center}
+.mob-stat-chip-value{font-size:21px;font-weight:700;letter-spacing:-.5px;line-height:1;font-variant-numeric:tabular-nums}
+.mob-stat-chip-label{font-size:10px;font-weight:600;color:#5e6e7f;text-transform:uppercase;letter-spacing:.3px;margin-top:3px}
+/* ── MOBILE MEHR SHEET ──────────────────────────────────────────────────────*/
+.mob-mehr-sheet{position:fixed;bottom:0;left:0;right:0;z-index:300;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.14);padding:16px 20px calc(80px + env(safe-area-inset-bottom,0))}
+@media(max-width:767px){
+  .header,.tabs{display:none!important}
+  .content{padding:0;padding-bottom:76px}
+  .mob-header{display:flex}
+  .mob-nav{display:flex}
+}
+@media(prefers-reduced-motion:reduce){.mob-nav-icon svg{transition:none}}
 </style>
 </head>
 <body>
@@ -815,80 +838,104 @@ function QuickPriceModal({art, onSave, onClose}) {
   );
 }
 
-function MobileArticleView({articles, warnDays, alertDays, onEdit, onToggleFav}) {
+function MobileArticleView({articles, warnDays, alertDays, onEdit, onToggleFav, onNewArticle}) {
   const [q, setQ] = useState('');
-  const [lief, setLief] = useState('all');
   const [showFav, setShowFav] = useState(false);
+  const [showArchiv, setShowArchiv] = useState(false);
 
-  const liefOptions = useMemo(()=>
-    [...new Set(articles.filter(a=>!a.archiv&&a.lief).map(a=>a.lief))].sort(),
-    [articles]
-  );
+  const activeCount = articles.filter(a=>!a.archiv).length;
+  const staleCount  = articles.filter(a=>!a.archiv&&bestPriceAge(a,warnDays,alertDays)==='red').length;
+  const liefCount   = new Set(articles.filter(a=>!a.archiv&&a.lief).map(a=>a.lief.toUpperCase())).size;
 
   const filtered = useMemo(()=>
     articles
-      .filter(a=>!a.archiv)
+      .filter(a=>showArchiv?a.archiv:!a.archiv)
       .filter(a=>!showFav||a.fav)
-      .filter(a=>lief==='all'||(a.lief||'')===lief)
-      .filter(a=>!q||a.name.toLowerCase().includes(q.toLowerCase()))
+      .filter(a=>!q||a.name.toLowerCase().includes(q.toLowerCase())||(a.lief||'').toLowerCase().includes(q.toLowerCase()))
       .sort((a,b)=>a.name.localeCompare(b.name,'de')),
-    [articles, q, lief, showFav]
+    [articles,q,showFav,showArchiv]
   );
 
+  const ageLabel = age=>age==='red'?'Veraltet':age==='yellow'?'Prüfung in 3 Mon.':'Aktuell';
+
   return (
-    <div>
-      <div style={{display:'flex',gap:8,marginBottom:12}}>
-        <input type="text" placeholder="Artikel suchen…" value={q} onChange={e=>setQ(e.target.value)}
-          style={{flex:1,fontSize:16,padding:'12px 14px',borderRadius:8,border:'1px solid #e2e8f0',outline:'none',WebkitAppearance:'none',boxSizing:'border-box'}}
-        />
-        <button onClick={()=>setShowFav(s=>!s)} style={{
-          flexShrink:0,padding:'0 16px',borderRadius:8,border:'1px solid',fontSize:18,cursor:'pointer',
-          borderColor:showFav?'#f59e0b':'#e2e8f0',
-          background:showFav?'#fffbeb':'white',
-          color:showFav?'#f59e0b':'#d1d5db',
-        }} title="Nur Favoriten">★</button>
+    <div style={{padding:'12px 16px 8px'}}>
+      {/* Search */}
+      <div style={{position:'relative',marginBottom:14}}>
+        <svg style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)',pointerEvents:'none',opacity:.35}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" value={q} onChange={e=>setQ(e.target.value)} placeholder="Suche Artikel oder Lieferant…"
+          style={{width:'100%',padding:'10px 12px 10px 34px',border:'1px solid #e2e8f0',borderRadius:10,fontSize:15,outline:'none',background:'#fff',boxSizing:'border-box',WebkitAppearance:'none'}}/>
       </div>
-      <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:10,marginBottom:8,WebkitOverflowScrolling:'touch'}}>
-        {['all',...liefOptions].map(l=>(
-          <button key={l} onClick={()=>setLief(l)} style={{
-            flexShrink:0,padding:'7px 14px',borderRadius:20,border:'1px solid',fontSize:13,fontWeight:600,cursor:'pointer',
-            borderColor:lief===l?'#e85d04':'#e2e8f0',
-            background:lief===l?'#fff7ed':'white',
-            color:lief===l?'#e85d04':'#566373',
-          }}>
-            {l==='all'?'Alle':l}
-          </button>
-        ))}
+
+      {/* Stats */}
+      <div className="mob-stat-chips">
+        <div className="mob-stat-chip">
+          <div className="mob-stat-chip-value">{activeCount}</div>
+          <div className="mob-stat-chip-label">Aktiv</div>
+        </div>
+        <div className="mob-stat-chip">
+          <div className="mob-stat-chip-value" style={staleCount>0?{color:'#dc2626'}:{}}>{staleCount}</div>
+          <div className="mob-stat-chip-label">Veraltet</div>
+        </div>
+        <div className="mob-stat-chip">
+          <div className="mob-stat-chip-value">{liefCount}</div>
+          <div className="mob-stat-chip-label">Lieferanten</div>
+        </div>
       </div>
-      <div style={{fontSize:12,color:'#5e6e7f',marginBottom:10}}>{filtered.length} Artikel</div>
-      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+
+      {/* Filter row */}
+      <div style={{display:'flex',gap:8,marginBottom:14,alignItems:'center'}}>
+        <button onClick={()=>setShowFav(s=>!s)} style={{padding:'6px 12px',borderRadius:20,border:'1px solid',fontSize:13,fontWeight:600,cursor:'pointer',WebkitTapHighlightColor:'transparent',borderColor:showFav?'#e85d04':'#e2e8f0',background:showFav?'#fff7ed':'#fff',color:showFav?'#e85d04':'#566373'}}>☆ Favoriten</button>
+        <button onClick={()=>setShowArchiv(s=>!s)} style={{padding:'6px 12px',borderRadius:20,border:'1px solid',fontSize:13,fontWeight:600,cursor:'pointer',WebkitTapHighlightColor:'transparent',borderColor:showArchiv?'#e85d04':'#e2e8f0',background:showArchiv?'#fff7ed':'#fff',color:showArchiv?'#e85d04':'#566373'}}>🗂 Archiv</button>
+        {onNewArticle&&<button onClick={onNewArticle} style={{marginLeft:'auto',padding:'6px 14px',borderRadius:20,border:'none',background:'#e85d04',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>+ Artikel</button>}
+      </div>
+
+      {/* Cards */}
+      <div style={{display:'flex',flexDirection:'column',gap:10}}>
         {filtered.map(a=>{
           const ppu = pricePerUnit(a);
-          const age = bestPriceAge(a, warnDays, alertDays);
+          const age = a.archiv ? null : bestPriceAge(a,warnDays,alertDays);
           const ageColor = age==='red'?'#dc2626':age==='yellow'?'#d97706':'#16a34a';
           return (
-            <div key={a.id} onClick={()=>onEdit(a)} style={{
-              background:'white',border:'1px solid #e2e8f0',borderRadius:10,padding:'14px 16px',
-              cursor:'pointer',borderLeft:`4px solid ${ageColor}`,
-              boxShadow:'0 1px 3px rgba(0,0,0,.04)',
-            }}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
-                <strong style={{fontSize:15,lineHeight:1.3,flex:1,marginRight:8}}>{a.name}</strong>
-                <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-                  <span className="badge badge-gray">{a.lief||'—'}</span>
-                  {onToggleFav&&<button onClick={e=>{e.stopPropagation();onToggleFav(a);}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,lineHeight:1,color:a.fav?'#f59e0b':'#d1d5db',padding:'2px 0'}}>{a.fav?'★':'☆'}</button>}
+            <div key={a.id} className="mob-art-card" onClick={()=>onEdit(a)}>
+              <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+                <button onClick={e=>{e.stopPropagation();onToggleFav&&onToggleFav(a);}}
+                  style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:a.fav?'#f59e0b':'#d1d5db',padding:'0 2px 0 0',lineHeight:1,flexShrink:0,marginTop:1,WebkitTapHighlightColor:'transparent'}}>
+                  {a.fav?'★':'☆'}
+                </button>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8,marginBottom:8}}>
+                    <div>
+                      <div style={{fontSize:15,fontWeight:600,color:'#1a1a1a',lineHeight:1.3}}>{a.name}</div>
+                      <div style={{fontSize:12,color:'#5e6e7f',marginTop:1}}>{a.g} {a.e}</div>
+                    </div>
+                    <div style={{textAlign:'right',flexShrink:0}}>
+                      {age&&(
+                        <div style={{display:'flex',alignItems:'center',gap:4,justifyContent:'flex-end'}}>
+                          <span style={{width:7,height:7,borderRadius:'50%',background:ageColor,display:'inline-block',flexShrink:0}}/>
+                          <span style={{fontSize:12,fontWeight:600,color:ageColor}}>{ageLabel(age)}</span>
+                        </div>
+                      )}
+                      {a.archiv&&<div style={{fontSize:11,fontWeight:600,color:'#94a3b8'}}>Archiv</div>}
+                      {a.datum&&<div style={{fontSize:11,color:'#5e6e7f',marginTop:2}}>{new Date(a.datum).toLocaleDateString('de-DE')}</div>}
+                    </div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                    <div>
+                      <span style={{fontSize:20,fontWeight:700,letterSpacing:'-.5px',fontVariantNumeric:'tabular-nums'}}>{fmt(ppu)}</span>
+                      <span style={{fontSize:13,color:'#5e6e7f'}}> / {a.e}</span>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      {a.lief&&<span style={{fontSize:11,fontWeight:600,color:'#566373',background:'#f1f5f9',padding:'2px 8px',borderRadius:100}}>{a.lief}</span>}
+                      <span style={{color:'#c4c9d4',fontSize:16,lineHeight:1}}>›</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
-                <span style={{fontSize:22,fontWeight:700,letterSpacing:'-.5px',fontFamily:'monospace'}}>
-                  {fmt(ppu)}<span style={{fontSize:13,fontWeight:400,color:'#5e6e7f',fontFamily:'inherit'}}>/{a.e}</span>
-                </span>
-                <span style={{fontSize:12,color:ageColor,fontWeight:600}}>{a.datum||'kein Datum'}</span>
               </div>
             </div>
           );
         })}
-        {filtered.length===0&&<div className="empty">Keine Artikel gefunden</div>}
+        {filtered.length===0&&<div className="empty" style={{marginTop:24}}>Keine Artikel gefunden</div>}
       </div>
     </div>
   );
@@ -1141,9 +1188,39 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
 
   if (isMobile) return (
     <div className="tab-content">
-      <MobileArticleView articles={articles} warnDays={warnDays} alertDays={alertDays} onEdit={handleMobileEdit} onToggleFav={toggleFav}/>
+      <MobileArticleView articles={articles} warnDays={warnDays} alertDays={alertDays} onEdit={handleMobileEdit} onToggleFav={toggleFav}
+        onNewArticle={()=>setModal({name:'',g:1,e:'KG',ek:0,lief:'',datum:'',archiv:false})}/>
       {quickEditArt&&<QuickPriceModal art={quickEditArt} onClose={()=>setQuickEditArt(null)}
         onSave={art=>{doSaveArt(art);setQuickEditArt(null);}}/>}
+      {modal&&<ArticleModal art={modal} onSave={saveArt} onClose={()=>setModal(null)} suppliers={suppliers} onDelete={handleDeleteRequest}/>}
+      {archiveWarning&&(
+        <div className="modal-overlay">
+          <div className="modal" style={{maxWidth:420}}>
+            <div className="modal-header"><h3>Artikel wird in Vorprodukten verwendet</h3></div>
+            <div className="modal-body">
+              <div className="warn-banner"><span>⚠</span><div><strong>{archiveWarning.art.name}</strong> ist Zutat in {archiveWarning.usedIn.length} Vorprodukt{archiveWarning.usedIn.length>1?'en':''}:</div></div>
+              <ul style={{margin:'12px 0 4px 16px',fontSize:13,lineHeight:2}}>{archiveWarning.usedIn.map(vp=><li key={vp.id}>{vp.name}</li>)}</ul>
+              <div style={{fontSize:13,color:'#566373',marginTop:8}}>Trotzdem archivieren?</div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={()=>setArchiveWarning(null)}>Abbrechen</button>
+              <button className="btn btn-danger" onClick={()=>{doSaveArt(archiveWarning.art);setArchiveWarning(null);}}>Trotzdem archivieren</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteConfirm&&(
+        <div className="modal-overlay" onClick={()=>setDeleteConfirm(null)}>
+          <div className="modal" style={{maxWidth:380}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-header"><h3>Artikel löschen?</h3><button className="btn btn-ghost" onClick={()=>setDeleteConfirm(null)}>✕</button></div>
+            <div className="modal-body" style={{fontSize:13,color:'#374151',lineHeight:1.7}}><strong>{deleteConfirm.name}</strong> wird dauerhaft gelöscht.</div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={()=>setDeleteConfirm(null)}>Abbrechen</button>
+              <button className="btn btn-danger" onClick={()=>doDelete(deleteConfirm)}>Löschen</button>
+            </div>
+          </div>
+        </div>
+      )}
       {impactModal&&<ImpactModal {...impactModal} onClose={()=>setImpactModal(null)}/>}
     </div>
   );
@@ -2711,6 +2788,8 @@ function VorlagenTab({templates, setTemplates, articles}) {
 // ── DASHBOARD TAB ─────────────────────────────────────────────────────────────
 
 function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, onNavigateToRecipe, suppliers=[], warnDays=90, alertDays=180}) {
+  const [isMobile, setIsMobile] = React.useState(()=>window.innerWidth<768);
+  React.useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h,{passive:true});return()=>window.removeEventListener('resize',h);},[]);
   const [view, setView] = React.useState('margen');
   const [showArchivMargen, setShowArchivMargen] = React.useState(false);
   const [showRecipeChoice, setShowRecipeChoice] = React.useState(false);
@@ -2817,6 +2896,15 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const szNeededVK = szRecipeWE>0&&szTargetWE>0 ? szRecipeWE/(szTargetWE/100)*(1+(szRecipe?.mwst||7)/100) : 0;
 
   const heute = new Date().toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  if (isMobile) return (
+    <MobileDashboardView
+      recipes={recipes} articles={articles} vps={vps} priceLog={priceLog}
+      warnDays={warnDays} alertDays={alertDays}
+      onNewArticle={onNewArticle} onNewRecipe={onNewRecipe}
+      onEditArticle={onEditArticle} onNavigateToRecipe={onNavigateToRecipe}
+    />
+  );
 
   const SubBtn = ({k,label}) => (
     <button onClick={()=>setView(k)} style={{
@@ -3358,6 +3446,224 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   );
 }
 
+// ── MOBILE COMPONENTS ─────────────────────────────────────────────────────────
+
+function MobileHeader({title, right}) {
+  return (
+    <div className="mob-header">
+      <span className="mob-header-title">{title}</span>
+      {right&&<div>{right}</div>}
+    </div>
+  );
+}
+
+function MobileNav({tab, setTab}) {
+  const [showMehr, setShowMehr] = useState(false);
+  const isMehrActive = ![0,1,3,5].includes(tab);
+
+  const NavIcon = ({type}) => {
+    const s = {stroke:'currentColor',fill:'none',strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round'};
+    if (type==='dash') return <svg width="22" height="22" viewBox="0 0 24 24" {...s}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
+    if (type==='art')  return <svg width="22" height="22" viewBox="0 0 24 24" {...s}><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.2" fill="currentColor" stroke="none"/></svg>;
+    if (type==='rec')  return <svg width="22" height="22" viewBox="0 0 24 24" {...s}><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>;
+    if (type==='lief') return <svg width="22" height="22" viewBox="0 0 24 24" {...s}><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>;
+    return <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>;
+  };
+
+  const MEHR_TABS = [
+    {tabIdx:2,label:'Rechnungen',icon:'📄'},
+    {tabIdx:4,label:'Vorprodukte',icon:'🧪'},
+    {tabIdx:6,label:'Preislog',icon:'📈'},
+    {tabIdx:7,label:'Vorlagen',icon:'📌'},
+  ];
+
+  return (
+    <>
+      <nav className="mob-nav" aria-label="Hauptnavigation">
+        <div className="mob-nav-inner">
+          {[
+            {id:'dash',tabIdx:0,label:'Dashboard',iconType:'dash'},
+            {id:'art', tabIdx:1,label:'Artikel',  iconType:'art'},
+            {id:'rec', tabIdx:3,label:'Rezepte',  iconType:'rec'},
+            {id:'lief',tabIdx:5,label:'Lieferanten',iconType:'lief'},
+            {id:'mehr',tabIdx:-1,label:'Mehr',    iconType:'mehr'},
+          ].map(n=>{
+            const isActive = n.tabIdx===-1?(isMehrActive||showMehr):tab===n.tabIdx;
+            return (
+              <button key={n.id} className={`mob-nav-item${isActive?' active':''}`}
+                onClick={()=>{if(n.tabIdx===-1)setShowMehr(s=>!s);else{setTab(n.tabIdx);setShowMehr(false);}}}
+                aria-label={n.label}>
+                <span className="mob-nav-icon"><NavIcon type={n.iconType}/></span>
+                {n.label}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+      {showMehr&&(
+        <>
+          <div style={{position:'fixed',inset:0,zIndex:299}} onClick={()=>setShowMehr(false)}/>
+          <div className="mob-mehr-sheet">
+            <div style={{width:36,height:4,background:'#e2e8f0',borderRadius:2,margin:'0 auto 18px'}}/>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              {MEHR_TABS.map(m=>(
+                <button key={m.tabIdx} onClick={()=>{setTab(m.tabIdx);setShowMehr(false);}}
+                  style={{display:'flex',alignItems:'center',gap:10,padding:'14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,cursor:'pointer',fontSize:14,fontWeight:600,color:'#374151',textAlign:'left',WebkitTapHighlightColor:'transparent'}}>
+                  <span style={{fontSize:22}}>{m.icon}</span>{m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function MobileDashboardView({recipes, articles, vps, priceLog, warnDays, alertDays,
+  onNewArticle, onNewRecipe, onEditArticle, onNavigateToRecipe}) {
+
+  const SOLL = 22;
+  const now = Date.now();
+
+  const activeSWRecs = recipes.filter(r=>!r.archiv&&r.mwst!==19);
+  const avgWe = activeSWRecs.length ? activeSWRecs.reduce((s,r)=>s+r.wePct,0)/activeSWRecs.length : 0;
+  const ueberSollCount = activeSWRecs.filter(r=>r.wePct>SOLL).length;
+  const bestDBRec = [...recipes].filter(r=>!r.archiv).sort((a,b)=>b.dbNetto-a.dbNetto)[0];
+
+  const staleArts = articles
+    .filter(a=>!a.archiv&&['yellow','red'].includes(bestPriceAge(a,warnDays,alertDays)))
+    .map(a=>{const nd=newestDatum(a);return{...a,_nd:nd,days:nd?Math.floor((now-new Date(nd))/86400000):9999};})
+    .sort((a,b)=>b.days-a.days);
+  const redCount = articles.filter(a=>!a.archiv&&bestPriceAge(a,warnDays,alertDays)==='red').length;
+  const mostStale = staleArts[0]||null;
+
+  const critRecs = [...activeSWRecs].sort((a,b)=>b.wePct-a.wePct).slice(0,6);
+  const weColor = pct=>pct<=SOLL?'#16a34a':pct<=30?'#d97706':'#dc2626';
+
+  const savingsOpps = [];
+  articles.filter(a=>!a.archiv&&(a.varianten||[]).length>0).forEach(art=>{
+    const defPPU=art.g>0?art.ek/art.g:art.ek;
+    let cheapestV=null,cheapestPPU=defPPU;
+    (art.varianten||[]).forEach(v=>{const p=v.ek/(art.g||1);if(p<cheapestPPU-0.0001){cheapestPPU=p;cheapestV=v;}});
+    if(!cheapestV) return;
+    const deltaPPU=defPPU-cheapestPPU; let annualSaving=0; const refs=[];
+    recipes.filter(r=>!r.archiv&&(r.zutaten||[]).some(z=>z.art===art.id)).forEach(rec=>{
+      const m=(rec.zutaten||[]).filter(z=>z.art===art.id).reduce((s,z)=>s+(z.menge||0),0);
+      refs.push({name:rec.name,menge:m}); if(rec.anzahl) annualSaving+=deltaPPU*m*rec.anzahl*52;
+    });
+    if(refs.length) savingsOpps.push({art,cheapestV,deltaPPU,annualSaving,refs});
+  });
+  savingsOpps.sort((a,b)=>b.annualSaving-a.annualSaving);
+  const bestSaving = savingsOpps[0]||null;
+
+  return (
+    <div style={{padding:'12px 16px 8px'}}>
+
+      {/* Alerts */}
+      {redCount>0&&(
+        <div style={{background:'#fef2f2',border:'1px solid #fca5a5',borderRadius:12,padding:'13px 14px',marginBottom:10,display:'flex',alignItems:'center',gap:12}}>
+          <span style={{fontSize:18,color:'#dc2626',flexShrink:0}}>⚠</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:14,fontWeight:700,color:'#991b1b'}}>{redCount} Preise veraltet</div>
+            <div style={{fontSize:12,color:'#b91c1c',marginTop:1}}>Einige Artikel wurden lange nicht aktualisiert</div>
+          </div>
+          <button onClick={()=>mostStale&&onEditArticle&&onEditArticle(mostStale)}
+            className="btn btn-primary btn-sm" style={{flexShrink:0,fontSize:12,padding:'6px 12px',borderRadius:8}}>
+            Jetzt prüfen
+          </button>
+        </div>
+      )}
+      {mostStale&&(
+        <div style={{background:'#fffbeb',border:'1px solid #fcd34d',borderRadius:12,padding:'12px 14px',marginBottom:16,display:'flex',alignItems:'center',gap:12}}>
+          <span style={{fontSize:18,color:'#d97706',flexShrink:0}}>⚠</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:14,fontWeight:600,color:'#92400e',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{mostStale.name}</div>
+            <div style={{fontSize:12,color:'#b45309',marginTop:1}}>{mostStale.days} Tage nicht aktualisiert</div>
+          </div>
+          <button onClick={()=>onEditArticle&&onEditArticle(mostStale)}
+            style={{fontSize:13,color:'#d97706',fontWeight:700,background:'none',border:'none',cursor:'pointer',flexShrink:0,padding:'4px 0',WebkitTapHighlightColor:'transparent'}}>
+            Öffnen
+          </button>
+        </div>
+      )}
+
+      {/* Schnellaktionen */}
+      <div style={{fontSize:11,fontWeight:700,color:'#566373',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Schnellaktionen</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
+        <button onClick={onNewArticle} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:10,WebkitTapHighlightColor:'transparent'}}>
+          <span style={{width:36,height:36,borderRadius:10,background:'#fff7ed',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0,color:'#e85d04',fontWeight:300}}>+</span>
+          <div><div style={{fontSize:13,fontWeight:600,color:'#1a1a1a',lineHeight:1.3}}>Artikel anlegen</div><div style={{fontSize:11,color:'#5e6e7f',marginTop:2}}>Neuen Artikel erfassen</div></div>
+        </button>
+        <button onClick={onNewRecipe} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:10,WebkitTapHighlightColor:'transparent'}}>
+          <span style={{width:36,height:36,borderRadius:10,background:'#fff7ed',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17,flexShrink:0,color:'#e85d04'}}>✎</span>
+          <div><div style={{fontSize:13,fontWeight:600,color:'#1a1a1a',lineHeight:1.3}}>Rezept erstellen</div><div style={{fontSize:11,color:'#5e6e7f',marginTop:2}}>Neues Rezept anlegen</div></div>
+        </button>
+      </div>
+
+      {/* Kennzahlen */}
+      <div style={{fontSize:11,fontWeight:700,color:'#566373',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Kennzahlen</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
+        <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px'}}>
+          <div style={{fontSize:26,fontWeight:700,letterSpacing:'-.5px',lineHeight:1}}>{activeSWRecs.length}</div>
+          <div style={{fontSize:11,fontWeight:600,color:'#5e6e7f',textTransform:'uppercase',letterSpacing:'.3px',marginTop:5}}>Aktive Rezepte</div>
+        </div>
+        <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px'}}>
+          <div style={{fontSize:26,fontWeight:700,letterSpacing:'-.5px',lineHeight:1,color:avgWe>SOLL?'#dc2626':'#16a34a'}}>{avgWe.toFixed(1)} %</div>
+          <div style={{fontSize:11,fontWeight:600,color:'#5e6e7f',textTransform:'uppercase',letterSpacing:'.3px',marginTop:5}}>Ø Wareneinsatz</div>
+        </div>
+        <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px'}}>
+          <div style={{fontSize:26,fontWeight:700,letterSpacing:'-.5px',lineHeight:1,color:ueberSollCount>0?'#dc2626':'#16a34a'}}>{ueberSollCount} / {activeSWRecs.length}</div>
+          <div style={{fontSize:11,fontWeight:600,color:'#5e6e7f',textTransform:'uppercase',letterSpacing:'.3px',marginTop:5}}>Über Soll</div>
+        </div>
+        <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px'}}>
+          {bestDBRec&&<div style={{fontSize:12,fontWeight:600,color:'#374151',marginBottom:3,lineHeight:1.3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{bestDBRec.name}</div>}
+          <div style={{fontSize:bestDBRec?19:26,fontWeight:700,letterSpacing:'-.5px',color:'#e85d04'}}>{bestDBRec?fmt(bestDBRec.dbNetto):'—'}</div>
+          <div style={{fontSize:11,fontWeight:600,color:'#5e6e7f',textTransform:'uppercase',letterSpacing:'.3px',marginTop:bestDBRec?3:5}}>Bester DB</div>
+        </div>
+      </div>
+
+      {/* Sparhinweis */}
+      {bestSaving&&(
+        <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:12,padding:'14px',marginBottom:20,display:'flex',alignItems:'flex-start',gap:10}}>
+          <span style={{fontSize:18,flexShrink:0,marginTop:1}}>💡</span>
+          <div style={{flex:1,fontSize:13,lineHeight:1.5,color:'#166534'}}>
+            Wenn du bei <strong>{bestSaving.art.name}</strong> auf <strong>{bestSaving.cheapestV.lief}</strong> wechselst, sparst du{' '}
+            <strong style={{color:'#15803d'}}>{bestSaving.annualSaving>0?fmt(bestSaving.annualSaving)+' / Jahr':fmt(bestSaving.deltaPPU*100)+' bei 100 Stk'}</strong>
+          </div>
+          <span style={{color:'#22c55e',fontSize:16,flexShrink:0,alignSelf:'center'}}>›</span>
+        </div>
+      )}
+
+      {/* Kritische Rezepte */}
+      <div style={{fontSize:11,fontWeight:700,color:'#566373',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Kritische Rezepte</div>
+      <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,overflow:'hidden',marginBottom:14}}>
+        {critRecs.length===0&&<div style={{padding:'20px',textAlign:'center',fontSize:13,color:'#5e6e7f'}}>Keine Rezepte vorhanden</div>}
+        {critRecs.map((r,i)=>{
+          const barPct=Math.min(r.wePct/50*100,100); const col=weColor(r.wePct);
+          return (
+            <div key={r.id} onClick={()=>onNavigateToRecipe&&onNavigateToRecipe(r)}
+              style={{display:'flex',alignItems:'center',gap:10,padding:'11px 14px',borderBottom:i<critRecs.length-1?'1px solid #f1f5f9':'none',cursor:'pointer'}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600,color:'#1a1a1a',marginBottom:5,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.name}</div>
+                <div style={{height:6,background:'#f1f5f9',borderRadius:3,overflow:'hidden'}}>
+                  <div style={{width:barPct+'%',height:'100%',background:col,borderRadius:3}}/>
+                </div>
+              </div>
+              <div style={{fontSize:13,fontWeight:700,color:col,flexShrink:0,minWidth:44,textAlign:'right'}}>{r.wePct.toFixed(1)} %</div>
+              <span style={{color:'#d1d5db',fontSize:14,flexShrink:0}}>›</span>
+            </div>
+          );
+        })}
+      </div>
+      <button onClick={()=>onNavigateToRecipe&&onNavigateToRecipe(null)}
+        style={{background:'none',border:'none',color:'#e85d04',fontSize:13,fontWeight:600,cursor:'pointer',padding:'4px 0',WebkitTapHighlightColor:'transparent',marginBottom:8}}>
+        Alle Rezepte anzeigen →
+      </button>
+    </div>
+  );
+}
+
 // ── APP ───────────────────────────────────────────────────────────────────────
 
 const TABS = ['Dashboard','Artikel','Rechnungen','Rezepte','Vorprodukte','Lieferanten','Preislog','Vorlagen'];
@@ -3380,6 +3686,8 @@ function App() {
   const [deliveryRate, setDeliveryRate] = useLS('simple_delivery_rate', 30);
   const [warnDays,  setWarnDays]  = useLS('simple_warn_days',  90);
   const [alertDays, setAlertDays] = useLS('simple_alert_days', 180);
+  const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
+  useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h,{passive:true});return()=>window.removeEventListener('resize',h);},[]);
   const [appImpactModal, setAppImpactModal] = useState(null);
   const [pendingModal,        setPendingModal]        = useState(null);
   const [pendingRecipeModal,  setPendingRecipeModal]  = useState(null);
@@ -3518,6 +3826,10 @@ function App() {
           </div>
         ))}
       </div>
+      {isMobile&&<MobileHeader
+        title={tab===0?'Dashboard':tab===1?'Artikel':tab===2?'Rechnungen':tab===3?'Rezepte':tab===4?'Vorprodukte':tab===5?'Lieferanten':tab===6?'Preislog':'Vorlagen'}
+        right={<button className="btn btn-ghost" style={{color:'#5e6e7f',fontSize:19,padding:'4px 6px',lineHeight:1}} onClick={()=>setShowSettings(true)} title="Einstellungen">⚙</button>}
+      />}
       <div className="content">
         {tab===0&&<DashboardTab recipes={recipes} articles={articles} vps={vps} suppliers={suppliers} priceLog={priceLog} warnDays={warnDays} alertDays={alertDays}
           onNewArticle={()=>{setPendingModal({name:'',g:1,e:'KG',ek:0,lief:'',datum:'',archiv:false});setTab(1);}}
@@ -3561,6 +3873,7 @@ function App() {
         {tab===6&&<PriceLogTab priceLog={priceLog} setPriceLog={setPriceLog}/>}
         {tab===7&&<VorlagenTab templates={templates} setTemplates={setTemplates} articles={articles}/>}
       </div>
+      {isMobile&&<MobileNav tab={tab} setTab={setTab}/>}
       {appImpactModal&&<ImpactModal {...appImpactModal} onClose={()=>setAppImpactModal(null)}/>}
       {showSettings&&<SettingsModal
         sbUrl={sbUrl} setSbUrl={setSbUrl}
