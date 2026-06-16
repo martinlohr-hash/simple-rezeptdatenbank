@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23111'/><text x='16' y='23' font-size='20' font-family='-apple-system,sans-serif' font-weight='700' fill='%23e85d04' text-anchor='middle'>S</text></svg>">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -69,7 +69,7 @@ input:focus,select:focus,textarea:focus{border-color:#e85d04;box-shadow:0 0 0 2p
 .section-title{font-size:14px;font-weight:600;color:#374151;margin-bottom:12px}
 .empty{text-align:center;padding:48px;color:#5e6e7f;font-size:13px}
 .ing-row{display:grid;grid-template-columns:2fr 80px 70px 80px auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
-.ing-row select,ing-row input{padding:5px 8px;font-size:12px}
+.ing-row select,.ing-row input{padding:5px 8px;font-size:12px}
 .warn-banner{background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:10px 14px;font-size:13px;color:#92400e;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start}
 .invoice-drop{border:2px dashed #e2e8f0;border-radius:8px;padding:40px;text-align:center;cursor:pointer;transition:border-color 150ms ease-out,background-color 150ms ease-out;background:#fafbfc}
 .invoice-drop.drag{border-color:#e85d04;background:#fff7f3}
@@ -88,7 +88,7 @@ input:checked+.slider:before{transform:translateX(16px)}
 .log-row-margin{color:#d97706;font-weight:600}
 .modal-overlay{transition:opacity 200ms ease-out}
 .modal{transition:opacity 200ms ease-out,transform 200ms ease-out}
-@starting-style{.modal-overlay{opacity:0}.modal{opacity:0;transform:scale(0.97)}}
+@supports (transition-behavior:allow-discrete){@starting-style{.modal-overlay{opacity:0}.modal{opacity:0;transform:scale(0.97)}}}
 @media(hover:hover)and(pointer:fine){
   .tab:hover{color:#ccc}
   tbody tr:hover{background:#f7f8fb}
@@ -152,7 +152,7 @@ input:checked+.slider:before{transform:translateX(16px)}
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root"><div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:#f3f4f6"><div style="font-size:42px">🥪</div><div style="font-weight:700;color:#374151;font-size:16px;letter-spacing:-.3px">Simple Kitchen OS</div><div style="font-size:13px;color:#5e6e7f">Wird geladen…</div></div></div>
 <script type="text/babel">
 const {useState,useEffect,useCallback,useMemo,useRef} = React;
 
@@ -765,7 +765,7 @@ function useLS(key, seed) {
   const set = useCallback((v) => {
     setData(prev => {
       const next = typeof v === 'function' ? v(prev) : v;
-      localStorage.setItem(key, JSON.stringify(next));
+      try { localStorage.setItem(key, JSON.stringify(next)); } catch(e) {}
       return next;
     });
   }, [key]);
