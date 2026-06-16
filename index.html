@@ -994,7 +994,7 @@ function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
   );
 }
 
-function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, recipes=[], suppliers=[], vps=[], pendingModal=null, onPendingClear, warnDays=90, alertDays=180, onNavigateToRecipe, onNavigateToVP, pendingStatusFilter=null, onPendingStatusFilterClear}) {
+function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, recipes=[], suppliers=[], vps=[], pendingModal=null, onPendingClear, warnDays=90, alertDays=180, onNavigateToRecipe, onNavigateToVP, pendingStatusFilter=null, onPendingStatusFilterClear, syncFav}) {
   const [q, setQ] = useState('');
   const [showArchiv, setShowArchiv] = useState(false);
   const [showFav, setShowFav] = useState(false);
@@ -1032,12 +1032,14 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
     const newFav = !art.fav;
     const updated = {...art, fav: newFav};
     setArticles(prev => prev.map(a => a.id === art.id ? updated : a));
-    // Persist in localStorage as offline fallback
     const favs = JSON.parse(localStorage.getItem('simple_favs')||'[]');
     const newFavs = newFav ? [...new Set([...favs, art.id])] : favs.filter(id=>id!==art.id);
     localStorage.setItem('simple_favs', JSON.stringify(newFavs));
-    // Sync fav to Supabase (requires: ALTER TABLE articles ADD COLUMN IF NOT EXISTS fav BOOLEAN DEFAULT FALSE)
-    upsert && upsert('articles', updated, {silent:true});
+    // Strip fav from main upsert (avoids error if column not yet migrated)
+    const {fav:_, ...artForSupabase} = updated;
+    upsert && upsert('articles', artForSupabase, {silent:true});
+    // Separately sync fav field (silently fails if column not yet added)
+    syncFav && syncFav(art.id, newFav);
   };
 
   useEffect(()=>{
@@ -3431,6 +3433,11 @@ function App() {
     else { setSyncStatus('ok'); if (!silent) addToast('success', 'Gespeichert'); }
   },[client, addToast]);
 
+  const syncFav = useCallback(async (artId, fav) => {
+    if (!client) return;
+    try { await client.from('articles').update({fav}).eq('id', artId); } catch(e) {}
+  }, [client]);
+
   const del = useCallback(async (table, id) => {
     if (!client) return;
     setSyncStatus('syncing');
@@ -3528,6 +3535,7 @@ function App() {
           onNavigateToRecipe={r=>{setPendingRecipeModal(r);setTab(3);}}
           onNavigateToVP={vp=>{setPendingVPModal(vp);setTab(4);}}
           pendingStatusFilter={pendingStatusFilter} onPendingStatusFilterClear={()=>setPendingStatusFilter(null)}
+          syncFav={syncFav}
         />}
         {tab===2&&<InvoiceTab articles={articles} setArticles={setArticles} priceLog={priceLog} setPriceLog={setPriceLog} upsert={upsert} suppliers={suppliers} recipes={recipes}/>}
         {tab===3&&<RecipeTab recipes={recipes} setRecipes={setRecipes} upsert={upsert} del={del} articles={articles} templates={templates} deliveryRate={deliveryRate}
