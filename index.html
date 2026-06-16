@@ -2413,6 +2413,7 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
   };
 
   const save = () => { setSbUrl(url.trim()); setSbKey(key.trim()); onClose(); window.location.reload(); };
+  const autoSave = () => { if (url.trim() && key.trim() && (url.trim()!==sbUrl || key.trim()!==sbKey)) save(); };
 
   const seed = async () => {
     setSeeding(true);
@@ -2431,23 +2432,30 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
         <div className="modal-body">
 
           {/* Verbindungsstatus */}
-          <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:8,marginBottom:22,
-            background:isConnected?'#f0fdf4':'#fff7ed',border:`1px solid ${isConnected?'#bbf7d0':'#fed7aa'}`}}>
-            <span style={{width:8,height:8,borderRadius:'50%',background:isConnected?'#16a34a':'#f97316',flexShrink:0,display:'inline-block'}}/>
-            <span style={{fontSize:13,fontWeight:600,color:isConnected?'#166534':'#c2410c',flex:1}}>
-              {isConnected?'Verbunden mit Supabase':'Keine Datenbankverbindung'}
-            </span>
-            {syncError&&<span style={{fontSize:12,color:'#dc2626'}}>{syncError}</span>}
-          </div>
+          {(()=>{
+            const hasUnsaved = (url.trim()&&key.trim())&&(url.trim()!==sbUrl||key.trim()!==sbKey);
+            const bg = isConnected?'#f0fdf4':hasUnsaved?'#eff6ff':'#fff7ed';
+            const border = isConnected?'#bbf7d0':hasUnsaved?'#bfdbfe':'#fed7aa';
+            const dot = isConnected?'#16a34a':hasUnsaved?'#3b82f6':'#f97316';
+            const textColor = isConnected?'#166534':hasUnsaved?'#1d4ed8':'#c2410c';
+            const label = isConnected?'Verbunden mit Supabase':hasUnsaved?'Zum Verbinden: Einstellungen speichern':'Keine Datenbankverbindung';
+            return (
+              <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:8,marginBottom:22,background:bg,border:`1px solid ${border}`}}>
+                <span style={{width:8,height:8,borderRadius:'50%',background:dot,flexShrink:0,display:'inline-block'}}/>
+                <span style={{fontSize:13,fontWeight:600,color:textColor,flex:1}}>{label}</span>
+                {syncError&&<span style={{fontSize:12,color:'#dc2626'}}>{syncError}</span>}
+              </div>
+            );
+          })()}
 
           {/* Datenbank */}
           <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Datenbank</div>
           <div className="form-row"><label>Supabase Project URL</label>
-            <input type="text" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://xxxxxxxxxxxx.supabase.co"/>
+            <input type="text" value={url} onChange={e=>setUrl(e.target.value)} onBlur={autoSave} placeholder="https://xxxxxxxxxxxx.supabase.co"/>
           </div>
           <div className="form-row" style={{marginBottom:10}}><label>Anon Key</label>
             <div style={{display:'flex',gap:8}}>
-              <input type={showKey?'text':'password'} value={key} onChange={e=>setKey(e.target.value)} placeholder="eyJhbGci…" style={{flex:1}}/>
+              <input type={showKey?'text':'password'} value={key} onChange={e=>setKey(e.target.value)} onBlur={autoSave} placeholder="eyJhbGci…" style={{flex:1}}/>
               <button className="btn btn-secondary btn-sm" onClick={()=>setShowKey(s=>!s)}>{showKey?'Verbergen':'Anzeigen'}</button>
             </div>
             <div style={{fontSize:11,color:'#5e6e7f',marginTop:4}}>Bleibt lokal im Browser. Der anon-Key ist für Browser-Apps konzipiert.</div>
