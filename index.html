@@ -2713,7 +2713,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const now = Date.now();
 
   const reviewArt = useMemo(()=>{
-    const stale = articles.filter(a=>!a.archiv&&a.lief!=='SIMPLE'&&bestPriceAge(a,warnDays,alertDays)!=='green');
+    const stale = articles.filter(a=>!a.archiv&&a.lief!=='SIMPLE'&&['yellow','red'].includes(bestPriceAge(a,warnDays,alertDays)));
     if (!stale.length) return null;
     return stale[Math.floor(Math.random()*stale.length)];
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2735,7 +2735,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const totalDB = sortedDB.filter(r=>r.anzahl).reduce((s,r)=>s+r.dbNetto*(r.anzahl||0),0);
 
   const staleArts = articles
-    .filter(a=>!a.archiv&&bestPriceAge(a,warnDays,alertDays)!=='green')
+    .filter(a=>!a.archiv&&['yellow','red'].includes(bestPriceAge(a,warnDays,alertDays)))
     .map(a=>{const nd=newestDatum(a);return{...a,_nd:nd,days:nd?Math.floor((now-new Date(nd))/86400000):9999};})
     .sort((a,b)=>b.days-a.days);
 
@@ -2930,7 +2930,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
             <div style={{fontSize:28,marginBottom:10}}>⚠</div>
             <div style={{fontSize:16,fontWeight:700,color:'#92400e',marginBottom:4,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{reviewArt.name}</div>
             <div style={{fontSize:12,color:'#b45309',marginBottom:6}}>
-              Preis seit {Math.floor((now-new Date(reviewArt.datum))/86400000)} Tagen nicht aktualisiert
+              Preis seit {Math.floor((now-new Date(newestDatum(reviewArt)))/86400000)} Tagen nicht aktualisiert
             </div>
             <div style={{fontSize:11,fontWeight:600,color:'#d97706'}}>Jetzt überprüfen →</div>
           </button>
