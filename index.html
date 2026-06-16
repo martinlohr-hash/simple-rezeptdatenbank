@@ -666,6 +666,18 @@ function priceAge(datum, warnDays, alertDays, checkTage) {
   if (days > w) return 'yellow';
   return 'green';
 }
+function bestPriceAge(art, warnDays, alertDays) {
+  const dates = [art.datum, ...(art.varianten||[]).map(v=>v.datum)].filter(Boolean);
+  if (!dates.length) return null;
+  const statuses = dates.map(d=>priceAge(d, warnDays, alertDays, art.checkTage));
+  if (statuses.includes('green')) return 'green';
+  if (statuses.includes('yellow')) return 'yellow';
+  return 'red';
+}
+function newestDatum(art) {
+  const dates = [art.datum, ...(art.varianten||[]).map(v=>v.datum)].filter(Boolean);
+  return dates.length ? [...dates].sort().reverse()[0] : '';
+}
 
 function allSuppliers(art) {
   // Returns [{lief, ek, datum, isDefault}] — default first
@@ -842,7 +854,7 @@ function MobileArticleView({articles, warnDays, alertDays, onEdit}) {
       <div style={{display:'flex',flexDirection:'column',gap:8}}>
         {filtered.map(a=>{
           const ppu = pricePerUnit(a);
-          const age = priceAge(a.datum, warnDays, alertDays, a.checkTage);
+          const age = bestPriceAge(a, warnDays, alertDays);
           const ageColor = age==='red'?'#dc2626':age==='yellow'?'#d97706':'#16a34a';
           return (
             <div key={a.id} onClick={()=>onEdit(a)} style={{
@@ -874,19 +886,18 @@ function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
   const [form, setForm] = useState({...art, varianten: art.varianten||[]});
   const f = (k,v) => setForm(p=>({...p,[k]:v}));
 
-  const addVariant = () => f('varianten',[...form.varianten,{lief:'',ek:0,datum:''}]);
-  const setVariant = (i,k,v) => f('varianten',form.varianten.map((va,j)=>j===i?{...va,[k]:v}:va));
-  const removeVariant = (i) => f('varianten',form.varianten.filter((_,j)=>j!==i));
-  const setAsDefault = (i) => {
-    const v = form.varianten[i];
-    // swap: old default goes into varianten, new default becomes main
-    const oldDefault = {lief:form.lief||'', ek:form.ek, datum:form.datum||''};
-    f('varianten', form.varianten.map((va,j)=>j===i?oldDefault:va));
-    setForm(p=>({...p, lief:v.lief, ek:v.ek, datum:v.datum,
-      varianten: p.varianten.map((va,j)=>j===i?oldDefault:va)}));
-  };
+  // Stable-order supplier rows — ★ changes badge only, never reorders
+  const [rows, setRows] = useState(()=>[
+    {lief:art.lief||'', ek:art.ek||0, datum:art.datum||'', isDefault:true},
+    ...(art.varianten||[]).map(v=>({...v, isDefault:false})),
+  ]);
+  const addRow    = () => setRows(prev=>[...prev,{lief:'',ek:0,datum:'',isDefault:false}]);
+  const removeRow = (i) => setRows(prev=>prev.filter((_,j)=>j!==i));
+  const updateRow = (i,k,v) => setRows(prev=>prev.map((r,j)=>j===i?{...r,[k]:v}:r));
+  const makeDefault = (i) => setRows(prev=>prev.map((r,j)=>({...r,isDefault:j===i})));
 
-  const ppu = form.g>0 ? form.ek/form.g : form.ek;
+  const defaultRow = rows.find(r=>r.isDefault)||rows[0];
+  const ppu = defaultRow ? (form.g>0 ? defaultRow.ek/form.g : defaultRow.ek) : 0;
 
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -937,35 +948,30 @@ function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
               Lieferanten &amp; Preise
             </div>
             <datalist id="art-sup-list">{suppliers.map(s=><option key={s.id} value={s.name}/>)}</datalist>
-            {/* Hauptlieferant */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 90px 120px auto',gap:8,alignItems:'center',marginBottom:6}}>
-              <input type="text" list="art-sup-list" value={form.lief||''} onChange={e=>f('lief',e.target.value)} placeholder="Lieferant" style={{fontSize:12}}/>
-              <input type="number" value={form.ek||''} onChange={e=>f('ek',parseFloat(e.target.value)||0)} step="0.01" placeholder="EK €" style={{fontSize:12}}/>
-              <input type="date" value={form.datum||''} onChange={e=>f('datum',e.target.value)} style={{fontSize:12}}/>
-              <span className="badge badge-blue" style={{justifyContent:'center'}}>Standard</span>
-            </div>
-            {/* Alternative Lieferanten */}
-            {form.varianten.map((v,i)=>{
-              const vPpu = form.g>0 ? v.ek/form.g : v.ek;
-              const diffPct = ppu>0 ? ((vPpu-ppu)/ppu*100) : 0;
+            {rows.map((row,i)=>{
+              const vPpu = form.g>0 ? row.ek/form.g : row.ek;
+              const diffPct = !row.isDefault&&ppu>0 ? ((vPpu-ppu)/ppu*100) : 0;
               return (
                 <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 90px 120px auto',gap:8,alignItems:'center',marginBottom:6}}>
-                  <input type="text" list="art-sup-list" value={v.lief||''} onChange={e=>setVariant(i,'lief',e.target.value)} placeholder="Lieferant" style={{fontSize:12}}/>
+                  <input type="text" list="art-sup-list" value={row.lief||''} onChange={e=>updateRow(i,'lief',e.target.value)} placeholder="Lieferant" style={{fontSize:12}}/>
                   <div style={{position:'relative'}}>
-                    <input type="number" value={v.ek||''} onChange={e=>setVariant(i,'ek',parseFloat(e.target.value)||0)} step="0.01" placeholder="EK €" style={{fontSize:12,width:'100%'}}/>
-                    {v.ek>0&&ppu>0&&<span style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',fontSize:9,color:diffPct>0?'#dc2626':'#16a34a',fontWeight:700,pointerEvents:'none'}}>
+                    <input type="number" value={row.ek||''} onChange={e=>updateRow(i,'ek',parseFloat(e.target.value)||0)} step="0.01" placeholder="EK €" style={{fontSize:12,width:'100%'}}/>
+                    {!row.isDefault&&row.ek>0&&ppu>0&&<span style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',fontSize:9,color:diffPct>0?'#dc2626':'#16a34a',fontWeight:700,pointerEvents:'none'}}>
                       {diffPct>0?'▲':'▼'}{Math.abs(diffPct).toFixed(0)}%
                     </span>}
                   </div>
-                  <input type="date" value={v.datum||''} onChange={e=>setVariant(i,'datum',e.target.value)} style={{fontSize:12}}/>
+                  <input type="date" value={row.datum||''} onChange={e=>updateRow(i,'datum',e.target.value)} style={{fontSize:12}}/>
                   <div style={{display:'flex',gap:4}}>
-                    <button className="btn btn-secondary btn-xs" onClick={()=>setAsDefault(i)} title="Als Standard setzen">★</button>
-                    <button className="btn btn-danger btn-xs" onClick={()=>removeVariant(i)}>✕</button>
+                    {row.isDefault
+                      ? <span className="badge badge-blue" style={{justifyContent:'center',minWidth:62}}>Standard</span>
+                      : <button className="btn btn-secondary btn-xs" onClick={()=>makeDefault(i)} title="Als Standard setzen">★</button>
+                    }
+                    {!row.isDefault&&<button className="btn btn-danger btn-xs" onClick={()=>removeRow(i)}>✕</button>}
                   </div>
                 </div>
               );
             })}
-            <button className="btn btn-secondary btn-sm" style={{marginTop:4}} onClick={addVariant}>+ Lieferant</button>
+            <button className="btn btn-secondary btn-sm" style={{marginTop:4}} onClick={addRow}>+ Lieferant</button>
           </div>
 
           {!isNew && <div className="form-row" style={{display:'flex',alignItems:'center',gap:8}}>
@@ -978,7 +984,10 @@ function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
         <div className="modal-footer">
           {!isNew && onDelete && <button className="btn btn-danger" style={{marginRight:'auto'}} onClick={()=>onDelete(form)}>Löschen</button>}
           <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
-          <button className="btn btn-primary" onClick={()=>onSave({...form,id:form.id||('A'+uid())})}>Speichern</button>
+          <button className="btn btn-primary" onClick={()=>{
+            const defRow=rows.find(r=>r.isDefault)||rows[0];
+            onSave({...form,id:form.id||('A'+uid()),lief:defRow.lief,ek:defRow.ek,datum:defRow.datum,varianten:rows.filter(r=>!r.isDefault).map(({lief,ek,datum})=>({lief,ek,datum}))});
+          }}>Speichern</button>
         </div>
       </div>
     </div>
@@ -1023,13 +1032,12 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
     const newFav = !art.fav;
     const updated = {...art, fav: newFav};
     setArticles(prev => prev.map(a => a.id === art.id ? updated : a));
-    // Favs in localStorage persisten (kein Supabase-Spalten-Abhängigkeit)
+    // Persist in localStorage as offline fallback
     const favs = JSON.parse(localStorage.getItem('simple_favs')||'[]');
     const newFavs = newFav ? [...new Set([...favs, art.id])] : favs.filter(id=>id!==art.id);
     localStorage.setItem('simple_favs', JSON.stringify(newFavs));
-    // fav-Feld nicht an Supabase schicken (Spalte existiert nicht)
-    const {fav:_, ...artForSupabase} = updated;
-    upsert && upsert('articles', artForSupabase, {silent:true});
+    // Sync fav to Supabase (requires: ALTER TABLE articles ADD COLUMN IF NOT EXISTS fav BOOLEAN DEFAULT FALSE)
+    upsert && upsert('articles', updated, {silent:true});
   };
 
   useEffect(()=>{
@@ -1063,7 +1071,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
       if (!showArchiv && a.archiv) return false;
       if (showFav && !a.fav) return false;
       if (statusFilter !== 'all') {
-        const age = priceAge(a.datum, warnDays, alertDays, a.checkTage);
+        const age = bestPriceAge(a, warnDays, alertDays);
         if (age !== statusFilter) return false;
       }
       if (lieferantFilter !== 'all' && (a.lief||'') !== lieferantFilter) return false;
@@ -1143,7 +1151,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
         <div className="stat-card" style={{cursor:'pointer',outline:statusFilter==='red'?'2px solid #dc2626':'none',outlineOffset:2}} onClick={()=>setStatusFilter(s=>s==='red'?'all':'red')}>
           <div className="stat-label">Preis veraltet (rot)</div>
           <div className="stat-value" style={{color:'#dc2626'}}>
-            {articles.filter(a=>!a.archiv&&priceAge(a.datum,warnDays,alertDays,a.checkTage)==='red').length}
+            {articles.filter(a=>!a.archiv&&bestPriceAge(a,warnDays,alertDays)==='red').length}
           </div>
           {statusFilter==='red'&&<div style={{fontSize:10,color:'#dc2626',marginTop:2,fontWeight:600}}>● Filter aktiv</div>}
         </div>
@@ -1188,7 +1196,7 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
           <tbody>
           {filtered.map(a=>{
             const ppu = pricePerUnit(a);
-            const age = priceAge(a.datum, warnDays, alertDays, a.checkTage);
+            const age = bestPriceAge(a, warnDays, alertDays);
             const suppliers = allSuppliers(a);
             const hasVariants = (a.varianten||[]).length > 0;
             const ppuMin = hasVariants ? Math.min(...suppliers.map(s=>s.ek/(a.g||1))) : ppu;
@@ -2404,10 +2412,11 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
             <div style={{fontSize:12,color:'#566373',marginBottom:8}}>Falls Spalten fehlen (z.B. „kat column not found"), dieses SQL im Supabase SQL-Editor ausführen:</div>
             <div style={{background:'#1a1a1a',borderRadius:7,padding:'10px 14px',marginBottom:14,position:'relative'}}>
               <code style={{fontSize:11,color:'#a3e635',fontFamily:'monospace',lineHeight:1.7,display:'block',whiteSpace:'pre'}}{...{}}>{`ALTER TABLE articles ADD COLUMN IF NOT EXISTS kat TEXT DEFAULT 'Food';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS fav BOOLEAN DEFAULT FALSE;
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS zutaten JSONB DEFAULT '[]';
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;
 ALTER TABLE vorprodukte ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;`}</code>
-              <button onClick={()=>navigator.clipboard.writeText(`ALTER TABLE articles ADD COLUMN IF NOT EXISTS kat TEXT DEFAULT 'Food';\nALTER TABLE recipes ADD COLUMN IF NOT EXISTS zutaten JSONB DEFAULT '[]';\nALTER TABLE recipes ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;\nALTER TABLE vorprodukte ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;`)}
+              <button onClick={()=>navigator.clipboard.writeText(`ALTER TABLE articles ADD COLUMN IF NOT EXISTS kat TEXT DEFAULT 'Food';\nALTER TABLE articles ADD COLUMN IF NOT EXISTS fav BOOLEAN DEFAULT FALSE;\nALTER TABLE recipes ADD COLUMN IF NOT EXISTS zutaten JSONB DEFAULT '[]';\nALTER TABLE recipes ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;\nALTER TABLE vorprodukte ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;`)}
                 style={{position:'absolute',top:8,right:8,background:'#333',border:'none',color:'#999',borderRadius:5,padding:'3px 8px',fontSize:11,cursor:'pointer'}}>
                 Kopieren
               </button>
@@ -2704,7 +2713,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const now = Date.now();
 
   const reviewArt = useMemo(()=>{
-    const stale = articles.filter(a=>!a.archiv&&a.lief!=='SIMPLE'&&a.datum&&priceAge(a.datum,warnDays,alertDays,a.checkTage)!=='green');
+    const stale = articles.filter(a=>!a.archiv&&a.lief!=='SIMPLE'&&bestPriceAge(a,warnDays,alertDays)!=='green');
     if (!stale.length) return null;
     return stale[Math.floor(Math.random()*stale.length)];
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2726,8 +2735,8 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const totalDB = sortedDB.filter(r=>r.anzahl).reduce((s,r)=>s+r.dbNetto*(r.anzahl||0),0);
 
   const staleArts = articles
-    .filter(a=>!a.archiv&&a.datum&&priceAge(a.datum,warnDays,alertDays,a.checkTage)!=='green')
-    .map(a=>({...a, days:Math.floor((now-new Date(a.datum))/86400000)}))
+    .filter(a=>!a.archiv&&bestPriceAge(a,warnDays,alertDays)!=='green')
+    .map(a=>{const nd=newestDatum(a);return{...a,_nd:nd,days:nd?Math.floor((now-new Date(nd))/86400000):9999};})
     .sort((a,b)=>b.days-a.days);
 
   // Letzte Aktivität
@@ -3108,19 +3117,19 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
         <div className="stats-row" style={{marginBottom:20}}>
           <div className="stat-card">
             <div className="stat-label">Warnung (gelb)</div>
-            <div className="stat-value" style={{color:'#d97706'}}>{articles.filter(a=>!a.archiv&&priceAge(a.datum,warnDays,alertDays,a.checkTage)==='yellow').length}</div>
+            <div className="stat-value" style={{color:'#d97706'}}>{articles.filter(a=>!a.archiv&&bestPriceAge(a,warnDays,alertDays)==='yellow').length}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Kritisch (rot)</div>
-            <div className="stat-value" style={{color:'#dc2626'}}>{articles.filter(a=>!a.archiv&&priceAge(a.datum,warnDays,alertDays,a.checkTage)==='red').length}</div>
+            <div className="stat-value" style={{color:'#dc2626'}}>{articles.filter(a=>!a.archiv&&bestPriceAge(a,warnDays,alertDays)==='red').length}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Ohne Preisdatum</div>
-            <div className="stat-value">{articles.filter(a=>!a.archiv&&!a.datum).length}</div>
+            <div className="stat-value">{articles.filter(a=>!a.archiv&&!a.datum&&!(a.varianten||[]).some(v=>v.datum)).length}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Preise aktuell</div>
-            <div className="stat-value" style={{color:'#16a34a'}}>{articles.filter(a=>!a.archiv&&priceAge(a.datum,warnDays,alertDays,a.checkTage)==='green').length}</div>
+            <div className="stat-value" style={{color:'#16a34a'}}>{articles.filter(a=>!a.archiv&&bestPriceAge(a,warnDays,alertDays)==='green').length}</div>
           </div>
         </div>
         <div className="card">
@@ -3133,10 +3142,10 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
                 <tr key={a.id}>
                   <td><strong>{a.name}</strong></td>
                   <td>{a.lief||'—'}</td>
-                  <td>{new Date(a.datum).toLocaleDateString('de-DE')}</td>
+                  <td>{a._nd ? new Date(a._nd).toLocaleDateString('de-DE') : '—'}</td>
                   <td>{fmt(a.ek)}</td>
-                  <td style={{fontFamily:'monospace'}}>{a.days}d</td>
-                  <td><span className={`ampel ${priceAge(a.datum,warnDays,alertDays,a.checkTage)==='red'?'red':'yellow'}`}><span className="dot"/>{priceAge(a.datum,warnDays,alertDays,a.checkTage)==='red'?'Kritisch':'Veraltet'}</span></td>
+                  <td style={{fontFamily:'monospace'}}>{a.days<9999?a.days+'d':'—'}</td>
+                  <td><span className={`ampel ${bestPriceAge(a,warnDays,alertDays)==='red'?'red':'yellow'}`}><span className="dot"/>{bestPriceAge(a,warnDays,alertDays)==='red'?'Kritisch':'Veraltet'}</span></td>
                   <td><button className="btn btn-primary btn-xs" onClick={()=>setEditArt({...a})}>Preis aktualisieren</button></td>
                 </tr>
               ))}
@@ -3398,7 +3407,7 @@ function App() {
           ]);
         } else {
           const favIds = new Set(JSON.parse(localStorage.getItem('simple_favs')||'[]'));
-          setArticles(a.data.map(art=>favIds.has(art.id)?{...art,fav:true}:art));
+          setArticles(a.data.map(art=>({...art, fav: art.fav || favIds.has(art.id)})));
           if (r.data?.length) setRecipes(r.data);
           if (v.data?.length) setVPs(v.data);
           if (l.data)         setPriceLog(l.data);
@@ -3453,7 +3462,7 @@ function App() {
     : {c:'#16a34a', label:'Supabase ✓'};
 
   const warnCount  = recipes.filter(r=>r.wePct>38).length;
-  const staleCount = articles.filter(a=>!a.archiv&&priceAge(a.datum,warnDays,alertDays,a.checkTage)==='red').length;
+  const staleCount = articles.filter(a=>!a.archiv&&bestPriceAge(a,warnDays,alertDays)==='red').length;
 
   if (loading && client) return (
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:16,background:'#f3f4f6'}}>
