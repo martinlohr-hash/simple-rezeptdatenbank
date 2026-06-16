@@ -2391,6 +2391,14 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
   const [testMsg, setTestMsg] = useState('');
   const [seeding, setSeeding] = useState(false);
   const [seeding2, setSeeding2] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const copyConnectLink = () => {
+    const d = {sbUrl, sbKey, warnDays, alertDays};
+    const hash = btoa(JSON.stringify(d));
+    const link = `${window.location.origin}${window.location.pathname}#connect=${hash}`;
+    navigator.clipboard.writeText(link).then(()=>{setLinkCopied(true);setTimeout(()=>setLinkCopied(false),2500);});
+  };
 
   const test = async () => {
     if (!url||!key) return;
@@ -2444,6 +2452,12 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
             </div>
             <div style={{fontSize:11,color:'#5e6e7f',marginTop:4}}>Bleibt lokal im Browser. Der anon-Key ist für Browser-Apps konzipiert.</div>
           </div>
+          {sbUrl&&sbKey&&<div style={{marginBottom:16}}>
+            <button className="btn btn-secondary btn-sm" onClick={copyConnectLink}>
+              {linkCopied?'✓ Link kopiert!':'📱 Verbindungslink kopieren'}
+            </button>
+            <div style={{fontSize:11,color:'#5e6e7f',marginTop:4}}>Link auf dem Handy öffnen — Supabase-Verbindung + Einstellungen werden automatisch übernommen.</div>
+          </div>}
           <details style={{marginBottom:16}}>
             <summary style={{fontSize:12,color:'#5e6e7f',cursor:'pointer',userSelect:'none',listStyle:'none',display:'flex',alignItems:'center',gap:5}}>
               <span style={{fontSize:10}}>▶</span> Noch kein Konto? Einrichtung anzeigen
@@ -3665,6 +3679,20 @@ function MobileDashboardView({recipes, articles, vps, priceLog, warnDays, alertD
 }
 
 // ── APP ───────────────────────────────────────────────────────────────────────
+
+// Apply connect-link params from URL hash before React state initializes
+(function(){
+  const h = window.location.hash;
+  if (!h.startsWith('#connect=')) return;
+  try {
+    const d = JSON.parse(atob(h.slice(9)));
+    if (d.sbUrl)    localStorage.setItem('sb_url',              JSON.stringify(d.sbUrl));
+    if (d.sbKey)    localStorage.setItem('sb_key',              JSON.stringify(d.sbKey));
+    if (d.warnDays) localStorage.setItem('simple_warn_days',    JSON.stringify(d.warnDays));
+    if (d.alertDays)localStorage.setItem('simple_alert_days',   JSON.stringify(d.alertDays));
+  } catch(e) {}
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+})();
 
 const TABS = ['Dashboard','Artikel','Rechnungen','Rezepte','Vorprodukte','Lieferanten','Preislog','Vorlagen'];
 
