@@ -149,6 +149,19 @@ input:checked+.slider:before{transform:translateX(16px)}
   .mob-nav{display:flex}
 }
 @media(prefers-reduced-motion:reduce){.mob-nav-icon svg{transition:none}}
+/* ── EINKAUFSLISTE ──────────────────────────────────────────────────────────*/
+.shop-progress{height:8px;border-radius:6px;background:#e2e8f0;overflow:hidden}
+.shop-progress-bar{height:100%;background:#16a34a;transition:width .25s ease-out}
+.shop-group-title{font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;display:flex;align-items:center;gap:8px}
+.shop-row{display:flex;align-items:center;gap:12px;padding:13px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .12s ease-out,opacity .12s ease-out}
+.shop-row:active{background:#f8fafc}
+.shop-row.checked{opacity:.5}
+.shop-cb{width:28px;height:28px;border-radius:8px;border:2px solid #cbd5e1;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:transparent;transition:background-color .12s ease-out,border-color .12s ease-out}
+.shop-row.checked .shop-cb{background:#16a34a;border-color:#16a34a;color:#fff}
+.shop-name{font-size:15px;font-weight:600;color:#1a1a1a;line-height:1.25}
+.shop-row.checked .shop-name{text-decoration:line-through}
+.shop-meta{font-size:12px;color:#5e6e7f;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.shop-price{font-size:13px;font-weight:700;color:#16a34a;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
 </style>
 </head>
 <body>
@@ -707,6 +720,18 @@ function allSuppliers(art) {
   const main = {lief: art.lief||'', ek: art.ek, datum: art.datum||'', isDefault: true};
   const extras = (art.varianten||[]).map(v=>({...v, isDefault:false}));
   return [main, ...extras];
+}
+
+function bestSupplier(art) {
+  // Cheapest supplier (per base unit) across the default + all variants
+  if (!art) return null;
+  const sups = allSuppliers(art).filter(s=>s.lief);
+  if (!sups.length) return {lief:'', ppu:pricePerUnit(art), ek:art.ek, count:0};
+  const scored = sups.map(s=>({
+    lief:s.lief, datum:s.datum, ek:s.ek,
+    ppu:pricePerUnit(art, s.isDefault?null:s.lief),
+  })).sort((a,b)=>a.ppu-b.ppu);
+  return {...scored[0], count:scored.length};
 }
 
 function uid() {
@@ -3495,6 +3520,7 @@ function MobileNav({tab, setTab}) {
   const MEHR_TABS = [
     {tabIdx:2,label:'Rechnungen',icon:'📄'},
     {tabIdx:4,label:'Vorprodukte',icon:'🧪'},
+    {tabIdx:8,label:'Einkauf',icon:'🛒'},
     {tabIdx:6,label:'Preislog',icon:'📈'},
     {tabIdx:7,label:'Vorlagen',icon:'📌'},
   ];
@@ -3702,7 +3728,187 @@ function MobileDashboardView({recipes, articles, vps, priceLog, warnDays, alertD
   history.replaceState(null, '', window.location.pathname + window.location.search);
 })();
 
-const TABS = ['Dashboard','Artikel','Rechnungen','Rezepte','Vorprodukte','Lieferanten','Preislog','Vorlagen'];
+const TABS = ['Dashboard','Artikel','Rechnungen','Rezepte','Vorprodukte','Lieferanten','Preislog','Vorlagen','Einkauf'];
+
+function ShoppingTab({articles, suppliers=[], isMobile=false}) {
+  const [apiKey] = useLS('sk_simple_apikey','');
+  const [list, setList] = useLS('simple_shopping', []);
+  const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState('');
+  const [addText, setAddText] = useState('');
+
+  const scan = async (file) => {
+    if (!file) return;
+    if (!apiKey) { setError('Kein API-Key hinterlegt — bitte im Tab „Rechnungen" eintragen.'); return; }
+    setScanning(true); setError('');
+    try {
+      const b64 = await new Promise((res,rej)=>{
+        const r=new FileReader();
+        r.onload=e=>res(e.target.result.split(',')[1]);
+        r.onerror=rej; r.readAsDataURL(file);
+      });
+      const mediaType = file.type||'image/jpeg';
+      const artList = articles.filter(a=>!a.archiv).map(a=>`${a.id}|${a.name}`).join('\n');
+      const systemPrompt = `Du liest eine handschriftliche Einkaufsliste (z.B. von einer Tafel) für eine Gastronomie-Küche.
+Extrahiere jeden einzelnen Eintrag der Liste. Ordne jedem Eintrag den am besten passenden Artikel aus der folgenden Artikelliste zu (Format "id|name").
+Berücksichtige Abkürzungen, Plural/Singular und Schreibfehler. Passt kein Artikel gut, setze artId auf null.
+Erkenne Mengen falls vorhanden (z.B. "2 kg" → menge 2, einheit "kg"; "3x" → menge 3).
+
+ARTIKELLISTE:
+${artList}
+
+Antworte NUR mit gültigem JSON, ohne Erklärung:
+{"items":[{"raw":"Text wie auf der Tafel","artId":"A093","menge":2,"einheit":"kg"}]}
+Setze artId/menge/einheit auf null wenn nicht erkennbar.`;
+      const resp = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{
+          'x-api-key':apiKey,
+          'anthropic-version':'2023-06-01',
+          'content-type':'application/json',
+          'anthropic-dangerous-direct-browser-access':'true',
+        },
+        body:JSON.stringify({
+          model:'claude-haiku-4-5-20251001',
+          max_tokens:2048,
+          system:systemPrompt,
+          messages:[{role:'user',content:[
+            {type:'image',source:{type:'base64',media_type:mediaType,data:b64}},
+            {type:'text',text:'Lies die Einkaufsliste von der Tafel und ordne die Artikel zu.'}
+          ]}]
+        })
+      });
+      const json = await resp.json();
+      if(!resp.ok) throw new Error(json.error?.message||'API Fehler');
+      const text = json.content[0].text;
+      const m = text.match(/\{[\s\S]*\}/);
+      if(!m) throw new Error('Kein JSON in Antwort');
+      const parsed = JSON.parse(m[0]);
+      const items = (parsed.items||[]).filter(it=>it.raw||it.artId).map(it=>({
+        id:'S'+uid(), raw:it.raw||'', artId:it.artId||null,
+        menge:(it.menge??null), einheit:it.einheit||null, checked:false, manualSupplier:null
+      }));
+      if(!items.length) throw new Error('Keine Einträge erkannt — Foto schärfer/heller versuchen.');
+      // Offene Einträge behalten, erledigte verwerfen, neue anhängen
+      setList(prev=>[...prev.filter(p=>!p.checked), ...items]);
+    } catch(e){ setError(e.message); }
+    setScanning(false);
+  };
+
+  const toggle = id => setList(prev=>prev.map(it=>it.id===id?{...it,checked:!it.checked}:it));
+  const remove = id => setList(prev=>prev.filter(it=>it.id!==id));
+  const clearChecked = () => setList(prev=>prev.filter(it=>!it.checked));
+  const clearAll = () => { if(window.confirm('Komplette Liste löschen?')) setList([]); };
+  const addManual = () => {
+    const t = addText.trim(); if(!t) return;
+    const key = t.toLowerCase();
+    const found = articles.find(a=>!a.archiv && (a.name.toLowerCase().includes(key)||key.includes(a.name.toLowerCase())));
+    setList(prev=>[...prev,{id:'S'+uid(),raw:t,artId:found?found.id:null,menge:null,einheit:null,checked:false,manualSupplier:null}]);
+    setAddText('');
+  };
+
+  const enriched = list.map(it=>{
+    const art = it.artId ? articles.find(a=>a.id===it.artId) : null;
+    const best = art ? bestSupplier(art) : null;
+    return {...it, art, best, supplier: it.manualSupplier || (best&&best.lief) || 'Sonstiges / kein Lieferant'};
+  });
+
+  const done = enriched.filter(e=>e.checked).length;
+  const total = enriched.length;
+  const pct = total ? Math.round(done/total*100) : 0;
+
+  const openItems = enriched.filter(e=>!e.checked);
+  const doneItems = enriched.filter(e=>e.checked);
+  const groups = {};
+  openItems.forEach(e=>{ if(!groups[e.supplier]) groups[e.supplier]=[]; groups[e.supplier].push(e); });
+  const groupNames = Object.keys(groups).sort((a,b)=>{
+    const aLast = a.startsWith('Sonstiges'), bLast = b.startsWith('Sonstiges');
+    if(aLast&&!bLast) return 1; if(bLast&&!aLast) return -1;
+    return a.localeCompare(b,'de');
+  });
+
+  const Row = (e) => {
+    const mengeStr = (e.menge!=null && e.menge!=='') ? String(e.menge).replace('.',',') : '';
+    return (
+      <div key={e.id} className={`shop-row${e.checked?' checked':''}`} onClick={()=>toggle(e.id)}>
+        <div className="shop-cb">✓</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div className="shop-name">
+            {mengeStr && <span style={{color:'#e85d04'}}>{mengeStr}{e.einheit?' '+e.einheit:''} · </span>}
+            {e.art ? e.art.name : e.raw}
+          </div>
+          <div className="shop-meta">
+            {e.art && e.raw && e.raw.toLowerCase()!==e.art.name.toLowerCase() &&
+              <span style={{color:'#94a3b8'}}>„{e.raw}"</span>}
+            {!e.art && <span className="badge badge-gray">kein Artikel zugeordnet</span>}
+            {e.best && e.best.count>1 && <span className="badge badge-green">💡 bester Preis</span>}
+          </div>
+        </div>
+        {e.best && e.best.ppu>0 &&
+          <div className="shop-price">{fmt(e.best.ppu)}<span style={{color:'#94a3b8',fontWeight:500}}>/{e.art.e}</span></div>}
+        <button className="btn btn-ghost btn-xs" style={{color:'#cbd5e1',padding:'4px 6px'}}
+          onClick={ev=>{ev.stopPropagation();remove(e.id);}} aria-label="Entfernen">✕</button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="tab-content" style={{maxWidth:680,margin:'0 auto'}}>
+      {!isMobile &&
+        <div className="warn-banner">📱 Tipp: Diese Funktion ist fürs Handy gedacht — fotografiere die Tafel und hake vor Ort beim Einkauf ab.</div>}
+
+      <label className="invoice-drop" style={{display:'block',padding:scanning?'28px':'32px',pointerEvents:scanning?'none':'auto',opacity:scanning?.7:1}}>
+        <input type="file" accept="image/*" capture="environment" style={{display:'none'}} disabled={scanning}
+          onChange={e=>{const f=e.target.files[0]; e.target.value=''; if(f) scan(f);}}/>
+        <div style={{fontSize:34}}>{scanning?'⏳':'📋'}</div>
+        <p style={{fontWeight:600,color:'#374151'}}>{scanning?'Tafel wird gelesen…':'Tafel fotografieren'}</p>
+        {!scanning && <p style={{fontSize:12}}>oder vorhandenes Foto wählen</p>}
+      </label>
+
+      {error && <div className="warn-banner" style={{background:'#fef2f2',borderColor:'#fca5a5',color:'#b91c1c',marginTop:14}}>⚠ {error}</div>}
+
+      {total>0 && (
+        <div style={{margin:'18px 0 4px'}}>
+          <div style={{display:'flex',alignItems:'center',marginBottom:8,gap:10}}>
+            <span style={{fontSize:14,fontWeight:700,color:'#374151'}}>{done} / {total} erledigt</span>
+            <button className="btn btn-ghost btn-xs" style={{marginLeft:'auto'}} onClick={clearAll}>Liste leeren</button>
+          </div>
+          <div className="shop-progress"><div className="shop-progress-bar" style={{width:pct+'%'}}/></div>
+        </div>
+      )}
+
+      <div style={{display:'flex',gap:8,margin:'16px 0'}}>
+        <input type="text" placeholder="Eintrag manuell hinzufügen…" value={addText}
+          onChange={e=>setAddText(e.target.value)}
+          onKeyDown={e=>{if(e.key==='Enter')addManual();}}/>
+        <button className="btn btn-secondary" style={{flexShrink:0}} onClick={addManual}>+ Hinzufügen</button>
+      </div>
+
+      {total===0 && !scanning &&
+        <div className="empty">Noch keine Einkaufsliste. Fotografiere die Tafel oben, um zu starten.</div>}
+
+      {groupNames.map(gn=>(
+        <div key={gn}>
+          <div className="shop-group-title">
+            <span>🏪 {gn}</span>
+            <span style={{marginLeft:'auto',color:'#94a3b8',fontWeight:600}}>{groups[gn].length}</span>
+          </div>
+          {groups[gn].map(Row)}
+        </div>
+      ))}
+
+      {doneItems.length>0 && (
+        <div>
+          <div className="shop-group-title" style={{marginTop:24}}>
+            <span>✓ Erledigt ({doneItems.length})</span>
+            <button className="btn btn-ghost btn-xs" style={{marginLeft:'auto'}} onClick={clearChecked}>entfernen</button>
+          </div>
+          {doneItems.map(Row)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function App() {
   const [tab, setTab] = useState(0);
@@ -3863,7 +4069,7 @@ function App() {
         ))}
       </div>
       {isMobile&&<MobileHeader
-        title={tab===0?'Dashboard':tab===1?'Artikel':tab===2?'Rechnungen':tab===3?'Rezepte':tab===4?'Vorprodukte':tab===5?'Lieferanten':tab===6?'Preislog':'Vorlagen'}
+        title={tab===0?'Dashboard':tab===1?'Artikel':tab===2?'Rechnungen':tab===3?'Rezepte':tab===4?'Vorprodukte':tab===5?'Lieferanten':tab===6?'Preislog':tab===7?'Vorlagen':'Einkauf'}
         right={<button className="btn btn-ghost" style={{color:'#5e6e7f',fontSize:19,padding:'4px 6px',lineHeight:1}} onClick={()=>setShowSettings(true)} title="Einstellungen">⚙</button>}
       />}
       <div className="content">
@@ -3908,6 +4114,7 @@ function App() {
         {tab===5&&<SupplierTab suppliers={suppliers} setSuppliers={setSuppliers} upsert={upsert}/>}
         {tab===6&&<PriceLogTab priceLog={priceLog} setPriceLog={setPriceLog}/>}
         {tab===7&&<VorlagenTab templates={templates} setTemplates={setTemplates} articles={articles}/>}
+        {tab===8&&<ShoppingTab articles={articles} suppliers={suppliers} isMobile={isMobile}/>}
       </div>
       {isMobile&&<MobileNav tab={tab} setTab={setTab}/>}
       {appImpactModal&&<ImpactModal {...appImpactModal} onClose={()=>setAppImpactModal(null)}/>}
