@@ -3736,6 +3736,7 @@ function ShoppingTab({articles, suppliers=[], isMobile=false}) {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
   const [addText, setAddText] = useState('');
+  const [editId, setEditId] = useState(null);
 
   const scan = async (file) => {
     if (!file) return;
@@ -3796,6 +3797,7 @@ Setze artId/menge/einheit auf null wenn nicht erkennbar.`;
   };
 
   const toggle = id => setList(prev=>prev.map(it=>it.id===id?{...it,checked:!it.checked}:it));
+  const update = (id,patch) => setList(prev=>prev.map(it=>it.id===id?{...it,...patch}:it));
   const remove = id => setList(prev=>prev.filter(it=>it.id!==id));
   const clearChecked = () => setList(prev=>prev.filter(it=>!it.checked));
   const clearAll = () => { if(window.confirm('Komplette Liste löschen?')) setList([]); };
@@ -3813,6 +3815,11 @@ Setze artId/menge/einheit auf null wenn nicht erkennbar.`;
     return {...it, art, best, supplier: it.manualSupplier || (best&&best.lief) || 'Sonstiges / kein Lieferant'};
   });
 
+  // Artikel für Zuordnungs-Dropdown, gruppiert nach Food/Bev/Nonfood
+  const katGroups = {Food:[],Bev:[],Nonfood:[]};
+  articles.filter(a=>!a.archiv).sort((a,b)=>a.name.localeCompare(b.name,'de'))
+    .forEach(a=>{ (katGroups[getKat(a)]||katGroups.Food).push(a); });
+
   const done = enriched.filter(e=>e.checked).length;
   const total = enriched.length;
   const pct = total ? Math.round(done/total*100) : 0;
@@ -3829,6 +3836,45 @@ Setze artId/menge/einheit auf null wenn nicht erkennbar.`;
 
   const Row = (e) => {
     const mengeStr = (e.menge!=null && e.menge!=='') ? String(e.menge).replace('.',',') : '';
+
+    if (editId===e.id) {
+      return (
+        <div key={e.id} className="shop-row" style={{flexDirection:'column',alignItems:'stretch',gap:10,cursor:'default'}}>
+          <div className="form-row" style={{margin:0}}>
+            <label>Bezeichnung</label>
+            <input type="text" value={e.raw} onChange={ev=>update(e.id,{raw:ev.target.value})}/>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            <div className="form-row" style={{margin:0}}>
+              <label>Menge</label>
+              <input type="text" inputMode="decimal" value={e.menge??''}
+                onChange={ev=>update(e.id,{menge:ev.target.value===''?null:ev.target.value})}/>
+            </div>
+            <div className="form-row" style={{margin:0}}>
+              <label>Einheit</label>
+              <input type="text" value={e.einheit||''}
+                onChange={ev=>update(e.id,{einheit:ev.target.value||null})}/>
+            </div>
+          </div>
+          <div className="form-row" style={{margin:0}}>
+            <label>Artikel zuordnen</label>
+            <select value={e.artId||''} onChange={ev=>update(e.id,{artId:ev.target.value||null})}>
+              <option value="">— kein Artikel —</option>
+              {['Food','Bev','Nonfood'].map(k=>katGroups[k].length?(
+                <optgroup key={k} label={k}>
+                  {katGroups[k].map(a=><option key={a.id} value={a.id}>{a.name} ({fmt(pricePerUnit(a))}/{a.e})</option>)}
+                </optgroup>
+              ):null)}
+            </select>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button className="btn btn-ghost btn-sm" style={{color:'#dc2626'}} onClick={()=>{remove(e.id);setEditId(null);}}>Löschen</button>
+            <button className="btn btn-primary btn-sm" onClick={()=>setEditId(null)}>Fertig</button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div key={e.id} className={`shop-row${e.checked?' checked':''}`} onClick={()=>toggle(e.id)}>
         <div className="shop-cb">✓</div>
@@ -3840,12 +3886,15 @@ Setze artId/menge/einheit auf null wenn nicht erkennbar.`;
           <div className="shop-meta">
             {e.art && e.raw && e.raw.toLowerCase()!==e.art.name.toLowerCase() &&
               <span style={{color:'#94a3b8'}}>„{e.raw}"</span>}
-            {!e.art && <span className="badge badge-gray">kein Artikel zugeordnet</span>}
+            {!e.art && <span className="badge badge-orange" style={{cursor:'pointer'}}
+              onClick={ev=>{ev.stopPropagation();setEditId(e.id);}}>+ Artikel zuordnen</span>}
             {e.best && e.best.count>1 && <span className="badge badge-green">💡 bester Preis</span>}
           </div>
         </div>
         {e.best && e.best.ppu>0 &&
           <div className="shop-price">{fmt(e.best.ppu)}<span style={{color:'#94a3b8',fontWeight:500}}>/{e.art.e}</span></div>}
+        <button className="btn btn-ghost btn-xs" style={{color:'#94a3b8',padding:'4px 6px'}}
+          onClick={ev=>{ev.stopPropagation();setEditId(e.id);}} aria-label="Bearbeiten">✎</button>
         <button className="btn btn-ghost btn-xs" style={{color:'#cbd5e1',padding:'4px 6px'}}
           onClick={ev=>{ev.stopPropagation();remove(e.id);}} aria-label="Entfernen">✕</button>
       </div>
@@ -3857,13 +3906,27 @@ Setze artId/menge/einheit auf null wenn nicht erkennbar.`;
       {!isMobile &&
         <div className="warn-banner">📱 Tipp: Diese Funktion ist fürs Handy gedacht — fotografiere die Tafel und hake vor Ort beim Einkauf ab.</div>}
 
-      <label className="invoice-drop" style={{display:'block',padding:scanning?'28px':'32px',pointerEvents:scanning?'none':'auto',opacity:scanning?.7:1}}>
-        <input type="file" accept="image/*" capture="environment" style={{display:'none'}} disabled={scanning}
-          onChange={e=>{const f=e.target.files[0]; e.target.value=''; if(f) scan(f);}}/>
-        <div style={{fontSize:34}}>{scanning?'⏳':'📋'}</div>
-        <p style={{fontWeight:600,color:'#374151'}}>{scanning?'Tafel wird gelesen…':'Tafel fotografieren'}</p>
-        {!scanning && <p style={{fontSize:12}}>oder vorhandenes Foto wählen</p>}
-      </label>
+      {scanning ? (
+        <div className="invoice-drop" style={{display:'block'}}>
+          <div style={{fontSize:34}}>⏳</div>
+          <p style={{fontWeight:600,color:'#374151'}}>Tafel wird gelesen…</p>
+        </div>
+      ) : (
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <label className="invoice-drop" style={{margin:0,padding:'24px 12px'}}>
+            <input type="file" accept="image/*" capture="environment" style={{display:'none'}}
+              onChange={e=>{const f=e.target.files[0]; e.target.value=''; if(f) scan(f);}}/>
+            <div style={{fontSize:30}}>📷</div>
+            <p style={{fontWeight:600,color:'#374151',marginTop:6}}>Kamera</p>
+          </label>
+          <label className="invoice-drop" style={{margin:0,padding:'24px 12px'}}>
+            <input type="file" accept="image/*" style={{display:'none'}}
+              onChange={e=>{const f=e.target.files[0]; e.target.value=''; if(f) scan(f);}}/>
+            <div style={{fontSize:30}}>🖼</div>
+            <p style={{fontWeight:600,color:'#374151',marginTop:6}}>Foto wählen</p>
+          </label>
+        </div>
+      )}
 
       {error && <div className="warn-banner" style={{background:'#fef2f2',borderColor:'#fca5a5',color:'#b91c1c',marginTop:14}}>⚠ {error}</div>}
 
