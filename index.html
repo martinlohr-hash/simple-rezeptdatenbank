@@ -2578,8 +2578,12 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS fav BOOLEAN DEFAULT FALSE;
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS zutaten JSONB DEFAULT '[]';
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;
-ALTER TABLE vorprodukte ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;`}</code>
-              <button onClick={()=>navigator.clipboard.writeText(`ALTER TABLE articles ADD COLUMN IF NOT EXISTS kat TEXT DEFAULT 'Food';\nALTER TABLE articles ADD COLUMN IF NOT EXISTS fav BOOLEAN DEFAULT FALSE;\nALTER TABLE recipes ADD COLUMN IF NOT EXISTS zutaten JSONB DEFAULT '[]';\nALTER TABLE recipes ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;\nALTER TABLE vorprodukte ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;`)}
+ALTER TABLE vorprodukte ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;
+CREATE TABLE IF NOT EXISTS settings (id TEXT PRIMARY KEY, data JSONB DEFAULT '{}'::jsonb);
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all" ON settings FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON settings TO anon;`}</code>
+              <button onClick={()=>navigator.clipboard.writeText(`ALTER TABLE articles ADD COLUMN IF NOT EXISTS kat TEXT DEFAULT 'Food';\nALTER TABLE articles ADD COLUMN IF NOT EXISTS fav BOOLEAN DEFAULT FALSE;\nALTER TABLE recipes ADD COLUMN IF NOT EXISTS zutaten JSONB DEFAULT '[]';\nALTER TABLE recipes ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;\nALTER TABLE vorprodukte ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;\nCREATE TABLE IF NOT EXISTS settings (id TEXT PRIMARY KEY, data JSONB DEFAULT '{}'::jsonb);\nALTER TABLE settings ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "allow_all" ON settings FOR ALL USING (true) WITH CHECK (true);\nGRANT ALL ON settings TO anon;`)}
                 style={{position:'absolute',top:8,right:8,background:'#333',border:'none',color:'#999',borderRadius:5,padding:'3px 8px',fontSize:11,cursor:'pointer'}}>
                 Kopieren
               </button>
@@ -4073,6 +4077,18 @@ function App() {
           if (l.data)         setPriceLog(l.data);
           if (s.data?.length) setSuppliers(s.data);
         }
+        // Globale Einstellungen (geräteübergreifend) laden – Tabelle darf fehlen
+        try {
+          const st = await client.from('settings').select('data').eq('id','global').maybeSingle();
+          const d = st.data?.data;
+          if (d) {
+            if (d.deliveryRate!=null) setDeliveryRate(d.deliveryRate);
+            if (d.warnDays!=null)     setWarnDays(d.warnDays);
+            if (d.alertDays!=null)    setAlertDays(d.alertDays);
+            if (d.targetWePct!=null)  setTargetWePct(d.targetWePct);
+            if (d.targetDB!=null)     setTargetDB(d.targetDB);
+          }
+        } catch(e) {}
         setSyncStatus('ok');
       } catch(e) { setSyncStatus('error'); setSyncError(e.message); }
       setLoading(false);
@@ -4095,6 +4111,25 @@ function App() {
     if (!client) return;
     try { await client.from('articles').update({fav}).eq('id', artId); } catch(e) {}
   }, [client]);
+
+  // ── Globale Einstellungen geräteübergreifend speichern ──
+  const syncSettings = useCallback(async (patch) => {
+    if (!client) return;
+    const data = {deliveryRate, warnDays, alertDays, targetWePct, targetDB, ...patch};
+    try {
+      const {error} = await client.from('settings').upsert([{id:'global', data}]);
+      if (error) throw error;
+      setSyncStatus('ok');
+    } catch(e) { setSyncStatus('error'); setSyncError(e.message); addToast('error', `Einstellung nicht synchronisiert: ${e.message}`); }
+  }, [client, deliveryRate, warnDays, alertDays, targetWePct, targetDB, addToast]);
+
+  // Setter, die lokal + (falls verbunden) nach Supabase schreiben
+  const mkSyncSetter = (setter, key) => (val) => { setter(val); syncSettings({[key]: val}); };
+  const setDeliveryRateSync = mkSyncSetter(setDeliveryRate, 'deliveryRate');
+  const setWarnDaysSync     = mkSyncSetter(setWarnDays,     'warnDays');
+  const setAlertDaysSync    = mkSyncSetter(setAlertDays,    'alertDays');
+  const setTargetWePctSync  = mkSyncSetter(setTargetWePct,  'targetWePct');
+  const setTargetDBSync     = mkSyncSetter(setTargetDB,     'targetDB');
 
   const del = useCallback(async (table, id) => {
     if (!client) return;
@@ -4218,9 +4253,9 @@ function App() {
         sbKey={sbKey} setSbKey={setSbKey}
         isConnected={!!client}
         syncError={syncStatus==='error'?syncError:''}
-        deliveryRate={deliveryRate} setDeliveryRate={setDeliveryRate}
-        warnDays={warnDays} setWarnDays={setWarnDays} alertDays={alertDays} setAlertDays={setAlertDays}
-        targetWePct={targetWePct} setTargetWePct={setTargetWePct} targetDB={targetDB} setTargetDB={setTargetDB}
+        deliveryRate={deliveryRate} setDeliveryRate={setDeliveryRateSync}
+        warnDays={warnDays} setWarnDays={setWarnDaysSync} alertDays={alertDays} setAlertDays={setAlertDaysSync}
+        targetWePct={targetWePct} setTargetWePct={setTargetWePctSync} targetDB={targetDB} setTargetDB={setTargetDBSync}
         onClose={()=>setShowSettings(false)}
         onSeedDb={async()=>{
           await Promise.all([

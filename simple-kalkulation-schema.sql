@@ -92,6 +92,18 @@ CREATE TRIGGER trg_recipes_updated     BEFORE UPDATE ON recipes     FOR EACH ROW
 CREATE TRIGGER trg_vorprodukte_updated BEFORE UPDATE ON vorprodukte FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_suppliers_updated   BEFORE UPDATE ON suppliers   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+-- Globale Einstellungen (geräteübergreifend) – eine Zeile id='global'
+CREATE TABLE IF NOT EXISTS settings (
+  id          TEXT PRIMARY KEY,
+  data        JSONB DEFAULT '{}'::jsonb,
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all" ON settings FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON settings TO anon;
+CREATE TRIGGER trg_settings_updated BEFORE UPDATE ON settings FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 -- Migrationen für bestehende Datenbanken
 ALTER TABLE recipes      ADD COLUMN IF NOT EXISTS archiv  BOOLEAN DEFAULT false;
 ALTER TABLE vorprodukte  ADD COLUMN IF NOT EXISTS archiv  BOOLEAN DEFAULT false;
