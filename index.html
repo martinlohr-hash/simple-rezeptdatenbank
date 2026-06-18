@@ -2411,7 +2411,7 @@ function PriceLogTab({priceLog, setPriceLog}) {
 
 // ── SETTINGS MODAL ───────────────────────────────────────────────────────────
 
-function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onSeedMissing, isConnected, syncError, deliveryRate, setDeliveryRate, warnDays, setWarnDays, alertDays, setAlertDays}) {
+function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onSeedMissing, isConnected, syncError, deliveryRate, setDeliveryRate, warnDays, setWarnDays, alertDays, setAlertDays, targetWePct, setTargetWePct, targetDB, setTargetDB}) {
   const [url, setUrl] = useState(sbUrl);
   const [key, setKey] = useState(sbKey);
   const [showKey, setShowKey] = useState(false);
@@ -2476,6 +2476,66 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
             );
           })()}
 
+          {/* Zielwerte */}
+          <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Zielwerte</div>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+            <span style={{fontSize:13,color:'#374151',flex:1}}>Wareneinsatz-Ziel (Marge)</span>
+            <input type="number" value={targetWePct} min={0} max={100} step={1}
+              onChange={e=>setTargetWePct(parseFloat(e.target.value)||0)}
+              style={{width:64,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:7,fontSize:14,fontWeight:600,textAlign:'right'}}/>
+            <span style={{fontSize:13,color:'#566373',width:48}}>% WE</span>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+            <span style={{fontSize:13,color:'#374151',flex:1}}>Deckungsbeitrag-Ziel / Sandwich</span>
+            <input type="number" value={targetDB} min={0} step={0.1}
+              onChange={e=>setTargetDB(parseFloat(e.target.value)||0)}
+              style={{width:64,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:7,fontSize:14,fontWeight:600,textAlign:'right'}}/>
+            <span style={{fontSize:13,color:'#566373',width:48}}>€ netto</span>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
+            <span style={{fontSize:13,color:'#374151',flex:1}}>Uber Eats Provision</span>
+            <input type="number" value={deliveryRate||30} min={0} max={100} step={1}
+              onChange={e=>setDeliveryRate(parseFloat(e.target.value)||0)}
+              style={{width:64,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:7,fontSize:14,fontWeight:600,textAlign:'right'}}/>
+            <span style={{fontSize:13,color:'#566373',width:48}}>%</span>
+          </div>
+          <div style={{fontSize:11,color:'#5e6e7f',marginBottom:20}}>WE- & DB-Ziel werden im Dashboard als Soll-Marke angezeigt. Delivery-VK hält den DB Netto konstant.</div>
+
+          <hr style={{border:'none',borderTop:'1px solid #f1f5f9',margin:'0 0 20px'}}/>
+
+          {/* Preis-Aktualität */}
+          <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Preis-Aktualität</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:8}}>
+            <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'12px 14px'}}>
+              <div style={{fontSize:11,fontWeight:600,color:'#92400e',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:8}}>Warnung (gelb) nach</div>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <input type="number" value={warnDays||90} min={1} step={1}
+                  onChange={e=>setWarnDays(parseInt(e.target.value)||90)}
+                  style={{width:60,padding:'5px 8px',border:'1px solid #fde68a',borderRadius:6,fontSize:14,fontWeight:600,background:'white',textAlign:'right'}}/>
+                <span style={{fontSize:13,color:'#92400e'}}>Tage</span>
+              </div>
+            </div>
+            <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'12px 14px'}}>
+              <div style={{fontSize:11,fontWeight:600,color:'#991b1b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:8}}>Alarm (rot) nach</div>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <input type="number" value={alertDays||180} min={1} step={1}
+                  onChange={e=>setAlertDays(parseInt(e.target.value)||180)}
+                  style={{width:60,padding:'5px 8px',border:'1px solid #fecaca',borderRadius:6,fontSize:14,fontWeight:600,background:'white',textAlign:'right'}}/>
+                <span style={{fontSize:13,color:'#991b1b'}}>Tage</span>
+              </div>
+            </div>
+          </div>
+          <div style={{fontSize:11,color:'#5e6e7f',marginBottom:20}}>Pro Artikel einzeln überschreibbar (z.B. Tagespreis = 1 Tag).</div>
+
+          <hr style={{border:'none',borderTop:'1px solid #f1f5f9',margin:'0 0 16px'}}/>
+
+          {/* Erweitert: Datenbank & Migration */}
+          <details>
+            <summary style={{fontSize:12,fontWeight:700,color:'#566373',textTransform:'uppercase',letterSpacing:'.4px',cursor:'pointer',userSelect:'none',listStyle:'none',display:'flex',alignItems:'center',gap:6}}>
+              <span style={{fontSize:10}}>▶</span> Erweitert · Datenbank &amp; Migration
+            </summary>
+            <div style={{marginTop:16}}>
+
           {/* Datenbank */}
           <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Datenbank</div>
           <div className="form-row"><label>Supabase Project URL</label>
@@ -2508,45 +2568,6 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
           {testMsg&&<div style={{padding:'8px 12px',borderRadius:7,marginBottom:16,fontSize:13,
             background:testMsg.startsWith('✓')?'#f0fdf4':'#fef2f2',
             color:testMsg.startsWith('✓')?'#166534':'#dc2626'}}>{testMsg}</div>}
-
-          <hr style={{border:'none',borderTop:'1px solid #f1f5f9',margin:'6px 0 20px'}}/>
-
-          {/* Delivery */}
-          <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Delivery-Provision</div>
-          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
-            <span style={{fontSize:13,color:'#374151',flex:1}}>Uber Eats Provision</span>
-            <input type="number" value={deliveryRate||30} min={0} max={100} step={1}
-              onChange={e=>setDeliveryRate(parseFloat(e.target.value)||0)}
-              style={{width:64,padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:7,fontSize:14,fontWeight:600,textAlign:'right'}}/>
-            <span style={{fontSize:13,color:'#566373'}}>%</span>
-          </div>
-          <div style={{fontSize:11,color:'#5e6e7f',marginBottom:20}}>Delivery-VK wird so berechnet, dass der DB Netto gleichbleibt.</div>
-
-          <hr style={{border:'none',borderTop:'1px solid #f1f5f9',margin:'0 0 20px'}}/>
-
-          {/* Preis-Aktualität */}
-          <div style={{fontSize:12,fontWeight:700,color:'#374151',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Preis-Aktualität</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:8}}>
-            <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'12px 14px'}}>
-              <div style={{fontSize:11,fontWeight:600,color:'#92400e',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:8}}>Warnung (gelb) nach</div>
-              <div style={{display:'flex',alignItems:'center',gap:6}}>
-                <input type="number" value={warnDays||90} min={1} step={1}
-                  onChange={e=>setWarnDays(parseInt(e.target.value)||90)}
-                  style={{width:60,padding:'5px 8px',border:'1px solid #fde68a',borderRadius:6,fontSize:14,fontWeight:600,background:'white',textAlign:'right'}}/>
-                <span style={{fontSize:13,color:'#92400e'}}>Tage</span>
-              </div>
-            </div>
-            <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'12px 14px'}}>
-              <div style={{fontSize:11,fontWeight:600,color:'#991b1b',textTransform:'uppercase',letterSpacing:'.3px',marginBottom:8}}>Alarm (rot) nach</div>
-              <div style={{display:'flex',alignItems:'center',gap:6}}>
-                <input type="number" value={alertDays||180} min={1} step={1}
-                  onChange={e=>setAlertDays(parseInt(e.target.value)||180)}
-                  style={{width:60,padding:'5px 8px',border:'1px solid #fecaca',borderRadius:6,fontSize:14,fontWeight:600,background:'white',textAlign:'right'}}/>
-                <span style={{fontSize:13,color:'#991b1b'}}>Tage</span>
-              </div>
-            </div>
-          </div>
-          <div style={{fontSize:11,color:'#5e6e7f',marginBottom: isConnected ? 0 : 4}}>Pro Artikel einzeln überschreibbar (z.B. Tagespreis = 1 Tag).</div>
 
           {isConnected&&(<>
             <hr style={{border:'none',borderTop:'1px solid #f1f5f9',margin:'20px 0'}}/>
@@ -2582,6 +2603,9 @@ ALTER TABLE vorprodukte ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;`}
               „Fehlende Seed-Daten" ergänzt neue Rezepte/VPs ohne bestehende Daten zu überschreiben.
             </div>
           </>)}
+
+            </div>
+          </details>
         </div>
         <div className="modal-footer" style={{justifyContent:'space-between'}}>
           <button className="btn btn-secondary btn-sm" onClick={test} disabled={testing||!url||!key}>
@@ -2837,7 +2861,7 @@ function VorlagenTab({templates, setTemplates, articles}) {
 
 // ── DASHBOARD TAB ─────────────────────────────────────────────────────────────
 
-function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, onNavigateToRecipe, suppliers=[], warnDays=90, alertDays=180}) {
+function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, onNavigateToRecipe, suppliers=[], warnDays=90, alertDays=180, targetWePct=22, targetDB=7}) {
   const [isMobile, setIsMobile] = React.useState(()=>window.innerWidth<768);
   React.useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h,{passive:true});return()=>window.removeEventListener('resize',h);},[]);
   const [view, setView] = React.useState('margen');
@@ -2851,9 +2875,9 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const [szMode, setSzMode] = React.useState('pct');
   const [szAbsPrice, setSzAbsPrice] = React.useState('');
   const [szRecipeId, setSzRecipeId] = React.useState('');
-  const [szTargetWE, setSzTargetWE] = React.useState(22);
+  const [szTargetWE, setSzTargetWE] = React.useState(targetWePct);
   const [tooltip, setTooltip] = React.useState(null);
-  const SOLL = 22;
+  const SOLL = targetWePct;
   const now = Date.now();
 
   const reviewArt = useMemo(()=>{
@@ -2950,7 +2974,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   if (isMobile) return (
     <MobileDashboardView
       recipes={recipes} articles={articles} vps={vps} priceLog={priceLog}
-      warnDays={warnDays} alertDays={alertDays}
+      warnDays={warnDays} alertDays={alertDays} targetWePct={targetWePct} targetDB={targetDB}
       onNewArticle={onNewArticle} onNewRecipe={onNewRecipe}
       onEditArticle={onEditArticle} onNavigateToRecipe={onNavigateToRecipe}
     />
@@ -3225,7 +3249,8 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
           </div>
           <div className="stat-card">
             <div className="stat-label">Ø DB Netto</div>
-            <div className="stat-value">{fmt(avgDB)}</div>
+            <div className="stat-value" style={{color:avgDB>=targetDB?'#16a34a':'#dc2626'}}>{fmt(avgDB)}</div>
+            <div className="stat-sub">Ziel: {fmt(targetDB)}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Gesamt-DB (Stückzahlen)</div>
@@ -3236,7 +3261,8 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
         <div className="card" style={{padding:'20px 24px'}}>
           {sortedDB.map(r=>{
             const barPct = (r.dbNetto/maxDB)*100;
-            const dbColor = r.dbNetto>=7?'#16a34a':r.dbNetto>=4?'#d97706':'#dc2626';
+            const dbColor = r.dbNetto>=targetDB?'#16a34a':r.dbNetto>=targetDB*0.6?'#d97706':'#dc2626';
+            const dbTargetPos = maxDB>0?Math.min(targetDB/maxDB*100,100):0;
             return (
               <div key={r.id} style={{display:'flex',alignItems:'center',marginBottom:9,cursor:'pointer'}}
                 onClick={()=>{setTooltip(null);onNavigateToRecipe&&onNavigateToRecipe(r);}}
@@ -3256,13 +3282,14 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
                     {barPct>20&&<span style={{fontSize:11,fontWeight:700,color:'white'}}>{fmt(r.dbNetto)}</span>}
                   </div>
                   {barPct<=20&&<span style={{position:'absolute',left:barPct+'%',top:'50%',transform:'translateY(-50%)',paddingLeft:6,fontSize:11,color:'#374151',fontWeight:600}}>{fmt(r.dbNetto)}</span>}
+                  <div style={{position:'absolute',top:0,bottom:0,left:dbTargetPos+'%',borderLeft:'2px dashed #5e6e7f',pointerEvents:'none'}}/>
                 </div>
               </div>
             );
           })}
         </div>
         <div style={{marginTop:12,fontSize:12,color:'#5e6e7f'}}>
-          DB Netto = VK Brutto ÷ (1+MwSt) − Wareneinsatz. Grün ≥ 7 €, Orange ≥ 4 €, Rot {'<'} 4 €. Nur Sandwiches (To-go, 7% MwSt) – Getränke ausgeblendet.
+          DB Netto = VK Brutto ÷ (1+MwSt) − Wareneinsatz. Ziel-Marke (gestrichelt) bei {fmt(targetDB)}: grün ≥ Ziel, orange ≥ {fmt(targetDB*0.6)}, rot darunter. Nur Sandwiches (To-go, 7% MwSt) – Getränke ausgeblendet.
         </div>
       </>)}
 
@@ -3571,10 +3598,10 @@ function MobileNav({tab, setTab}) {
   );
 }
 
-function MobileDashboardView({recipes, articles, vps, priceLog, warnDays, alertDays,
+function MobileDashboardView({recipes, articles, vps, priceLog, warnDays, alertDays, targetWePct=22, targetDB=7,
   onNewArticle, onNewRecipe, onEditArticle, onNavigateToRecipe}) {
 
-  const SOLL = 22;
+  const SOLL = targetWePct;
   const now = Date.now();
 
   const activeSWRecs = recipes.filter(r=>!r.archiv&&r.mwst!==19);
@@ -3994,6 +4021,8 @@ function App() {
   const [deliveryRate, setDeliveryRate] = useLS('simple_delivery_rate', 30);
   const [warnDays,  setWarnDays]  = useLS('simple_warn_days',  90);
   const [alertDays, setAlertDays] = useLS('simple_alert_days', 180);
+  const [targetWePct, setTargetWePct] = useLS('simple_target_we', 22);
+  const [targetDB,    setTargetDB]    = useLS('simple_target_db', 7);
   const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h,{passive:true});return()=>window.removeEventListener('resize',h);},[]);
   const [appImpactModal, setAppImpactModal] = useState(null);
@@ -4139,7 +4168,7 @@ function App() {
         right={<button className="btn btn-ghost" style={{color:'#5e6e7f',fontSize:19,padding:'4px 6px',lineHeight:1}} onClick={()=>setShowSettings(true)} title="Einstellungen">⚙</button>}
       />}
       <div className="content">
-        {tab===0&&<DashboardTab recipes={recipes} articles={articles} vps={vps} suppliers={suppliers} priceLog={priceLog} warnDays={warnDays} alertDays={alertDays}
+        {tab===0&&<DashboardTab recipes={recipes} articles={articles} vps={vps} suppliers={suppliers} priceLog={priceLog} warnDays={warnDays} alertDays={alertDays} targetWePct={targetWePct} targetDB={targetDB}
           onNewArticle={()=>{setPendingModal({name:'',g:1,e:'KG',ek:0,lief:'',datum:'',archiv:false});setTab(1);}}
           onNewRecipe={()=>{setPendingRecipeModal({});setTab(3);}}
           onNewVP={()=>{setPendingVPModal({});setTab(4);}}
@@ -4191,6 +4220,7 @@ function App() {
         syncError={syncStatus==='error'?syncError:''}
         deliveryRate={deliveryRate} setDeliveryRate={setDeliveryRate}
         warnDays={warnDays} setWarnDays={setWarnDays} alertDays={alertDays} setAlertDays={setAlertDays}
+        targetWePct={targetWePct} setTargetWePct={setTargetWePct} targetDB={targetDB} setTargetDB={setTargetDB}
         onClose={()=>setShowSettings(false)}
         onSeedDb={async()=>{
           await Promise.all([
