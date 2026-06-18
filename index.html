@@ -162,6 +162,9 @@ input:checked+.slider:before{transform:translateX(16px)}
 .shop-row.checked .shop-name{text-decoration:line-through}
 .shop-meta{font-size:12px;color:#5e6e7f;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .shop-price{font-size:13px;font-weight:700;color:#16a34a;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
+.shop-act{flex-shrink:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:none;background:#f1f5f9;border-radius:10px;cursor:pointer;font-size:18px;line-height:1;color:#64748b;-webkit-tap-highlight-color:transparent;transition:background-color .12s ease-out}
+.shop-act:active{background:#e2e8f0}
+.shop-act.danger{color:#dc2626;background:#fef2f2}
 </style>
 </head>
 <body>
@@ -3893,9 +3896,9 @@ Setze artId/menge/einheit auf null wenn nicht erkennbar.`;
         </div>
         {e.best && e.best.ppu>0 &&
           <div className="shop-price">{fmt(e.best.ppu)}<span style={{color:'#94a3b8',fontWeight:500}}>/{e.art.e}</span></div>}
-        <button className="btn btn-ghost btn-xs" style={{color:'#94a3b8',padding:'4px 6px'}}
+        <button className="shop-act"
           onClick={ev=>{ev.stopPropagation();setEditId(e.id);}} aria-label="Bearbeiten">✎</button>
-        <button className="btn btn-ghost btn-xs" style={{color:'#cbd5e1',padding:'4px 6px'}}
+        <button className="shop-act danger"
           onClick={ev=>{ev.stopPropagation();remove(e.id);}} aria-label="Entfernen">✕</button>
       </div>
     );
