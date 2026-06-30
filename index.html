@@ -3558,6 +3558,7 @@ function MobileNav({tab, setTab}) {
     {tabIdx:8,label:'Einkauf',icon:'🛒'},
     {tabIdx:6,label:'Preislog',icon:'📈'},
     {tabIdx:7,label:'Vorlagen',icon:'📌'},
+    {tabIdx:9,label:'Event',icon:'🎉'},
   ];
 
   return (
@@ -3763,7 +3764,7 @@ function MobileDashboardView({recipes, articles, vps, priceLog, warnDays, alertD
   history.replaceState(null, '', window.location.pathname + window.location.search);
 })();
 
-const TABS = ['Dashboard','Artikel','Rechnungen','Rezepte','Vorprodukte','Lieferanten','Preislog','Vorlagen','Einkauf'];
+const TABS = ['Dashboard','Artikel','Rechnungen','Rezepte','Vorprodukte','Lieferanten','Preislog','Vorlagen','Einkauf','Event'];
 
 function ShoppingTab({articles, suppliers=[], isMobile=false}) {
   const [apiKey] = useLS('sk_simple_apikey','');
@@ -4008,6 +4009,226 @@ Setze artId/menge/einheit auf null wenn nicht erkennbar.`;
   );
 }
 
+// ── EVENT / CATERING-RECHNER ─────────────────────────────────────────────────
+// Verknüpft Vorprodukt-Artikel (lief SIMPLE) mit ihrem VP, damit die Einkaufs-
+// liste bis auf die Rohzutaten heruntergerechnet werden kann.
+function buildVpForArticle(articles, vps) {
+  const norm = s => (s||'').toLowerCase().replace(/[\s\-_]/g,'').replace(/vp$/,'');
+  const map = {};
+  articles.forEach(a => {
+    if (a._vpId) { const vp = vps.find(v=>v.id===a._vpId); if (vp) { map[a.id]=vp; return; } }
+    if ((a.lief||'').toLowerCase()==='simple') {
+      const vp = vps.find(v=>norm(v.name)===norm(a.name));
+      if (vp) map[a.id]=vp;
+    }
+  });
+  return map;
+}
+
+function fmtNeed(art, q) {
+  if (isWeightUnit(art.e)) return q<1 ? Math.round(q*1000)+' g' : q.toFixed(2).replace('.',',')+' kg';
+  if (isVolumeUnit(art.e)) return q<1 ? Math.round(q*1000)+' ml' : q.toFixed(2).replace('.',',')+' l';
+  const r = Number.isInteger(q) ? q : Math.round(q*10)/10;
+  return (''+r).replace('.',',')+' '+(art.e||'St');
+}
+function gebindePacks(art, q) { return art.g>0 ? Math.ceil(q/art.g - 1e-9) : null; }
+
+function EventTab({recipes, articles, vps}) {
+  const [items, setItems]     = useLS('simple_event', []);            // [{recipeId, qty}]
+  const [evName, setEvName]   = useLS('simple_event_name', '');
+  const [explode, setExplode] = useLS('simple_event_explode', true);
+  const [copied, setCopied]   = useState(false);
+
+  const activeRecipes = recipes.filter(r=>!r.archiv);
+  const vpForArt = useMemo(()=>buildVpForArticle(articles, vps), [articles, vps]);
+
+  const addItem = () => {
+    const used = new Set(items.map(i=>i.recipeId));
+    const next = activeRecipes.find(r=>!used.has(r.id)) || activeRecipes[0];
+    setItems(prev=>[...prev, {recipeId: next?next.id:'', qty: 10}]);
+  };
+  const setItem = (idx, patch) => setItems(prev=>prev.map((it,i)=>i===idx?{...it,...patch}:it));
+  const delItem = (idx) => setItems(prev=>prev.filter((_,i)=>i!==idx));
+
+  const result = useMemo(()=>{
+    const acc = {}, rawAcc = {}, vpAcc = {};
+    const need = (artId, baseQty, seen) => {
+      const art = articles.find(a=>a.id===artId);
+      if (!art) { rawAcc['?'+artId]={name:artId, qty:(rawAcc['?'+artId]?.qty||0)+baseQty, einheit:''}; return; }
+      const vp = explode ? vpForArt[artId] : null;
+      if (vp && !seen.has(vp.id)) {
+        vpAcc[vp.id] = (vpAcc[vp.id]||0) + baseQty;
+        const scale = vp.outputKg>0 ? baseQty/vp.outputKg : 0;
+        const seen2 = new Set(seen); seen2.add(vp.id);
+        (vp.zutaten||[]).forEach(z=>{
+          const q = (z.menge||0)*toBaseMultiplier(z.einheit)*scale;
+          if (z.art) need(z.art, q, seen2);
+          else { const k=z.name||'?'; rawAcc[k]={name:z.name, qty:(rawAcc[k]?.qty||0)+q, einheit:z.einheit}; }
+        });
+      } else {
+        acc[artId] = (acc[artId]||0) + baseQty;
+      }
+    };
+    items.forEach(it=>{
+      const r = recipes.find(x=>x.id===it.recipeId);
+      const qty = Number(it.qty)||0;
+      if (!r || !qty) return;
+      (r.zutaten||[]).forEach(z=>{
+        const q = (z.menge||0)*toBaseMultiplier(z.einheit)*qty;
+        if (z.art) need(z.art, q, new Set());
+        else { const k=z.name||'?'; rawAcc[k]={name:z.name, qty:(rawAcc[k]?.qty||0)+q, einheit:z.einheit}; }
+      });
+    });
+    const rows = Object.entries(acc).map(([id,qty])=>{
+      const art = articles.find(a=>a.id===id) || {id,name:id,e:'',g:0,ek:0,lief:''};
+      const lief = (art.lief||'').toLowerCase()==='simple' ? 'SIMPLE' : (art.lief||'— ohne Lieferant');
+      return {art, qty, cost: pricePerUnit(art)*qty, lief};
+    });
+    const total = rows.reduce((s,r)=>s+r.cost,0);
+    const vpList = Object.entries(vpAcc).map(([id,qty])=>({vp:vps.find(v=>v.id===id),qty}))
+      .filter(x=>x.vp).sort((a,b)=>b.qty-a.qty);
+    const rawList = Object.values(rawAcc);
+    return {rows, total, vpList, rawList};
+  }, [items, explode, articles, vps, recipes, vpForArt]);
+
+  const grouped = useMemo(()=>{
+    const g = {};
+    result.rows.forEach(r=>{ (g[r.lief]=g[r.lief]||[]).push(r); });
+    Object.values(g).forEach(rows=>rows.sort((a,b)=>a.art.name.localeCompare(b.art.name)));
+    return Object.entries(g).sort((a,b)=>{
+      const sa=a[0].toLowerCase()==='simple', sb=b[0].toLowerCase()==='simple';
+      if (sa!==sb) return sa?1:-1;
+      return a[0].localeCompare(b[0]);
+    });
+  }, [result.rows]);
+
+  const totalPortions = items.reduce((s,i)=>s+(Number(i.qty)||0),0);
+  const liefLabel = l => l.toLowerCase()==='simple' ? 'SIMPLE — selbst herstellen' : l;
+
+  const buildText = () => {
+    let t = '🛒 EINKAUFSLISTE'+(evName?' – '+evName:'')+'\n\n';
+    t += items.filter(i=>Number(i.qty)).map(i=>{const r=recipes.find(x=>x.id===i.recipeId);return `${i.qty}× ${r?r.name:'?'}`;}).join('\n')+'\n\n';
+    grouped.forEach(([lief,rows])=>{
+      t += '— '+liefLabel(lief)+' —\n';
+      rows.forEach(r=>{ const p=gebindePacks(r.art,r.qty); t += `• ${r.art.name}: ${fmtNeed(r.art,r.qty)}`+(p!=null?`  (≈ ${p}× ${r.art.g} ${r.art.e})`:'')+'\n'; });
+      t += '\n';
+    });
+    if (result.vpList.length) {
+      t += '— Vorprodukte herstellen —\n';
+      result.vpList.forEach(({vp,qty})=>{ t += `• ${vp.name}: ${qty.toFixed(2).replace('.',',')} kg\n`; });
+      t += '\n';
+    }
+    t += `Wareneinsatz gesamt: ${fmt(result.total)}`;
+    return t;
+  };
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(buildText()); setCopied(true); setTimeout(()=>setCopied(false),1600); } catch(e){}
+  };
+
+  return (
+    <div className="tab-content">
+      <div className="toolbar" style={{justifyContent:'space-between'}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:700,letterSpacing:'-.3px'}}>🎉 Event-Rechner</h2>
+          <div style={{fontSize:12,color:'#5e6e7f',marginTop:2}}>Gerichte wählen → komplette, zusammengefasste Einkaufsliste</div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          {result.rows.length>0 && <button className="btn btn-secondary btn-sm" onClick={copy}>{copied?'✓ Kopiert':'📋 Kopieren'}</button>}
+          {items.length>0 && <button className="btn btn-ghost btn-sm" onClick={()=>{if(confirm('Event-Liste leeren?'))setItems([]);}}>Leeren</button>}
+        </div>
+      </div>
+
+      <div className="card" style={{padding:16,marginBottom:16}}>
+        <div className="form-row" style={{marginBottom:14,maxWidth:320}}>
+          <label>Event-Name (optional)</label>
+          <input type="text" value={evName} onChange={e=>setEvName(e.target.value)} placeholder="z.B. Hochzeit Müller, 12.07."/>
+        </div>
+        {items.length===0 && <div style={{fontSize:13,color:'#5e6e7f',marginBottom:12}}>Noch keine Gerichte. Füge das erste hinzu 👇</div>}
+        {items.map((it,idx)=>{
+          const r = recipes.find(x=>x.id===it.recipeId);
+          const empty = r && (!r.zutaten || !r.zutaten.length);
+          return (
+            <div key={idx} style={{display:'flex',gap:8,alignItems:'center',marginBottom:8,flexWrap:'wrap'}}>
+              <input type="number" min="0" value={it.qty} onChange={e=>setItem(idx,{qty:e.target.value})}
+                style={{width:74,textAlign:'right',fontWeight:700}}/>
+              <span style={{color:'#94a3b8',fontWeight:700}}>×</span>
+              <select value={it.recipeId} onChange={e=>setItem(idx,{recipeId:e.target.value})} style={{flex:1,minWidth:160,maxWidth:340}}>
+                {activeRecipes.map(rc=><option key={rc.id} value={rc.id}>{rc.name}</option>)}
+              </select>
+              {empty && <span className="badge badge-orange" title="Dieses Rezept hat keine Zutaten hinterlegt">keine Zutaten</span>}
+              <button className="btn btn-danger btn-sm" onClick={()=>delItem(idx)}>✕</button>
+            </div>
+          );
+        })}
+        <div style={{display:'flex',gap:10,alignItems:'center',marginTop:12,flexWrap:'wrap'}}>
+          <button className="btn btn-primary btn-sm" onClick={addItem} disabled={!activeRecipes.length}>+ Gericht hinzufügen</button>
+          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:'#475569',cursor:'pointer',marginLeft:'auto'}}>
+            <span className="switch"><input type="checkbox" checked={explode} onChange={e=>setExplode(e.target.checked)}/><span className="slider"/></span>
+            Vorprodukte auf Rohzutaten aufschlüsseln
+          </label>
+        </div>
+      </div>
+
+      {result.rows.length===0 ? (
+        <div className="empty">Sobald du Gerichte mit Mengen einträgst, erscheint hier die Einkaufsliste.</div>
+      ) : (
+        <>
+          <div className="stats-row" style={{gridTemplateColumns:'repeat(3,1fr)'}}>
+            <div className="stat-card"><div className="stat-label">Portionen</div><div className="stat-value">{totalPortions}</div><div className="stat-sub">{items.filter(i=>Number(i.qty)).length} Gerichte</div></div>
+            <div className="stat-card"><div className="stat-label">Positionen</div><div className="stat-value">{result.rows.length}</div><div className="stat-sub">Einkaufs-Artikel</div></div>
+            <div className="stat-card"><div className="stat-label">Wareneinsatz</div><div className="stat-value" style={{color:'#e85d04'}}>{fmt(result.total)}</div><div className="stat-sub">{totalPortions>0?fmt(result.total/totalPortions)+' / Portion':''}</div></div>
+          </div>
+
+          {grouped.map(([lief,rows])=>(
+            <div className="card" key={lief} style={{marginBottom:14}}>
+              <div className="shop-group-title" style={{margin:0,padding:'12px 14px 8px'}}>{liefLabel(lief)}<span className="badge badge-gray">{rows.length}</span></div>
+              <table>
+                <thead><tr><th>Artikel</th><th style={{textAlign:'right'}}>Benötigt</th><th style={{textAlign:'right'}}>Kaufen</th><th style={{textAlign:'right'}}>Kosten</th></tr></thead>
+                <tbody>
+                  {rows.map(r=>{
+                    const p = gebindePacks(r.art, r.qty);
+                    return (
+                      <tr key={r.art.id}>
+                        <td><strong>{r.art.name}</strong></td>
+                        <td style={{textAlign:'right',fontWeight:600}}>{fmtNeed(r.art, r.qty)}</td>
+                        <td style={{textAlign:'right',color:'#5e6e7f'}}>{p!=null?`${p}× ${r.art.g} ${r.art.e}`:'—'}</td>
+                        <td style={{textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{fmt(r.cost)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ))}
+
+          {result.vpList.length>0 && (
+            <div className="card" style={{marginBottom:14}}>
+              <div className="shop-group-title" style={{margin:0,padding:'12px 14px 8px'}}>🧪 Vorprodukte herstellen<span className="badge badge-gray">{result.vpList.length}</span></div>
+              <table>
+                <thead><tr><th>Vorprodukt</th><th style={{textAlign:'right'}}>Menge</th><th style={{textAlign:'right'}}>Ø Batch</th></tr></thead>
+                <tbody>
+                  {result.vpList.map(({vp,qty})=>(
+                    <tr key={vp.id}>
+                      <td><strong>{vp.name}</strong></td>
+                      <td style={{textAlign:'right',fontWeight:600}}>{qty.toFixed(2).replace('.',',')} kg</td>
+                      <td style={{textAlign:'right',color:'#5e6e7f'}}>{vp.outputKg?`${(qty/vp.outputKg).toFixed(1).replace('.',',')}× (${vp.outputKg} kg)`:'—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{fontSize:11,color:'#94a3b8',padding:'8px 14px'}}>Die Rohzutaten dieser Vorprodukte sind bereits in der Einkaufsliste oben enthalten.</div>
+            </div>
+          )}
+
+          {result.rawList.length>0 && (
+            <div className="warn-banner">⚠ Ohne Artikel-Zuordnung (keine Kosten berechnet): {result.rawList.map(x=>`${x.name} (${(x.qty).toFixed(3).replace('.',',')} ${x.einheit||''})`).join(', ')}</div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [tab, setTab] = useState(0);
   const [sbUrl, setSbUrl] = useLS('sb_url','');
@@ -4200,7 +4421,7 @@ function App() {
         ))}
       </div>
       {isMobile&&<MobileHeader
-        title={tab===0?'Dashboard':tab===1?'Artikel':tab===2?'Rechnungen':tab===3?'Rezepte':tab===4?'Vorprodukte':tab===5?'Lieferanten':tab===6?'Preislog':tab===7?'Vorlagen':'Einkauf'}
+        title={tab===0?'Dashboard':tab===1?'Artikel':tab===2?'Rechnungen':tab===3?'Rezepte':tab===4?'Vorprodukte':tab===5?'Lieferanten':tab===6?'Preislog':tab===7?'Vorlagen':tab===8?'Einkauf':'Event'}
         right={<button className="btn btn-ghost" style={{color:'#5e6e7f',fontSize:19,padding:'4px 6px',lineHeight:1}} onClick={()=>setShowSettings(true)} title="Einstellungen">⚙</button>}
       />}
       <div className="content">
@@ -4246,6 +4467,7 @@ function App() {
         {tab===6&&<PriceLogTab priceLog={priceLog} setPriceLog={setPriceLog}/>}
         {tab===7&&<VorlagenTab templates={templates} setTemplates={setTemplates} articles={articles}/>}
         {tab===8&&<ShoppingTab articles={articles} suppliers={suppliers} isMobile={isMobile}/>}
+        {tab===9&&<EventTab recipes={recipes} articles={articles} vps={vps}/>}
       </div>
       {isMobile&&<MobileNav tab={tab} setTab={setTab}/>}
       {appImpactModal&&<ImpactModal {...appImpactModal} onClose={()=>setAppImpactModal(null)}/>}
