@@ -4112,8 +4112,10 @@ function EventTab({recipes, articles, vps}) {
   const checkedSet = new Set(checkedIds);
   const toggleCheck = id => setCheckedIds(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);
   const flatRows = useMemo(()=>[...result.rows].sort((a,b)=>a.art.name.localeCompare(b.art.name,'de')), [result.rows]);
+  const openTotal    = result.rows.reduce((s,r)=>checkedSet.has(r.art.id)?s:s+r.cost,0);
+  const checkedCount = result.rows.filter(r=>checkedSet.has(r.art.id)).length;
   const pushToShopping = () => {
-    const newItems = result.rows.map(r=>({id:'S'+uid(), raw:r.art.name, artId:r.art.id,
+    const newItems = result.rows.filter(r=>!checkedSet.has(r.art.id)).map(r=>({id:'S'+uid(), raw:r.art.name, artId:r.art.id,
       menge:Math.round(r.qty*100)/100, einheit:r.art.e||null, checked:false, manualSupplier:null}));
     setShopping(prev=>[...prev.filter(p=>!p.checked), ...newItems]);
     setPushed(true); setTimeout(()=>setPushed(false),1800);
@@ -4203,10 +4205,11 @@ function EventTab({recipes, articles, vps}) {
         <div className="empty">Sobald du Gerichte mit Mengen einträgst, erscheint hier die Einkaufsliste.</div>
       ) : (
         <>
-          <div className="stats-row" style={{gridTemplateColumns:'repeat(3,1fr)'}}>
+          <div className="stats-row">
             <div className="stat-card"><div className="stat-label">Portionen</div><div className="stat-value">{totalPortions}</div><div className="stat-sub">{items.filter(i=>Number(i.qty)).length} Gerichte</div></div>
-            <div className="stat-card"><div className="stat-label">Positionen</div><div className="stat-value">{result.rows.length}</div><div className="stat-sub">Einkaufs-Artikel</div></div>
-            <div className="stat-card"><div className="stat-label">Wareneinsatz</div><div className="stat-value" style={{color:'#e85d04'}}>{fmt(result.total)}</div><div className="stat-sub">{totalPortions>0?fmt(result.total/totalPortions)+' / Portion':''}</div></div>
+            <div className="stat-card"><div className="stat-label">Positionen offen</div><div className="stat-value">{result.rows.length-checkedCount}<span style={{fontSize:15,color:'#94a3b8',fontWeight:600}}> / {result.rows.length}</span></div><div className="stat-sub">{checkedCount} abgehakt</div></div>
+            <div className="stat-card"><div className="stat-label">Wareneinsatz gesamt</div><div className="stat-value">{fmt(result.total)}</div><div className="stat-sub">{totalPortions>0?fmt(result.total/totalPortions)+' / Portion':''}</div></div>
+            <div className="stat-card" style={{borderColor:'#fed7aa',background:'#fff7ed'}}><div className="stat-label" style={{color:'#c2410c'}}>Noch einkaufen</div><div className="stat-value" style={{color:'#e85d04'}}>{fmt(openTotal)}</div><div className="stat-sub">{checkedCount>0?fmt(result.total-openTotal)+' bereits vorhanden':'noch nichts abgehakt'}</div></div>
           </div>
 
           <div className="toolbar" style={{justifyContent:'space-between',marginBottom:12}}>
