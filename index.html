@@ -782,6 +782,17 @@ const TEMPLATES_SEED = [
   ]},
 ];
 
+const HACCP_SEED = [
+  {id:'tk',       name:'TK-Kühlschrank',      min:-30, max:-18},
+  {id:'kueche',   name:'Küchen-Kühlschrank',  min:0,   max:7},
+  {id:'service',  name:'Service-Kühlschrank', min:0,   max:7},
+  {id:'saladette',name:'Saladette',           min:0,   max:7},
+];
+const haccpDateStr = (d=new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const haccpEntryId = (datum, geraet) => `H-${datum}-${geraet}`;
+const haccpInRange = (dev, t) => t>=dev.min && t<=dev.max;
+const haccpFmtTemp = t => `${(t<0?'−':'')+Math.abs(t).toLocaleString('de-DE',{maximumFractionDigits:1})} °C`;
+
 // ── STORAGE HOOK ──────────────────────────────────────────────────────────────
 
 function useLS(key, seed) {
@@ -2583,8 +2594,15 @@ ALTER TABLE vorprodukte ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;
 CREATE TABLE IF NOT EXISTS settings (id TEXT PRIMARY KEY, data JSONB DEFAULT '{}'::jsonb);
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow_all" ON settings FOR ALL USING (true) WITH CHECK (true);
-GRANT ALL ON settings TO anon;`}</code>
-              <button onClick={()=>navigator.clipboard.writeText(`ALTER TABLE articles ADD COLUMN IF NOT EXISTS kat TEXT DEFAULT 'Food';\nALTER TABLE articles ADD COLUMN IF NOT EXISTS fav BOOLEAN DEFAULT FALSE;\nALTER TABLE recipes ADD COLUMN IF NOT EXISTS zutaten JSONB DEFAULT '[]';\nALTER TABLE recipes ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;\nALTER TABLE vorprodukte ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;\nCREATE TABLE IF NOT EXISTS settings (id TEXT PRIMARY KEY, data JSONB DEFAULT '{}'::jsonb);\nALTER TABLE settings ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "allow_all" ON settings FOR ALL USING (true) WITH CHECK (true);\nGRANT ALL ON settings TO anon;`)}
+GRANT ALL ON settings TO anon;
+CREATE TABLE IF NOT EXISTS haccp_log (id TEXT PRIMARY KEY, datum TEXT NOT NULL,
+  geraet TEXT NOT NULL, temp NUMERIC NOT NULL, zeit TEXT,
+  nachgetragen BOOLEAN DEFAULT FALSE, massnahme TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT now());
+ALTER TABLE haccp_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all" ON haccp_log FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON haccp_log TO anon;`}</code>
+              <button onClick={()=>navigator.clipboard.writeText(`ALTER TABLE articles ADD COLUMN IF NOT EXISTS kat TEXT DEFAULT 'Food';\nALTER TABLE articles ADD COLUMN IF NOT EXISTS fav BOOLEAN DEFAULT FALSE;\nALTER TABLE recipes ADD COLUMN IF NOT EXISTS zutaten JSONB DEFAULT '[]';\nALTER TABLE recipes ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;\nALTER TABLE vorprodukte ADD COLUMN IF NOT EXISTS archiv BOOLEAN DEFAULT false;\nCREATE TABLE IF NOT EXISTS settings (id TEXT PRIMARY KEY, data JSONB DEFAULT '{}'::jsonb);\nALTER TABLE settings ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "allow_all" ON settings FOR ALL USING (true) WITH CHECK (true);\nGRANT ALL ON settings TO anon;\nCREATE TABLE IF NOT EXISTS haccp_log (id TEXT PRIMARY KEY, datum TEXT NOT NULL, geraet TEXT NOT NULL, temp NUMERIC NOT NULL, zeit TEXT, nachgetragen BOOLEAN DEFAULT FALSE, massnahme TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT now());\nALTER TABLE haccp_log ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "allow_all" ON haccp_log FOR ALL USING (true) WITH CHECK (true);\nGRANT ALL ON haccp_log TO anon;`)}
                 style={{position:'absolute',top:8,right:8,background:'#333',border:'none',color:'#999',borderRadius:5,padding:'3px 8px',fontSize:11,cursor:'pointer'}}>
                 Kopieren
               </button>
@@ -2866,7 +2884,7 @@ function VorlagenTab({templates, setTemplates, articles}) {
 
 // ── DASHBOARD TAB ─────────────────────────────────────────────────────────────
 
-function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, onNavigateToRecipe, suppliers=[], warnDays=90, alertDays=180, targetWePct=22, targetDB=7}) {
+function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, onNavigateToRecipe, suppliers=[], warnDays=90, alertDays=180, targetWePct=22, targetDB=7, haccpOpenCount=0, haccpTotal=0, onOpenHaccp}) {
   const [isMobile, setIsMobile] = React.useState(()=>window.innerWidth<768);
   React.useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h,{passive:true});return()=>window.removeEventListener('resize',h);},[]);
   const [view, setView] = React.useState('margen');
@@ -2982,6 +3000,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
       warnDays={warnDays} alertDays={alertDays} targetWePct={targetWePct} targetDB={targetDB}
       onNewArticle={onNewArticle} onNewRecipe={onNewRecipe}
       onEditArticle={onEditArticle} onNavigateToRecipe={onNavigateToRecipe}
+      haccpOpenCount={haccpOpenCount} haccpTotal={haccpTotal} onOpenHaccp={onOpenHaccp}
     />
   );
 
@@ -3559,6 +3578,7 @@ function MobileNav({tab, setTab}) {
     {tabIdx:6,label:'Preislog',icon:'📈'},
     {tabIdx:7,label:'Vorlagen',icon:'📌'},
     {tabIdx:9,label:'Event',icon:'🎉'},
+    {tabIdx:10,label:'HACCP',icon:'🌡'},
   ];
 
   return (
@@ -3605,7 +3625,7 @@ function MobileNav({tab, setTab}) {
 }
 
 function MobileDashboardView({recipes, articles, vps, priceLog, warnDays, alertDays, targetWePct=22, targetDB=7,
-  onNewArticle, onNewRecipe, onEditArticle, onNavigateToRecipe}) {
+  onNewArticle, onNewRecipe, onEditArticle, onNavigateToRecipe, haccpOpenCount=0, haccpTotal=0, onOpenHaccp}) {
 
   const SOLL = targetWePct;
   const now = Date.now();
@@ -3645,6 +3665,19 @@ function MobileDashboardView({recipes, articles, vps, priceLog, warnDays, alertD
     <div style={{padding:'12px 16px 8px'}}>
 
       {/* Alerts */}
+      {haccpOpenCount>0&&(
+        <div style={{background:'#eff6ff',border:'1px solid #93c5fd',borderRadius:12,padding:'13px 14px',marginBottom:10,display:'flex',alignItems:'center',gap:12}}>
+          <span style={{fontSize:18,flexShrink:0}}>🌡</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:14,fontWeight:700,color:'#1e40af'}}>HACCP: {haccpTotal-haccpOpenCount}/{haccpTotal} Temperaturen erfasst</div>
+            <div style={{fontSize:12,color:'#1d4ed8',marginTop:1}}>Tägliche Kühlgeräte-Kontrolle noch offen</div>
+          </div>
+          <button onClick={onOpenHaccp}
+            className="btn btn-primary btn-sm" style={{flexShrink:0,fontSize:12,padding:'6px 12px',borderRadius:8}}>
+            Jetzt messen
+          </button>
+        </div>
+      )}
       {redCount>0&&(
         <div style={{background:'#fef2f2',border:'1px solid #fca5a5',borderRadius:12,padding:'13px 14px',marginBottom:10,display:'flex',alignItems:'center',gap:12}}>
           <span style={{fontSize:18,color:'#dc2626',flexShrink:0}}>⚠</span>
@@ -3764,7 +3797,7 @@ function MobileDashboardView({recipes, articles, vps, priceLog, warnDays, alertD
   history.replaceState(null, '', window.location.pathname + window.location.search);
 })();
 
-const TABS = ['Dashboard','Artikel','Rechnungen','Rezepte','Vorprodukte','Lieferanten','Preislog','Vorlagen','Einkauf','Event'];
+const TABS = ['Dashboard','Artikel','Rechnungen','Rezepte','Vorprodukte','Lieferanten','Preislog','Vorlagen','Einkauf','Event','HACCP'];
 
 function ShoppingTab({articles, suppliers=[], isMobile=false, list, setList}) {
   const [apiKey] = useLS('sk_simple_apikey','');
@@ -4280,6 +4313,308 @@ function EventTab({recipes, articles, vps, items, setItems, evName, setEvName, c
   );
 }
 
+// ── HACCP TAB ─────────────────────────────────────────────────────────────────
+
+function HaccpTab({devices, setDevices, log, setLog, upsert, isMobile=false}) {
+  const today = haccpDateStr();
+  const [inputs, setInputs]   = useState({});   // devId -> Eingabe-String (heute)
+  const [notes, setNotes]     = useState({});   // devId -> Maßnahme-Text (heute)
+  const [editing, setEditing] = useState({});   // devId -> bool (heutigen Wert ändern)
+  const [backfill, setBackfill] = useState(null); // {datum, devId, val, note}
+  const [month, setMonth] = useState(today.slice(0,7));
+
+  const byKey = useMemo(()=>{const m={};log.forEach(e=>{m[e.datum+'|'+e.geraet]=e;});return m;},[log]);
+  const entryFor = (datum,gid)=>byKey[datum+'|'+gid];
+  const doneCount = devices.filter(d=>entryFor(today,d.id)).length;
+
+  const save = (dev, raw, datum, {nachgetragen=false, massnahme=''}={}) => {
+    const t = parseFloat(String(raw).replace(',','.'));
+    if (isNaN(t)) return false;
+    const entry = {id:haccpEntryId(datum,dev.id), datum, geraet:dev.id, temp:t,
+      zeit:new Date().toISOString(), nachgetragen, massnahme:(massnahme||'').trim()};
+    setLog(prev=>[entry, ...prev.filter(e=>e.id!==entry.id)]);
+    upsert && upsert('haccp_log', entry);
+    return true;
+  };
+
+  // Tage des gewählten Monats (absteigend), nur bis heute
+  const monthDays = useMemo(()=>{
+    const [y,m] = month.split('-').map(Number);
+    const days=[]; const last=new Date(y,m,0).getDate();
+    for(let d=last;d>=1;d--){
+      const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      if(ds<=today) days.push(ds);
+    }
+    return days;
+  },[month,today]);
+
+  const exportCSV = () => {
+    const rows=[['Datum','Gerät','Temperatur (°C)','Soll (°C)','Erfasst am','Nachgetragen','Maßnahme']];
+    [...monthDays].reverse().forEach(ds=>{
+      devices.forEach(dev=>{
+        const e=entryFor(ds,dev.id);
+        rows.push([ds, dev.name,
+          e?String(e.temp).replace('.',','):'keine Messung',
+          `${dev.min} bis ${dev.max}`,
+          e&&e.zeit?new Date(e.zeit).toLocaleString('de-DE'):'',
+          e?(e.nachgetragen?'ja':'nein'):'',
+          e?(e.massnahme||''):'']);
+      });
+    });
+    const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
+    const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download=`haccp-${month}.csv`; a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const printMonth = () => {
+    const head=devices.map(d=>`<th>${d.name}<br><small>${d.min} bis ${d.max} °C</small></th>`).join('');
+    const rowsHtml=[...monthDays].reverse().map(ds=>{
+      const label=new Date(ds+'T12:00').toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});
+      const cells=devices.map(dev=>{
+        const e=entryFor(ds,dev.id);
+        if(!e) return '<td class="miss">keine Messung</td>';
+        const bad=!haccpInRange(dev,e.temp);
+        return `<td class="${bad?'bad':'ok'}">${haccpFmtTemp(e.temp)}${e.nachgetragen?' <small>(nachgetragen)</small>':''}${e.massnahme?`<br><small>&#8627; ${e.massnahme}</small>`:''}</td>`;
+      }).join('');
+      return `<tr><td>${label}</td>${cells}</tr>`;
+    }).join('');
+    const w=window.open('','_blank');
+    if(!w) return;
+    w.document.write(`<!doctype html><html><head><title>HACCP ${month}</title><style>
+      body{font-family:-apple-system,'Segoe UI',sans-serif;padding:24px;color:#111}
+      h1{font-size:18px;margin:0 0 4px} table{border-collapse:collapse;width:100%;margin-top:14px}
+      th,td{border:1px solid #999;padding:5px 8px;font-size:12px;text-align:left;vertical-align:top}
+      th{background:#f0f0f0} td.miss{color:#999;font-style:italic} td.bad{background:#fee2e2;font-weight:700}
+      small{color:#555;font-weight:400} .sig{margin-top:44px;font-size:12px}
+    </style></head><body>
+      <h1>HACCP-Temperaturkontrolle &middot; ${month}</h1>
+      <div style="font-size:12px;color:#555">Simple Kitchen OS &middot; erstellt am ${new Date().toLocaleString('de-DE')}</div>
+      <table><tr><th>Datum</th>${head}</tr>${rowsHtml}</table>
+      <div class="sig">Datum / Unterschrift verantwortliche Person: ______________________________</div>
+    </body></html>`);
+    w.document.close(); w.print();
+  };
+
+  const renderToday = (dev) => {
+    const e = entryFor(today, dev.id);
+    const isEditing = !!editing[dev.id];
+    const showInput = !e || isEditing;
+    const raw = inputs[dev.id] ?? '';
+    const t = parseFloat(String(raw).replace(',','.'));
+    const valid = !isNaN(t);
+    const out = valid && !haccpInRange(dev,t);
+    const note = notes[dev.id] ?? '';
+    const canSave = valid && (!out || note.trim().length>=3);
+    const doSave = () => {
+      if(!canSave) return;
+      save(dev, raw, today, {massnahme: out?note:''});
+      setInputs(p=>({...p,[dev.id]:''})); setNotes(p=>({...p,[dev.id]:''}));
+      setEditing(p=>({...p,[dev.id]:false}));
+    };
+    const ok = e && haccpInRange(dev, e.temp);
+    return (
+      <div key={dev.id} style={{background:'#fff',border:`1px solid ${e?(ok?'#bbf7d0':'#fca5a5'):'#e2e8f0'}`,borderRadius:12,padding:'14px'}}>
+        <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:8,marginBottom:8}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#1a1a1a'}}>{dev.name}</div>
+          <div style={{fontSize:11,color:'#5e6e7f',flexShrink:0}}>Soll {dev.min} bis {dev.max} °C</div>
+        </div>
+        {!showInput&&(
+          <div>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:24,fontWeight:700,letterSpacing:'-.5px',color:ok?'#16a34a':'#dc2626'}}>{haccpFmtTemp(e.temp)}</span>
+              <span style={{fontSize:12,color:'#5e6e7f',flex:1}}>
+                {ok?'✓':'⚠'} {e.zeit?new Date(e.zeit).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+' Uhr':''}
+                {e.nachgetragen&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:'#b45309',background:'#fffbeb',border:'1px solid #fcd34d',borderRadius:4,padding:'1px 5px'}}>nachgetragen</span>}
+              </span>
+              <button className="btn btn-ghost btn-sm" style={{color:'#5e6e7f'}} title="Wert korrigieren"
+                onClick={()=>{setEditing(p=>({...p,[dev.id]:true}));setInputs(p=>({...p,[dev.id]:String(e.temp).replace('.',',')}));setNotes(p=>({...p,[dev.id]:e.massnahme||''}));}}>✎</button>
+            </div>
+            {e.massnahme&&<div style={{fontSize:12,color:'#991b1b',marginTop:6}}>↳ {e.massnahme}</div>}
+          </div>
+        )}
+        {showInput&&(
+          <div>
+            <div style={{display:'flex',gap:8}}>
+              <input type="text" inputMode="decimal" placeholder="z. B. -19,5" value={raw}
+                onChange={ev=>setInputs(p=>({...p,[dev.id]:ev.target.value}))}
+                onKeyDown={ev=>ev.key==='Enter'&&doSave()}
+                style={{flex:1,minWidth:0,padding:'9px 10px',border:`1px solid ${out?'#fca5a5':'#e2e8f0'}`,borderRadius:8,fontSize:16,fontWeight:600}}/>
+              <button className="btn btn-primary" onClick={doSave} disabled={!canSave} style={{opacity:canSave?1:.45,flexShrink:0}}>OK</button>
+            </div>
+            {out&&(
+              <div style={{marginTop:8}}>
+                <div style={{fontSize:12,fontWeight:600,color:'#dc2626',marginBottom:5}}>⚠ Außerhalb Soll-Bereich — Korrekturmaßnahme dokumentieren:</div>
+                <input type="text" placeholder="z. B. Ware umgelagert, Techniker informiert" value={note}
+                  onChange={ev=>setNotes(p=>({...p,[dev.id]:ev.target.value}))}
+                  onKeyDown={ev=>ev.key==='Enter'&&doSave()}
+                  style={{width:'100%',padding:'8px 10px',border:'1px solid #fca5a5',borderRadius:8,fontSize:13}}/>
+              </div>
+            )}
+            {isEditing&&<button className="btn btn-ghost btn-sm" style={{marginTop:6,color:'#5e6e7f'}} onClick={()=>setEditing(p=>({...p,[dev.id]:false}))}>Abbrechen</button>}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderHistCell = (ds, dev) => {
+    const e = entryFor(ds, dev.id);
+    if (!e) {
+      if (ds===today) return <td key={dev.id} style={{padding:'8px 10px',fontSize:12,color:'#d97706',fontWeight:600}}>offen</td>;
+      return (
+        <td key={dev.id} style={{padding:'8px 10px'}}>
+          <button onClick={()=>setBackfill({datum:ds,devId:dev.id,val:'',note:''})}
+            style={{background:'none',border:'1px dashed #cbd5e1',borderRadius:6,color:'#94a3b8',fontSize:11,padding:'3px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
+            – nachtragen
+          </button>
+        </td>
+      );
+    }
+    const ok = haccpInRange(dev, e.temp);
+    return (
+      <td key={dev.id} style={{padding:'8px 10px',fontSize:13,fontWeight:600,color:ok?'#16a34a':'#dc2626',whiteSpace:'nowrap'}}
+        title={`${e.zeit?new Date(e.zeit).toLocaleString('de-DE'):''}${e.nachgetragen?' · nachgetragen':''}${e.massnahme?' · '+e.massnahme:''}`}>
+        {haccpFmtTemp(e.temp)}
+        {e.nachgetragen&&<sup style={{color:'#b45309',fontWeight:700,marginLeft:2}}>n</sup>}
+        {e.massnahme&&<span style={{marginLeft:4}} title={e.massnahme}>📝</span>}
+      </td>
+    );
+  };
+
+  const bfDev = backfill ? devices.find(d=>d.id===backfill.devId) : null;
+  const bfT = backfill ? parseFloat(String(backfill.val).replace(',','.')) : NaN;
+  const bfValid = !isNaN(bfT);
+  const bfOut = bfValid && bfDev && !haccpInRange(bfDev,bfT);
+  const bfCanSave = bfValid && (!bfOut || (backfill.note||'').trim().length>=3);
+  const bfSave = () => {
+    if(!bfCanSave) return;
+    save(bfDev, backfill.val, backfill.datum, {nachgetragen:true, massnahme:bfOut?backfill.note:''});
+    setBackfill(null);
+  };
+
+  return (
+    <div className="tab-content">
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:14,padding:isMobile?'0 4px':0}}>
+        <h2 style={{fontSize:isMobile?20:28,fontWeight:700,letterSpacing:'-.5px'}}>🌡 HACCP · Temperaturkontrolle</h2>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          <input type="month" value={month} max={today.slice(0,7)} onChange={e=>setMonth(e.target.value||today.slice(0,7))}
+            style={{padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:7,fontSize:13}}/>
+          <button className="btn btn-secondary btn-sm" onClick={exportCSV}>CSV</button>
+          <button className="btn btn-secondary btn-sm" onClick={printMonth}>Drucken</button>
+        </div>
+      </div>
+
+      {/* Tagesstatus */}
+      <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:10,marginBottom:14,
+        background:doneCount===devices.length?'#f0fdf4':'#fffbeb',
+        border:`1px solid ${doneCount===devices.length?'#bbf7d0':'#fcd34d'}`}}>
+        <span style={{fontSize:16}}>{doneCount===devices.length?'✅':'🌡'}</span>
+        <span style={{fontSize:13,fontWeight:600,color:doneCount===devices.length?'#166534':'#92400e'}}>
+          {doneCount===devices.length
+            ? 'Alle Messungen für heute erfasst.'
+            : `Heute: ${doneCount} von ${devices.length} Geräten gemessen — bitte nachholen.`}
+        </span>
+      </div>
+
+      {/* Heute erfassen */}
+      <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'1fr 1fr',gap:10,marginBottom:22}}>
+        {devices.map(renderToday)}
+      </div>
+
+      {/* Historie */}
+      <div style={{fontSize:11,fontWeight:700,color:'#566373',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:8}}>
+        Historie {month} <span style={{fontWeight:400,textTransform:'none'}}>· Lücken bleiben sichtbar, Nachträge werden markiert (ⁿ)</span>
+      </div>
+      <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,overflowX:'auto',marginBottom:18}}>
+        <table style={{borderCollapse:'collapse',width:'100%',minWidth:560}}>
+          <thead>
+            <tr style={{borderBottom:'1px solid #e2e8f0'}}>
+              <th style={{padding:'9px 12px',fontSize:11,fontWeight:700,color:'#566373',textAlign:'left',whiteSpace:'nowrap'}}>Datum</th>
+              {devices.map(d=>(
+                <th key={d.id} style={{padding:'9px 10px',fontSize:11,fontWeight:700,color:'#566373',textAlign:'left'}}>
+                  {d.name}<div style={{fontWeight:400,color:'#94a3b8'}}>{d.min} bis {d.max} °C</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {monthDays.map((ds,i)=>(
+              <tr key={ds} style={{borderBottom:i<monthDays.length-1?'1px solid #f1f5f9':'none',background:ds===today?'#fffbeb40':'transparent'}}>
+                <td style={{padding:'8px 12px',fontSize:12,fontWeight:ds===today?700:500,color:'#374151',whiteSpace:'nowrap'}}>
+                  {new Date(ds+'T12:00').toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'})}
+                </td>
+                {devices.map(dev=>renderHistCell(ds,dev))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Geräte & Grenzwerte */}
+      <details>
+        <summary style={{fontSize:12,fontWeight:700,color:'#566373',textTransform:'uppercase',letterSpacing:'.4px',cursor:'pointer',userSelect:'none',listStyle:'none',display:'flex',alignItems:'center',gap:6}}>
+          <span style={{fontSize:10}}>▶</span> Geräte &amp; Grenzwerte
+        </summary>
+        <div style={{marginTop:12,background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'14px'}}>
+          {devices.map((dev,i)=>(
+            <div key={dev.id} style={{display:'flex',alignItems:'center',gap:8,marginBottom:i<devices.length-1?8:0,flexWrap:'wrap'}}>
+              <input type="text" value={dev.name}
+                onChange={e=>setDevices(devices.map((d,j)=>j===i?{...d,name:e.target.value}:d))}
+                style={{flex:1,minWidth:140,padding:'7px 10px',border:'1px solid #e2e8f0',borderRadius:7,fontSize:13,fontWeight:600}}/>
+              <input type="number" value={dev.min} step={0.5}
+                onChange={e=>setDevices(devices.map((d,j)=>j===i?{...d,min:parseFloat(e.target.value)||0}:d))}
+                style={{width:70,padding:'7px 8px',border:'1px solid #e2e8f0',borderRadius:7,fontSize:13,textAlign:'right'}}/>
+              <span style={{fontSize:12,color:'#5e6e7f'}}>bis</span>
+              <input type="number" value={dev.max} step={0.5}
+                onChange={e=>setDevices(devices.map((d,j)=>j===i?{...d,max:parseFloat(e.target.value)||0}:d))}
+                style={{width:70,padding:'7px 8px',border:'1px solid #e2e8f0',borderRadius:7,fontSize:13,textAlign:'right'}}/>
+              <span style={{fontSize:12,color:'#5e6e7f'}}>°C</span>
+            </div>
+          ))}
+          <div style={{fontSize:11,color:'#5e6e7f',marginTop:10}}>Grenzwerte gelten für die Ampel und die Maßnahmen-Pflicht. Werden geräteübergreifend synchronisiert.</div>
+        </div>
+      </details>
+
+      {/* Nachtragen-Modal */}
+      {backfill&&bfDev&&(
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setBackfill(null)}>
+          <div className="modal" style={{maxWidth:420}}>
+            <div className="modal-header">
+              <h3>Messung nachtragen</h3>
+              <button className="btn btn-ghost" onClick={()=>setBackfill(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div style={{fontSize:13,color:'#374151',marginBottom:12}}>
+                <strong>{bfDev.name}</strong> am <strong>{new Date(backfill.datum+'T12:00').toLocaleDateString('de-DE')}</strong>
+                <span style={{color:'#5e6e7f'}}> · Soll {bfDev.min} bis {bfDev.max} °C</span>
+              </div>
+              <input type="text" inputMode="decimal" autoFocus placeholder="Temperatur, z. B. -19,5" value={backfill.val}
+                onChange={e=>setBackfill(p=>({...p,val:e.target.value}))}
+                onKeyDown={e=>e.key==='Enter'&&bfSave()}
+                style={{width:'100%',padding:'10px 12px',border:`1px solid ${bfOut?'#fca5a5':'#e2e8f0'}`,borderRadius:8,fontSize:16,fontWeight:600,marginBottom:10}}/>
+              {bfOut&&(
+                <input type="text" placeholder="Korrekturmaßnahme (Pflicht bei Abweichung)" value={backfill.note}
+                  onChange={e=>setBackfill(p=>({...p,note:e.target.value}))}
+                  onKeyDown={e=>e.key==='Enter'&&bfSave()}
+                  style={{width:'100%',padding:'9px 12px',border:'1px solid #fca5a5',borderRadius:8,fontSize:13,marginBottom:10}}/>
+              )}
+              <div style={{fontSize:11,color:'#b45309',background:'#fffbeb',border:'1px solid #fcd34d',borderRadius:7,padding:'8px 10px'}}>
+                Der Eintrag wird dauerhaft als <strong>nachgetragen</strong> markiert (Erfassungszeitpunkt = jetzt).
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={()=>setBackfill(null)}>Abbrechen</button>
+              <button className="btn btn-primary" onClick={bfSave} disabled={!bfCanSave} style={{opacity:bfCanSave?1:.45}}>Nachtragen</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [tab, setTab] = useState(0);
   const [sbUrl, setSbUrl] = useLS('sb_url','');
@@ -4304,6 +4639,8 @@ function App() {
   const [eventItems,   setEventItems]   = useLS('simple_event', []);
   const [evName,       setEvName]       = useLS('simple_event_name', '');
   const [eventChecked, setEventChecked] = useLS('simple_event_checked', []);
+  const [haccpDevices, setHaccpDevices] = useLS('simple_haccp_devices', HACCP_SEED);
+  const [haccpLog,     setHaccpLog]     = useLS('simple_haccp_log', []);
   const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h,{passive:true});return()=>window.removeEventListener('resize',h);},[]);
   const [appImpactModal, setAppImpactModal] = useState(null);
@@ -4365,7 +4702,13 @@ function App() {
             if (d.alertDays!=null)    setAlertDays(d.alertDays);
             if (d.targetWePct!=null)  setTargetWePct(d.targetWePct);
             if (d.targetDB!=null)     setTargetDB(d.targetDB);
+            if (Array.isArray(d.haccpDevices)&&d.haccpDevices.length) setHaccpDevices(d.haccpDevices);
           }
+        } catch(e) {}
+        // HACCP-Log laden – Tabelle darf fehlen (Migration evtl. noch nicht ausgeführt)
+        try {
+          const hl = await client.from('haccp_log').select('*').order('datum',{ascending:false}).limit(1500);
+          if (!hl.error && hl.data) setHaccpLog(hl.data);
         } catch(e) {}
         setSyncStatus('ok');
       } catch(e) { setSyncStatus('error'); setSyncError(e.message); }
@@ -4393,13 +4736,13 @@ function App() {
   // ── Globale Einstellungen geräteübergreifend speichern ──
   const syncSettings = useCallback(async (patch) => {
     if (!client) return;
-    const data = {deliveryRate, warnDays, alertDays, targetWePct, targetDB, ...patch};
+    const data = {deliveryRate, warnDays, alertDays, targetWePct, targetDB, haccpDevices, ...patch};
     try {
       const {error} = await client.from('settings').upsert([{id:'global', data}]);
       if (error) throw error;
       setSyncStatus('ok');
     } catch(e) { setSyncStatus('error'); setSyncError(e.message); addToast('error', `Einstellung nicht synchronisiert: ${e.message}`); }
-  }, [client, deliveryRate, warnDays, alertDays, targetWePct, targetDB, addToast]);
+  }, [client, deliveryRate, warnDays, alertDays, targetWePct, targetDB, haccpDevices, addToast]);
 
   // Setter, die lokal + (falls verbunden) nach Supabase schreiben
   const mkSyncSetter = (setter, key) => (val) => { setter(val); syncSettings({[key]: val}); };
@@ -4408,6 +4751,23 @@ function App() {
   const setAlertDaysSync    = mkSyncSetter(setAlertDays,    'alertDays');
   const setTargetWePctSync  = mkSyncSetter(setTargetWePct,  'targetWePct');
   const setTargetDBSync     = mkSyncSetter(setTargetDB,     'targetDB');
+  const setHaccpDevicesSync = mkSyncSetter(setHaccpDevices, 'haccpDevices');
+
+  // ── HACCP: beim Öffnen des Tabs (und Rückkehr aufs Handy) frisch laden ──
+  const refreshHaccp = useCallback(async () => {
+    if (!client) return;
+    try {
+      const hl = await client.from('haccp_log').select('*').order('datum',{ascending:false}).limit(1500);
+      if (!hl.error && hl.data) setHaccpLog(hl.data);
+    } catch(e) {}
+  }, [client, setHaccpLog]);
+  useEffect(() => {
+    if (tab!==10) return;
+    refreshHaccp();
+    const h = () => { if (document.visibilityState==='visible') refreshHaccp(); };
+    document.addEventListener('visibilitychange', h);
+    return () => document.removeEventListener('visibilitychange', h);
+  }, [tab, refreshHaccp]);
 
   // ── Einkaufsliste & Event geräteübergreifend (settings-Zeile id='shopping') ──
   const cloudListDirty = useRef(false);
@@ -4485,6 +4845,8 @@ function App() {
 
   const warnCount  = recipes.filter(r=>r.wePct>38).length;
   const staleCount = articles.filter(a=>!a.archiv&&bestPriceAge(a,warnDays,alertDays)==='red').length;
+  const haccpToday = haccpDateStr();
+  const haccpOpenCount = haccpDevices.filter(d=>!haccpLog.some(e=>e.datum===haccpToday&&e.geraet===d.id)).length;
 
   if (loading && client) return (
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:16,background:'#f3f4f6'}}>
@@ -4503,6 +4865,7 @@ function App() {
           </div>
         </div>
         <div style={{marginLeft:'auto',display:'flex',gap:10,alignItems:'center'}}>
+          {haccpOpenCount>0&&<span className="badge badge-orange" style={{cursor:'pointer'}} onClick={()=>setTab(10)} title="Tägliche Temperaturkontrolle noch unvollständig">🌡 HACCP {haccpDevices.length-haccpOpenCount}/{haccpDevices.length}</span>}
           {warnCount>0&&<span className="badge badge-red">⚠ {warnCount} Margenalarm</span>}
           {staleCount>0&&<span className="badge badge-orange" style={{cursor:'pointer'}} onClick={()=>{setPendingStatusFilter('red');setTab(1);}}>📅 {staleCount} Preise veraltet</span>}
           <span style={{fontSize:12,color:si.c,fontWeight:600,display:'flex',alignItems:'center',gap:5,cursor:'pointer'}} onClick={()=>setShowSettings(true)} title="Einstellungen">
@@ -4521,11 +4884,12 @@ function App() {
         ))}
       </div>
       {isMobile&&<MobileHeader
-        title={tab===0?'Dashboard':tab===1?'Artikel':tab===2?'Rechnungen':tab===3?'Rezepte':tab===4?'Vorprodukte':tab===5?'Lieferanten':tab===6?'Preislog':tab===7?'Vorlagen':tab===8?'Einkauf':'Event'}
+        title={tab===0?'Dashboard':tab===1?'Artikel':tab===2?'Rechnungen':tab===3?'Rezepte':tab===4?'Vorprodukte':tab===5?'Lieferanten':tab===6?'Preislog':tab===7?'Vorlagen':tab===8?'Einkauf':tab===9?'Event':'HACCP'}
         right={<button className="btn btn-ghost" style={{color:'#5e6e7f',fontSize:19,padding:'4px 6px',lineHeight:1}} onClick={()=>setShowSettings(true)} title="Einstellungen">⚙</button>}
       />}
       <div className="content">
         {tab===0&&<DashboardTab recipes={recipes} articles={articles} vps={vps} suppliers={suppliers} priceLog={priceLog} warnDays={warnDays} alertDays={alertDays} targetWePct={targetWePct} targetDB={targetDB}
+          haccpOpenCount={haccpOpenCount} haccpTotal={haccpDevices.length} onOpenHaccp={()=>setTab(10)}
           onNewArticle={()=>{setPendingModal({name:'',g:1,e:'KG',ek:0,lief:'',datum:'',archiv:false});setTab(1);}}
           onNewRecipe={()=>{setPendingRecipeModal({});setTab(3);}}
           onNewVP={()=>{setPendingVPModal({});setTab(4);}}
@@ -4568,6 +4932,7 @@ function App() {
         {tab===7&&<VorlagenTab templates={templates} setTemplates={setTemplates} articles={articles}/>}
         {tab===8&&<ShoppingTab articles={articles} suppliers={suppliers} isMobile={isMobile} list={shopping} setList={setShoppingSync}/>}
         {tab===9&&<EventTab recipes={recipes} articles={articles} vps={vps} items={eventItems} setItems={setEventItemsSync} evName={evName} setEvName={setEvNameSync} checkedIds={eventChecked} setCheckedIds={setEventCheckedSync} setShopping={setShoppingSync}/>}
+        {tab===10&&<HaccpTab devices={haccpDevices} setDevices={setHaccpDevicesSync} log={haccpLog} setLog={setHaccpLog} upsert={upsert} isMobile={isMobile}/>}
       </div>
       {isMobile&&<MobileNav tab={tab} setTab={setTab}/>}
       {appImpactModal&&<ImpactModal {...appImpactModal} onClose={()=>setAppImpactModal(null)}/>}

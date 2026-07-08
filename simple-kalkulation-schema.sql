@@ -109,3 +109,19 @@ ALTER TABLE recipes      ADD COLUMN IF NOT EXISTS archiv  BOOLEAN DEFAULT false;
 ALTER TABLE vorprodukte  ADD COLUMN IF NOT EXISTS archiv  BOOLEAN DEFAULT false;
 ALTER TABLE articles     ADD COLUMN IF NOT EXISTS kat     TEXT DEFAULT 'Food';
 ALTER TABLE recipes      ADD COLUMN IF NOT EXISTS zutaten JSONB DEFAULT '[]'::jsonb;
+
+-- HACCP-Temperaturkontrolle (tägliche Messungen, ein Eintrag pro Gerät und Tag)
+CREATE TABLE IF NOT EXISTS haccp_log (
+  id           TEXT PRIMARY KEY,          -- H-<YYYY-MM-DD>-<geraet>
+  datum        TEXT NOT NULL,             -- Messtag YYYY-MM-DD
+  geraet       TEXT NOT NULL,             -- Geräte-ID (tk, kueche, service, saladette, ...)
+  temp         NUMERIC NOT NULL,          -- gemessene Temperatur °C
+  zeit         TEXT,                      -- ISO-Zeitstempel der Erfassung
+  nachgetragen BOOLEAN DEFAULT FALSE,     -- true = nachträglich erfasst
+  massnahme    TEXT DEFAULT '',           -- Korrekturmaßnahme bei Abweichung
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE haccp_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all" ON haccp_log FOR ALL USING (true) WITH CHECK (true);
+GRANT ALL ON haccp_log TO anon;
