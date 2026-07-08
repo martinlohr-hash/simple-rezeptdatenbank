@@ -4338,6 +4338,7 @@ function App() {
           client.from('suppliers').select('*').order('name'),
         ]);
         if (a.error) throw a.error;
+        if (s.error) addToast('error', `Lieferanten nicht geladen: ${s.error.message}`);
         // Empty DB on first setup → push seed data
         if (a.data.length===0) {
           await Promise.all([
