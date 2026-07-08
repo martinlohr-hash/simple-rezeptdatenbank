@@ -706,13 +706,41 @@ function priceAge(datum, warnDays, alertDays, checkTage) {
   if (days > w) return 'yellow';
   return 'green';
 }
-function bestPriceAge(art, warnDays, alertDays) {
+function ownPriceAge(art, warnDays, alertDays) {
   const dates = [art.datum, ...(art.varianten||[]).map(v=>v.datum)].filter(Boolean);
   if (!dates.length) return null;
   const statuses = dates.map(d=>priceAge(d, warnDays, alertDays, art.checkTage));
   if (statuses.includes('green')) return 'green';
   if (statuses.includes('yellow')) return 'yellow';
   return 'red';
+}
+// VP-Artikel (Lieferant SIMPLE) erben das Preis-Alter ihrer Zutaten-Artikel:
+// solange alle Zutaten aktuell sind, gilt auch das Vorprodukt als aktuell.
+// Kontext wird im App-Render gesetzt (map = Artikel-ID → VP, via buildVpForArticle).
+const VP_AGE_CTX = {articles:[], map:{}};
+const AGE_RANK = {green:0, yellow:1, red:2};
+function vpZutatenAge(vp, warnDays, alertDays, seen) {
+  if (!vp || !(vp.zutaten||[]).length || seen.has(vp.id)) return null;
+  seen.add(vp.id);
+  let worst = null;
+  for (const z of vp.zutaten) {
+    const ing = VP_AGE_CTX.articles.find(a=>a.id===z.art);
+    if (!ing) continue;
+    const sub = VP_AGE_CTX.map[ing.id];
+    const age = sub
+      ? (vpZutatenAge(sub, warnDays, alertDays, seen) ?? ownPriceAge(ing, warnDays, alertDays))
+      : ownPriceAge(ing, warnDays, alertDays);
+    if (age && (worst===null || AGE_RANK[age]>AGE_RANK[worst])) worst = age;
+  }
+  return worst;
+}
+function bestPriceAge(art, warnDays, alertDays) {
+  const vp = VP_AGE_CTX.map[art.id];
+  if (vp) {
+    const ingAge = vpZutatenAge(vp, warnDays, alertDays, new Set());
+    if (ingAge) return ingAge;
+  }
+  return ownPriceAge(art, warnDays, alertDays);
 }
 function newestDatum(art) {
   const dates = [art.datum, ...(art.varianten||[]).map(v=>v.datum)].filter(Boolean);
@@ -4651,6 +4679,9 @@ function App() {
   },[]);
   const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h,{passive:true});return()=>window.removeEventListener('resize',h);},[]);
+  // Kontext für VP-bewusste Preis-Ampel (bestPriceAge) — vor dem Rendern der Tabs setzen
+  VP_AGE_CTX.articles = articles;
+  VP_AGE_CTX.map = useMemo(()=>buildVpForArticle(articles, vps), [articles, vps]);
   const [appImpactModal, setAppImpactModal] = useState(null);
   const [pendingModal,        setPendingModal]        = useState(null);
   const [pendingRecipeModal,  setPendingRecipeModal]  = useState(null);
