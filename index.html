@@ -2042,14 +2042,14 @@ function VPTab({vps, setVPs, articles, setArticles, upsert, pendingModal=null, o
           {visibleVPs.map(vp=>{
             const inArts = articles.some(a=>a._vpId===vp.id||a.name===vp.name&&a.lief&&a.lief.toLowerCase()==='simple');
             return (
-              <tr key={vp.id} style={vp.archiv?{opacity:.45}:{}}>
+              <tr key={vp.id} style={{...(vp.archiv?{opacity:.45}:{}),cursor:'pointer'}} onClick={()=>setModal({...vp})}>
                 <td><strong>{vp.name}</strong></td>
                 <td>{vp.outputKg} kg</td>
                 <td>{fmt(vp.kosten)}</td>
                 <td style={{fontFamily:'monospace',fontWeight:600,color:'#e85d04'}}>{fmt(vp.preisKg)}</td>
                 <td style={{color:'#566373',fontSize:12}}>{vp.zutaten.length} Pos.</td>
                 <td>{inArts?<span className="badge badge-green">✓ Synced</span>:<span className="badge badge-gray">—</span>}</td>
-                <td style={{display:'flex',gap:2}}>
+                <td style={{display:'flex',gap:2}} onClick={e=>e.stopPropagation()}>
                   <button className="btn btn-ghost btn-xs" onClick={()=>setModal({...vp})} title="Bearbeiten">✎</button>
                   <button className="btn btn-ghost btn-xs" onClick={()=>setModal({...vp,id:undefined,name:vp.name+' (Kopie)'})} title="Duplizieren" style={{color:'#94a3b8',fontSize:15}}>⎘</button>
                 </td>
