@@ -4410,6 +4410,8 @@ function App() {
 
   // ── Einkaufsliste & Event geräteübergreifend (settings-Zeile id='shopping') ──
   const cloudListDirty = useRef(false);
+  const cloudSnap = useRef(null);
+  cloudSnap.current = {list: shopping, eventItems, eventName: evName, eventChecked};
   const mkCloudSetter = (setter) => (v) => { cloudListDirty.current = true; setter(v); };
   const setShoppingSync     = mkCloudSetter(setShopping);
   const setEventItemsSync   = mkCloudSetter(setEventItems);
@@ -4429,7 +4431,13 @@ function App() {
     try {
       const st = await client.from('settings').select('data').eq('id','shopping').maybeSingle();
       const d = st.data?.data;
-      if (!d) return;
+      if (!d) {
+        // Noch nie gesynct → lokalen Stand als Startpunkt hochladen
+        const s = cloudSnap.current;
+        if (s.list.length || s.eventItems.length || s.eventChecked.length || s.eventName)
+          await client.from('settings').upsert([{id:'shopping', data:s}]);
+        return;
+      }
       if (Array.isArray(d.list))         setShopping(d.list);
       if (Array.isArray(d.eventItems))   setEventItems(d.eventItems);
       if (typeof d.eventName==='string') setEvName(d.eventName);
