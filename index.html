@@ -714,32 +714,15 @@ function ownPriceAge(art, warnDays, alertDays) {
   if (statuses.includes('yellow')) return 'yellow';
   return 'red';
 }
-// VP-Artikel (Lieferant SIMPLE) erben das Preis-Alter ihrer Zutaten-Artikel:
-// solange alle Zutaten aktuell sind, gilt auch das Vorprodukt als aktuell.
+// VP-Artikel (Lieferant SIMPLE) haben kein eigenes Preisdatum-Problem: ihr Preis
+// wird aus den Zutaten abgeleitet. Veraltete Zutaten melden sich selbst in der
+// Liste — das VP zusätzlich zu flaggen wäre ein Doppel-Alarm. Daher: VP mit
+// hinterlegten Zutaten gilt immer als aktuell.
 // Kontext wird im App-Render gesetzt (map = Artikel-ID → VP, via buildVpForArticle).
 const VP_AGE_CTX = {articles:[], map:{}};
-const AGE_RANK = {green:0, yellow:1, red:2};
-function vpZutatenAge(vp, warnDays, alertDays, seen) {
-  if (!vp || !(vp.zutaten||[]).length || seen.has(vp.id)) return null;
-  seen.add(vp.id);
-  let worst = null;
-  for (const z of vp.zutaten) {
-    const ing = VP_AGE_CTX.articles.find(a=>a.id===z.art);
-    if (!ing) continue;
-    const sub = VP_AGE_CTX.map[ing.id];
-    const age = sub
-      ? (vpZutatenAge(sub, warnDays, alertDays, seen) ?? ownPriceAge(ing, warnDays, alertDays))
-      : ownPriceAge(ing, warnDays, alertDays);
-    if (age && (worst===null || AGE_RANK[age]>AGE_RANK[worst])) worst = age;
-  }
-  return worst;
-}
 function bestPriceAge(art, warnDays, alertDays) {
   const vp = VP_AGE_CTX.map[art.id];
-  if (vp) {
-    const ingAge = vpZutatenAge(vp, warnDays, alertDays, new Set());
-    if (ingAge) return ingAge;
-  }
+  if (vp && (vp.zutaten||[]).length) return 'green';
   return ownPriceAge(art, warnDays, alertDays);
 }
 function newestDatum(art) {
