@@ -3766,9 +3766,8 @@ function MobileDashboardView({recipes, articles, vps, priceLog, warnDays, alertD
 
 const TABS = ['Dashboard','Artikel','Rechnungen','Rezepte','Vorprodukte','Lieferanten','Preislog','Vorlagen','Einkauf','Event'];
 
-function ShoppingTab({articles, suppliers=[], isMobile=false}) {
+function ShoppingTab({articles, suppliers=[], isMobile=false, list, setList}) {
   const [apiKey] = useLS('sk_simple_apikey','');
-  const [list, setList] = useLS('simple_shopping', []);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
   const [addText, setAddText] = useState('');
@@ -4033,9 +4032,7 @@ function fmtNeed(art, q) {
 }
 function gebindePacks(art, q) { return art.g>0 ? Math.ceil(q/art.g - 1e-9) : null; }
 
-function EventTab({recipes, articles, vps}) {
-  const [items, setItems]     = useLS('simple_event', []);            // [{recipeId, qty}]
-  const [evName, setEvName]   = useLS('simple_event_name', '');
+function EventTab({recipes, articles, vps, items, setItems, evName, setEvName, checkedIds, setCheckedIds, setShopping}) {
   const [explode, setExplode] = useLS('simple_event_explode', true);
   const [copied, setCopied]   = useState(false);
 
@@ -4106,8 +4103,6 @@ function EventTab({recipes, articles, vps}) {
   const liefLabel = l => l.toLowerCase()==='simple' ? 'SIMPLE — selbst herstellen' : l;
 
   const [view, setView]           = useState('lief');                 // 'lief' | 'art'
-  const [checkedIds, setCheckedIds] = useLS('simple_event_checked', []);
-  const [, setShopping]           = useLS('simple_shopping', []);
   const [pushed, setPushed]       = useState(false);
   const checkedSet = new Set(checkedIds);
   const toggleCheck = id => setCheckedIds(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);
@@ -4305,6 +4300,10 @@ function App() {
   const [alertDays, setAlertDays] = useLS('simple_alert_days', 180);
   const [targetWePct, setTargetWePct] = useLS('simple_target_we', 22);
   const [targetDB,    setTargetDB]    = useLS('simple_target_db', 7);
+  const [shopping,     setShopping]     = useLS('simple_shopping', []);
+  const [eventItems,   setEventItems]   = useLS('simple_event', []);
+  const [evName,       setEvName]       = useLS('simple_event_name', '');
+  const [eventChecked, setEventChecked] = useLS('simple_event_checked', []);
   const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h,{passive:true});return()=>window.removeEventListener('resize',h);},[]);
   const [appImpactModal, setAppImpactModal] = useState(null);
@@ -4408,6 +4407,42 @@ function App() {
   const setAlertDaysSync    = mkSyncSetter(setAlertDays,    'alertDays');
   const setTargetWePctSync  = mkSyncSetter(setTargetWePct,  'targetWePct');
   const setTargetDBSync     = mkSyncSetter(setTargetDB,     'targetDB');
+
+  // ── Einkaufsliste & Event geräteübergreifend (settings-Zeile id='shopping') ──
+  const cloudListDirty = useRef(false);
+  const mkCloudSetter = (setter) => (v) => { cloudListDirty.current = true; setter(v); };
+  const setShoppingSync     = mkCloudSetter(setShopping);
+  const setEventItemsSync   = mkCloudSetter(setEventItems);
+  const setEvNameSync       = mkCloudSetter(setEvName);
+  const setEventCheckedSync = mkCloudSetter(setEventChecked);
+  useEffect(() => {
+    if (!client || !cloudListDirty.current) return;
+    const t = setTimeout(async () => {
+      cloudListDirty.current = false;
+      const {error} = await client.from('settings').upsert([{id:'shopping', data:{list: shopping, eventItems, eventName: evName, eventChecked}}]);
+      if (error) { setSyncStatus('error'); setSyncError(error.message); addToast('error', `Einkaufsliste nicht synchronisiert: ${error.message}`); }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [shopping, eventItems, evName, eventChecked, client, addToast]);
+  const refreshShopping = useCallback(async () => {
+    if (!client || cloudListDirty.current) return; // lokale Änderung noch nicht gepusht → nicht überschreiben
+    try {
+      const st = await client.from('settings').select('data').eq('id','shopping').maybeSingle();
+      const d = st.data?.data;
+      if (!d) return;
+      if (Array.isArray(d.list))         setShopping(d.list);
+      if (Array.isArray(d.eventItems))   setEventItems(d.eventItems);
+      if (typeof d.eventName==='string') setEvName(d.eventName);
+      if (Array.isArray(d.eventChecked)) setEventChecked(d.eventChecked);
+    } catch(e) {}
+  }, [client, setShopping, setEventItems, setEvName, setEventChecked]);
+  useEffect(() => {
+    if (tab!==8 && tab!==9) return;
+    refreshShopping();
+    const h = () => { if (document.visibilityState==='visible') refreshShopping(); };
+    document.addEventListener('visibilitychange', h);
+    return () => document.removeEventListener('visibilitychange', h);
+  }, [tab, refreshShopping]);
 
   const del = useCallback(async (table, id) => {
     if (!client) return;
@@ -4522,8 +4557,8 @@ function App() {
         {tab===5&&<SupplierTab suppliers={suppliers} setSuppliers={setSuppliers} upsert={upsert}/>}
         {tab===6&&<PriceLogTab priceLog={priceLog} setPriceLog={setPriceLog}/>}
         {tab===7&&<VorlagenTab templates={templates} setTemplates={setTemplates} articles={articles}/>}
-        {tab===8&&<ShoppingTab articles={articles} suppliers={suppliers} isMobile={isMobile}/>}
-        {tab===9&&<EventTab recipes={recipes} articles={articles} vps={vps}/>}
+        {tab===8&&<ShoppingTab articles={articles} suppliers={suppliers} isMobile={isMobile} list={shopping} setList={setShoppingSync}/>}
+        {tab===9&&<EventTab recipes={recipes} articles={articles} vps={vps} items={eventItems} setItems={setEventItemsSync} evName={evName} setEvName={setEvNameSync} checkedIds={eventChecked} setCheckedIds={setEventCheckedSync} setShopping={setShoppingSync}/>}
       </div>
       {isMobile&&<MobileNav tab={tab} setTab={setTab}/>}
       {appImpactModal&&<ImpactModal {...appImpactModal} onClose={()=>setAppImpactModal(null)}/>}
