@@ -783,13 +783,13 @@ const TEMPLATES_SEED = [
 ];
 
 const HACCP_SEED = [
-  {id:'tk',       name:'TK-Kühlschrank',      min:-30, max:-18, v:2},
-  {id:'kueche',   name:'Küchen-Kühlschrank',  min:5,   max:8,   v:2},
-  {id:'service',  name:'Service-Kühlschrank', min:5,   max:8,   v:2},
-  {id:'saladette',name:'Saladette',           min:5,   max:8,   v:2},
+  {id:'tk',       name:'TK-Kühlschrank',      min:-30, max:-18, v:3},
+  {id:'kueche',   name:'Küchen-Kühlschrank',  min:4,   max:8,   v:3},
+  {id:'service',  name:'Service-Kühlschrank', min:4,   max:8,   v:3},
+  {id:'saladette',name:'Saladette',           min:4,   max:8,   v:3},
 ];
-// Einmalige Grenzwert-Migration: Geräte ohne v-Flag bekommen die aktuellen Defaults
-const migrateHaccpDevices = devs => devs.map(d => d.v>=2 ? d : {...d, v:2, ...(d.id==='tk' ? {} : {min:5, max:8})});
+// Einmalige Grenzwert-Migration: Geräte mit älterer v bekommen die aktuellen Defaults
+const migrateHaccpDevices = devs => devs.map(d => d.v>=3 ? d : {...d, v:3, ...(d.id==='tk' ? {} : {min:4, max:8})});
 const haccpDateStr = (d=new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const haccpEntryId = (datum, geraet) => `H-${datum}-${geraet}`;
 const haccpInRange = (dev, t) => t>=dev.min && t<=dev.max;
