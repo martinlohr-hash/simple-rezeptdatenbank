@@ -4498,7 +4498,10 @@ function HaccpTab({devices, setDevices, log, setLog, upsert, isMobile=false}) {
     <div className="tab-content">
       <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:14,padding:isMobile?'0 4px':0}}>
         <h2 style={{fontSize:isMobile?20:28,fontWeight:700,letterSpacing:'-.5px'}}>🌡 HACCP · Temperaturkontrolle</h2>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+          <a className="btn btn-secondary btn-sm" style={{textDecoration:'none'}} target="_blank" rel="noopener"
+            href="https://app.notion.com/p/matten-l/HACCP-Digitale-Kontrollen-33c7b6c3329f81528021c6b6b61fec1a"
+            title="HACCP-Konzept mit allen Kontrollpunkten (Wareneingang, CCPs, Reinigung, Schulungen)">📋 HACCP-Konzept</a>
           <input type="month" value={month} max={today.slice(0,7)} onChange={e=>setMonth(e.target.value||today.slice(0,7))}
             style={{padding:'6px 8px',border:'1px solid #e2e8f0',borderRadius:7,fontSize:13}}/>
           <button className="btn btn-secondary btn-sm" onClick={exportCSV}>CSV</button>
