@@ -783,11 +783,13 @@ const TEMPLATES_SEED = [
 ];
 
 const HACCP_SEED = [
-  {id:'tk',       name:'TK-Kühlschrank',      min:-30, max:-18},
-  {id:'kueche',   name:'Küchen-Kühlschrank',  min:0,   max:7},
-  {id:'service',  name:'Service-Kühlschrank', min:0,   max:7},
-  {id:'saladette',name:'Saladette',           min:0,   max:7},
+  {id:'tk',       name:'TK-Kühlschrank',      min:-30, max:-18, v:2},
+  {id:'kueche',   name:'Küchen-Kühlschrank',  min:5,   max:8,   v:2},
+  {id:'service',  name:'Service-Kühlschrank', min:5,   max:8,   v:2},
+  {id:'saladette',name:'Saladette',           min:5,   max:8,   v:2},
 ];
+// Einmalige Grenzwert-Migration: Geräte ohne v-Flag bekommen die aktuellen Defaults
+const migrateHaccpDevices = devs => devs.map(d => d.v>=2 ? d : {...d, v:2, ...(d.id==='tk' ? {} : {min:5, max:8})});
 const haccpDateStr = (d=new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const haccpEntryId = (datum, geraet) => `H-${datum}-${geraet}`;
 const haccpInRange = (dev, t) => t>=dev.min && t<=dev.max;
@@ -4644,6 +4646,9 @@ function App() {
   const [eventChecked, setEventChecked] = useLS('simple_event_checked', []);
   const [haccpDevices, setHaccpDevices] = useLS('simple_haccp_devices', HACCP_SEED);
   const [haccpLog,     setHaccpLog]     = useLS('simple_haccp_log', []);
+  // Grenzwert-Migration für bereits gespeicherte Geräte-Configs (localStorage)
+  useEffect(()=>{ setHaccpDevices(prev=>migrateHaccpDevices(prev)); // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
   const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h,{passive:true});return()=>window.removeEventListener('resize',h);},[]);
   const [appImpactModal, setAppImpactModal] = useState(null);
@@ -4705,7 +4710,7 @@ function App() {
             if (d.alertDays!=null)    setAlertDays(d.alertDays);
             if (d.targetWePct!=null)  setTargetWePct(d.targetWePct);
             if (d.targetDB!=null)     setTargetDB(d.targetDB);
-            if (Array.isArray(d.haccpDevices)&&d.haccpDevices.length) setHaccpDevices(d.haccpDevices);
+            if (Array.isArray(d.haccpDevices)&&d.haccpDevices.length) setHaccpDevices(migrateHaccpDevices(d.haccpDevices));
           }
         } catch(e) {}
         // HACCP-Log laden – Tabelle darf fehlen (Migration evtl. noch nicht ausgeführt)
