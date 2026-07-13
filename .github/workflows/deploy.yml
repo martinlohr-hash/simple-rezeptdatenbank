@@ -26,8 +26,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # Whitelist: nur die App-Dateien deployen — keine Doku, kein Schema, keine node_modules.
+      # config.js liegt nicht im Repo (.gitignore); deployed wird die leere Vorlage.
+      # Daten kommen zur Laufzeit aus Supabase bzw. dem Geräte-localStorage.
+      - name: Site zusammenstellen
+        run: |
+          mkdir _site
+          cp index.html _site/
+          cp config.example.js _site/config.js
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

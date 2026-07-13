@@ -1,0 +1,5 @@
+# Kundendaten — bleiben lokal, nie ins Repo
+config.js
+
+node_modules/
+.DS_Store

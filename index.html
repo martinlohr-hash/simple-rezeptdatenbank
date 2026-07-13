@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simple Kitchen OS</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23111'/><text x='16' y='23' font-size='20' font-family='-apple-system,sans-serif' font-weight='700' fill='%23e85d04' text-anchor='middle'>S</text></svg>">
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js" integrity="sha384-x/ilTFv/u/eu6YSmkFDZl5V5Mm/pkxxcVv2cVJOrr1J0rvILhMvRBCy6yA75wYBj" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
@@ -2134,6 +2134,10 @@ function SettingsModal({sbUrl, setSbUrl, sbKey, setSbKey, onClose, onSeedDb, onS
               {linkCopied?'✓ Link kopiert!':'📱 Verbindungslink kopieren'}
             </button>
             <div style={{fontSize:11,color:'#5e6e7f',marginTop:4}}>Link auf dem Handy öffnen — Supabase-Verbindung + Einstellungen werden automatisch übernommen.</div>
+            <div style={{fontSize:11,color:'#991b1b',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:6,padding:'8px 10px',marginTop:8,lineHeight:1.6}}>
+              ⚠️ <strong>Achtung:</strong> Dieser Link enthält den Datenbank-Zugang im Klartext. Wer ihn hat, kann alle Daten lesen, ändern und löschen — dauerhaft.
+              Nur persönlich weitergeben (z.&nbsp;B. direkt am Gerät öffnen), nicht per Mail/Messenger verschicken und Nachrichten mit dem Link anschließend löschen.
+            </div>
           </div>}
           <details style={{marginBottom:16}}>
             <summary style={{fontSize:12,color:'#5e6e7f',cursor:'pointer',userSelect:'none',listStyle:'none',display:'flex',alignItems:'center',gap:5}}>
@@ -3938,27 +3942,29 @@ function HaccpTab({devices, setDevices, log, setLog, upsert, isMobile=false}) {
   };
 
   const printMonth = () => {
-    const head=devices.map(d=>`<th>${d.name}<br><small>${d.min} bis ${d.max} °C</small></th>`).join('');
+    // Alle dynamischen Werte escapen — Geräte-/Maßnahmen-Texte stammen aus DB/Config
+    const esc=(s)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const head=devices.map(d=>`<th>${esc(d.name)}<br><small>${esc(d.min)} bis ${esc(d.max)} °C</small></th>`).join('');
     const rowsHtml=[...monthDays].reverse().map(ds=>{
       const label=new Date(ds+'T12:00').toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});
       const cells=devices.map(dev=>{
         const e=entryFor(ds,dev.id);
         if(!e) return '<td class="miss">keine Messung</td>';
         const bad=!haccpInRange(dev,e.temp);
-        return `<td class="${bad?'bad':'ok'}">${haccpFmtTemp(e.temp)}${e.nachgetragen?' <small>(nachgetragen)</small>':''}${e.massnahme?`<br><small>&#8627; ${e.massnahme}</small>`:''}</td>`;
+        return `<td class="${bad?'bad':'ok'}">${esc(haccpFmtTemp(e.temp))}${e.nachgetragen?' <small>(nachgetragen)</small>':''}${e.massnahme?`<br><small>&#8627; ${esc(e.massnahme)}</small>`:''}</td>`;
       }).join('');
-      return `<tr><td>${label}</td>${cells}</tr>`;
+      return `<tr><td>${esc(label)}</td>${cells}</tr>`;
     }).join('');
     const w=window.open('','_blank');
     if(!w) return;
-    w.document.write(`<!doctype html><html><head><title>HACCP ${month}</title><style>
+    w.document.write(`<!doctype html><html><head><title>HACCP ${esc(month)}</title><style>
       body{font-family:-apple-system,'Segoe UI',sans-serif;padding:24px;color:#111}
       h1{font-size:18px;margin:0 0 4px} table{border-collapse:collapse;width:100%;margin-top:14px}
       th,td{border:1px solid #999;padding:5px 8px;font-size:12px;text-align:left;vertical-align:top}
       th{background:#f0f0f0} td.miss{color:#999;font-style:italic} td.bad{background:#fee2e2;font-weight:700}
       small{color:#555;font-weight:400} .sig{margin-top:44px;font-size:12px}
     </style></head><body>
-      <h1>HACCP-Temperaturkontrolle &middot; ${month}</h1>
+      <h1>HACCP-Temperaturkontrolle &middot; ${esc(month)}</h1>
       <div style="font-size:12px;color:#555">Simple Kitchen OS &middot; erstellt am ${new Date().toLocaleString('de-DE')}</div>
       <table><tr><th>Datum</th>${head}</tr>${rowsHtml}</table>
       <div class="sig">Datum / Unterschrift verantwortliche Person: ______________________________</div>
