@@ -4427,7 +4427,7 @@ function App() {
     ? {c:'#dc2626', label:'Fehler'}
     : {c:'#16a34a', label:'Supabase ✓'};
 
-  const warnCount  = recipes.filter(r=>r.wePct>38).length;
+  const warnCount  = recipes.filter(r=>!r.archiv&&r.wePct>38).length;
   const staleCount = articles.filter(a=>!a.archiv&&bestPriceAge(a,warnDays,alertDays)==='red').length;
   const haccpToday = haccpDateStr();
   const haccpOpenCount = haccpDevices.filter(d=>!haccpLog.some(e=>e.datum===haccpToday&&e.geraet===d.id)).length;
@@ -4450,7 +4450,7 @@ function App() {
         </div>
         <div style={{marginLeft:'auto',display:'flex',gap:10,alignItems:'center'}}>
           {haccpOpenCount>0&&<span className="badge badge-orange" style={{cursor:'pointer'}} onClick={()=>setTab(10)} title="Tägliche Temperaturkontrolle noch unvollständig">🌡 HACCP {haccpDevices.length-haccpOpenCount}/{haccpDevices.length}</span>}
-          {warnCount>0&&<span className="badge badge-red">⚠ {warnCount} Margenalarm</span>}
+          {warnCount>0&&<span className="badge badge-red" style={{cursor:'pointer'}} onClick={()=>setTab(3)} title="Rezepte mit Marge über 38%">⚠ {warnCount} Margenalarm</span>}
           {staleCount>0&&<span className="badge badge-orange" style={{cursor:'pointer'}} onClick={()=>{setPendingStatusFilter('red');setTab(1);}}>📅 {staleCount} Preise veraltet</span>}
           <span style={{fontSize:12,color:si.c,fontWeight:600,display:'flex',alignItems:'center',gap:5,cursor:'pointer'}} onClick={()=>setShowSettings(true)} title="Einstellungen">
             <span style={{width:7,height:7,borderRadius:'50%',background:si.c,display:'inline-block',flexShrink:0}}/>
