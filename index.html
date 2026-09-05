@@ -2513,7 +2513,7 @@ function VorlagenTab({templates, setTemplates, articles}) {
 function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, onNavigateToRecipe, suppliers=[], warnDays=90, alertDays=180, targetWePct=22, targetDB=7, haccpOpenCount=0, haccpTotal=0, onOpenHaccp}) {
   const [isMobile, setIsMobile] = React.useState(()=>window.innerWidth<768);
   React.useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h,{passive:true});return()=>window.removeEventListener('resize',h);},[]);
-  const [view, setView] = React.useState('margen');
+  const [view, setView] = React.useState('db');
   const [showArchivMargen, setShowArchivMargen] = React.useState(false);
   const [showRecipeChoice, setShowRecipeChoice] = React.useState(false);
   const [editArt, setEditArt] = React.useState(null);
@@ -2811,8 +2811,8 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
       )}
 
       <div style={{display:'flex',gap:6,marginBottom:20}}>
-        <SubBtn k="margen" label="Margen"/>
         <SubBtn k="db" label="Deckungsbeitrag"/>
+        <SubBtn k="margen" label="Margen"/>
         <SubBtn k="we" label="Wareneinsatz €"/>
         <SubBtn k="preisalarm" label="Preisalarm"/>
         <SubBtn k="szenarien" label="Was wäre wenn …"/>
