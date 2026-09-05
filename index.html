@@ -1637,6 +1637,7 @@ function InvoiceTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
   const [apiKey, setApiKey] = useLS('sk_simple_apikey','');
   const [showKey, setShowKey] = useState(false);
   const [file, setFile] = useState(null);
+  const [invoiceLief, setInvoiceLief] = useState('');
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState(null);
   const [confirmed, setConfirmed] = useState({});
@@ -1648,6 +1649,24 @@ function InvoiceTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
 
   const handleFile = (f) => { setFile(f); setResult(null); setConfirmed({}); setMatchOverrides({}); };
 
+  // Schreibt einen neuen Preis NIE blind in den Default-Slot (art.ek/art.lief) —
+  // nur wenn invoiceLief tatsächlich der Default-Lieferant ist (oder der Artikel
+  // noch gar keinen hat). Sonst geht der Preis in die passende Lieferanten-Variante
+  // (bestehend oder neu angelegt), damit ein Metro-Preis nie einen Beckröge/Mattfeld/
+  // S&T-Preis überschreibt, nur weil der Artikelname gematcht hat.
+  const applySupplierPrice = (art, lief, newEk, dateStr) => {
+    if (!lief || !art.lief || lief === art.lief) {
+      return {...art, ek:newEk, lief:art.lief||lief, datum:dateStr};
+    }
+    const varianten = art.varianten||[];
+    const idx = varianten.findIndex(v=>v.lief===lief);
+    if (idx>=0) {
+      return {...art, varianten:varianten.map((v,i)=>i===idx?{...v,ek:newEk,datum:dateStr}:v)};
+    }
+    return {...art, varianten:[...varianten,{lief,ek:newEk,datum:dateStr}]};
+  };
+  const variantLiefFor = (art) => (invoiceLief && art.lief && invoiceLief!==art.lief) ? invoiceLief : null;
+
   const getRowMatch = (p, i) => {
     if (i in matchOverrides) return matchOverrides[i] ? articles.find(a=>a.id===matchOverrides[i]) : null;
     return p.matched;
@@ -1655,7 +1674,7 @@ function InvoiceTab({articles, setArticles, priceLog, setPriceLog, upsert, suppl
   const getRowDiff = (p, match) => {
     if (!match) return null;
     const ppu = p.preisProEinheit||p.preisNetto;
-    const cppu = pricePerUnit(match);
+    const cppu = pricePerUnit(match, variantLiefFor(match));
     return cppu>0 ? (ppu-cppu)/cppu*100 : null;
   };
 
@@ -1714,7 +1733,7 @@ Antworte NUR mit gültigem JSON:
       const positions = (parsed.positionen||[]).map(p=>{
         const found = articles.find(a=>!a.archiv&&a.name.toLowerCase().includes(p.name.toLowerCase().slice(0,6)));
         const ppu = p.preisProEinheit||p.preisNetto;
-        const currentPpu = found ? pricePerUnit(found) : null;
+        const currentPpu = found ? pricePerUnit(found, variantLiefFor(found)) : null;
         const diff = (found&&currentPpu) ? ((ppu-currentPpu)/currentPpu*100) : null;
         return {...p, matched:found, currentPpu, diff, flagged: diff!==null && Math.abs(diff)>3};
       });
@@ -1728,10 +1747,13 @@ Antworte NUR mit gültigem JSON:
   const doConfirmOne = (p, match, newEk) => {
     // Find current article in state to avoid stale reference
     const cur = articles.find(a=>a.id===match.id) || match;
-    const newArt = {...cur, ek: parseFloat(newEk)||cur.ek, datum:new Date().toISOString().slice(0,10)};
+    const ekVal = parseFloat(newEk)||cur.ek;
+    const today = new Date().toISOString().slice(0,10);
+    const vLief = variantLiefFor(cur);
+    const newArt = applySupplierPrice(cur, invoiceLief, ekVal, today);
     const log = {id:'L'+uid(),datum:new Date().toISOString(),typ:'Rechnung-Import',
-      produkt:cur.name, altPreis:pricePerUnit(cur), neuPreis:parseFloat(newEk)/cur.g,
-      quelle:'Rechnung: '+(file?.name||''), status:'bestätigt'};
+      produkt:cur.name, altPreis:pricePerUnit(cur,vLief), neuPreis:ekVal/cur.g,
+      quelle:`Rechnung (${invoiceLief||'Lieferant unbekannt'}): `+(file?.name||''), status:'bestätigt'};
     const impacts = computeImpact(cur.id, newArt, articles, recipes);
     setArticles(prev=>prev.map(a=>a.id===cur.id?newArt:a));
     setPriceLog(prev=>[log,...prev]);
@@ -1739,13 +1761,14 @@ Antworte NUR mit gültigem JSON:
     setConfirmed(prev=>({...prev,[p.name]:true}));
     if (impacts.length) setImpactModal({
       title:`Preisauswirkung – ${cur.name}`,
-      subtitle:`${fmt(pricePerUnit(cur))} → ${fmt(parseFloat(newEk)/(cur.g||1))} / ${cur.e}`,
+      subtitle:`${fmt(pricePerUnit(cur,vLief))} → ${fmt(ekVal/(cur.g||1))} / ${cur.e}`,
       impacts
     });
   };
 
   const confirmAll = () => {
-    if (!result) return;
+    if (!result || !invoiceLief) return;
+    const today = new Date().toISOString().slice(0,10);
     const logs=[]; const updatedArts=[];
     const updates = result.map((p,i)=>{
       if(confirmed[p.name]||p.error) return null;
@@ -1756,9 +1779,11 @@ Antworte NUR mit gültigem JSON:
       if(d==null||Math.abs(d)<=3) return null;
       return {p,match,ppu};
     }).filter(Boolean);
+    const newArtsById = {};
+    updates.forEach(u=>{ newArtsById[u.match.id] = applySupplierPrice(u.match, invoiceLief, u.ppu*u.match.g, today); });
     if (updates.length && recipes.length) {
       const changedIds = new Set(updates.map(u=>u.match.id));
-      const newArts = articles.map(a=>{const upd=updates.find(u=>u.match.id===a.id);return upd?{...a,ek:upd.ppu*a.g}:a;});
+      const newArts = articles.map(a=>newArtsById[a.id]||a);
       const combinedImpacts = recipes.filter(r=>!r.archiv&&(r.zutaten||[]).some(z=>changedIds.has(z.art))).map(r=>{
         const weOld=calcWEWithArts(r,articles), weNew=calcWEWithArts(r,newArts);
         const vkNetto=r.vkBrutto/(1+r.mwst/100);
@@ -1771,12 +1796,12 @@ Antworte NUR mit gültigem JSON:
       });
     }
     setArticles(prev=>prev.map(a=>{
+      const newArt = newArtsById[a.id];
+      if(!newArt) return a;
       const upd = updates.find(u=>u.match.id===a.id);
-      if(!upd) return a;
-      const newArt={...a,ek:upd.ppu*a.g,datum:new Date().toISOString().slice(0,10)};
       logs.push({id:'L'+uid(),datum:new Date().toISOString(),typ:'Rechnung-Import',
-        produkt:a.name,altPreis:pricePerUnit(a),neuPreis:upd.ppu,
-        quelle:'Rechnung: '+(file?.name||''),status:'bestätigt'});
+        produkt:a.name,altPreis:pricePerUnit(a,variantLiefFor(a)),neuPreis:upd.ppu,
+        quelle:`Rechnung (${invoiceLief}): `+(file?.name||''),status:'bestätigt'});
       updatedArts.push(newArt);
       return newArt;
     }));
@@ -1812,6 +1837,20 @@ Antworte NUR mit gültigem JSON:
         </div>
       </div>
 
+      {/* Lieferant der Rechnung */}
+      <div className="card" style={{padding:'14px 16px',marginBottom:16}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:13,color:'#566373',fontWeight:600,whiteSpace:'nowrap'}}>Lieferant dieser Rechnung</span>
+          <select value={invoiceLief} onChange={e=>setInvoiceLief(e.target.value)} style={{flex:1,fontSize:13,padding:'6px 10px'}}>
+            <option value="">— bitte wählen —</option>
+            {[...suppliers].sort((a,b)=>a.name.localeCompare(b.name,'de')).map(s=><option key={s.id} value={s.name}>{s.name}</option>)}
+          </select>
+        </div>
+        <div style={{fontSize:11,color:'#5e6e7f',marginTop:6}}>
+          Entscheidet, welchem Lieferanten-Preis (Default oder Variante) übernommene Preise zugeordnet werden — ein anderer Lieferant überschreibt nie den Preis eines fremden Lieferanten.
+        </div>
+      </div>
+
       {/* Drop Zone */}
       <div ref={dropRef} className="invoice-drop" {...dragEvents} onClick={()=>document.getElementById('inv-file').click()}>
         <input id="inv-file" type="file" accept="image/*,application/pdf" style={{display:'none'}}
@@ -1822,12 +1861,13 @@ Antworte NUR mit gültigem JSON:
       </div>
 
       <div style={{display:'flex',gap:10,margin:'14px 0',alignItems:'center'}}>
-        <button className="btn btn-primary" onClick={scan} disabled={!file||!apiKey||scanning} style={{minWidth:160}}>
+        <button className="btn btn-primary" onClick={scan} disabled={!file||!apiKey||!invoiceLief||scanning} style={{minWidth:160}}>
           {scanning?'⏳ Analysiere…':'🔍 Mit KI scannen'}
         </button>
-        {flags.length>0&&<button className="btn btn-secondary" onClick={confirmAll}>
+        {flags.length>0&&<button className="btn btn-secondary" onClick={confirmAll} disabled={!invoiceLief}>
           ✓ Alle {flags.length} Preisänderungen übernehmen
         </button>}
+        {!invoiceLief&&<span style={{fontSize:12,color:'#d97706'}}>⚠ Bitte zuerst Lieferant auswählen</span>}
       </div>
 
       {/* Results */}
@@ -1845,9 +1885,15 @@ Antworte NUR mit gültigem JSON:
               <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'10px 14px',marginBottom:16}}>
                 <div style={{fontSize:13,fontWeight:600}}>{confirmModal.match.name}</div>
                 <div style={{fontSize:12,color:'#566373',marginTop:2}}>
-                  Aktuell: {fmt(confirmModal.match.ek)} für {confirmModal.match.g} {confirmModal.match.e}
-                  {' '}= {fmt(pricePerUnit(confirmModal.match))} / {confirmModal.match.e}
+                  Aktuell ({invoiceLief||confirmModal.match.lief||'—'}): {fmt(pricePerUnit(confirmModal.match, variantLiefFor(confirmModal.match)))} / {confirmModal.match.e}
                 </div>
+                {invoiceLief&&confirmModal.match.lief&&invoiceLief!==confirmModal.match.lief&&(
+                  <div style={{fontSize:11,color:'#6366f1',marginTop:4}}>
+                    {(confirmModal.match.varianten||[]).some(v=>v.lief===invoiceLief)
+                      ? `Aktualisiert die bestehende Lieferanten-Variante „${invoiceLief}" — Default-Lieferant „${confirmModal.match.lief}" bleibt unverändert.`
+                      : `Legt „${invoiceLief}" als neue Lieferanten-Variante an — Default-Lieferant „${confirmModal.match.lief}" bleibt unverändert.`}
+                  </div>
+                )}
               </div>
               <div className="form-row">
                 <label>Neuer EK (für {confirmModal.match.g} {confirmModal.match.e})</label>
@@ -1924,7 +1970,14 @@ Antworte NUR mit gültigem JSON:
                   </td>
                   <td style={{fontFamily:'monospace',whiteSpace:'nowrap'}}>{p.menge} {p.einheit}</td>
                   <td style={{fontFamily:'monospace',fontWeight:600}}>{fmt(ppu)}</td>
-                  <td style={{fontFamily:'monospace'}}>{eff?fmt(pricePerUnit(eff)):'—'}</td>
+                  <td style={{fontFamily:'monospace'}}>
+                    {eff?fmt(pricePerUnit(eff,variantLiefFor(eff))):'—'}
+                    {eff&&invoiceLief&&eff.lief&&invoiceLief!==eff.lief&&(
+                      <div style={{fontSize:10,color:'#5e6e7f'}}>
+                        {(eff.varianten||[]).some(v=>v.lief===invoiceLief)?`Variante ${invoiceLief}`:`neue Variante ${invoiceLief}`} · Default: {eff.lief}
+                      </div>
+                    )}
+                  </td>
                   <td>
                     {diff!=null?<span className={diff>0?'price-up':'price-down'}>
                       {diff>0?'▲':'▼'}{Math.abs(diff).toFixed(1)}%
@@ -2498,6 +2551,10 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   const avgDB = sortedDB.length ? sortedDB.reduce((s,r)=>s+r.dbNetto,0)/sortedDB.length : 0;
   const totalDB = sortedDB.filter(r=>r.anzahl).reduce((s,r)=>s+r.dbNetto*(r.anzahl||0),0);
 
+  const sortedWE = [...recipes].filter(r=>!r.archiv&&r.mwst!==19).sort((a,b)=>b.weEuro-a.weEuro);
+  const maxWEEuro = sortedWE[0]?.weEuro || 1;
+  const avgWEEuro = sortedWE.length ? sortedWE.reduce((s,r)=>s+r.weEuro,0)/sortedWE.length : 0;
+
   const staleArts = articles
     .filter(a=>!a.archiv&&['yellow','red'].includes(bestPriceAge(a,warnDays,alertDays)))
     .map(a=>{const nd=newestDatum(a);return{...a,_nd:nd,days:nd?Math.floor((now-new Date(nd))/86400000):9999};})
@@ -2753,6 +2810,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
       <div style={{display:'flex',gap:6,marginBottom:20}}>
         <SubBtn k="margen" label="Margen"/>
         <SubBtn k="db" label="Deckungsbeitrag"/>
+        <SubBtn k="we" label="Wareneinsatz €"/>
         <SubBtn k="preisalarm" label="Preisalarm"/>
         <SubBtn k="szenarien" label="Was wäre wenn …"/>
       </div>
@@ -2887,6 +2945,60 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
         </div>
         <div style={{marginTop:12,fontSize:12,color:'#5e6e7f'}}>
           DB Netto = VK Brutto ÷ (1+MwSt) − Wareneinsatz. Ziel-Marke (gestrichelt) bei {fmt(targetDB)}: grün ≥ Ziel, orange ≥ {fmt(targetDB*0.6)}, rot darunter. Nur Sandwiches (To-go, 7% MwSt) – Getränke ausgeblendet.
+        </div>
+      </>)}
+
+      {view==='we'&&(<>
+        <div className="stats-row" style={{marginBottom:20}}>
+          <div className="stat-card">
+            <div className="stat-label">Höchster WE</div>
+            <div className="stat-value" style={{fontSize:15}}>{sortedWE[0]?.name||'—'}</div>
+            <div className="stat-sub">{sortedWE[0]?fmt(sortedWE[0].weEuro):''}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Niedrigster WE</div>
+            <div className="stat-value" style={{fontSize:15}}>{sortedWE[sortedWE.length-1]?.name||'—'}</div>
+            <div className="stat-sub">{sortedWE[sortedWE.length-1]?fmt(sortedWE[sortedWE.length-1].weEuro):''}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Ø Wareneinsatz</div>
+            <div className="stat-value">{fmt(avgWEEuro)}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Aktive Rezepte</div>
+            <div className="stat-value">{sortedWE.length}</div>
+          </div>
+        </div>
+        <div className="card" style={{padding:'20px 24px'}}>
+          {sortedWE.map(r=>{
+            const barPct = maxWEEuro>0 ? (r.weEuro/maxWEEuro)*100 : 0;
+            const barColor = weColor(r.wePct);
+            return (
+              <div key={r.id} style={{display:'flex',alignItems:'center',marginBottom:9,cursor:'pointer'}}
+                onClick={()=>{setTooltip(null);onNavigateToRecipe&&onNavigateToRecipe(r);}}
+                onMouseEnter={e=>setTooltip({x:e.clientX,y:e.clientY,lines:[
+                  {label:r.name,bold:true},
+                  {label:'WE',value:fmt(r.weEuro)},
+                  {label:'WE%',value:r.wePct.toFixed(1)+'%'},
+                  {label:'VK Brutto',value:fmt(r.vkBrutto)},
+                  {label:'DB Netto',value:fmt(r.dbNetto)},
+                ]})}
+                onMouseMove={e=>setTooltip(t=>t?{...t,x:e.clientX,y:e.clientY}:t)}
+                onMouseLeave={()=>setTooltip(null)}
+              >
+                <div style={{width:150,fontSize:13,color:'#374151',textAlign:'right',paddingRight:14,flexShrink:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.name}</div>
+                <div style={{flex:1,height:26,position:'relative'}}>
+                  <div style={{width:barPct+'%',minWidth:4,height:'100%',background:barColor,borderRadius:4,display:'flex',alignItems:'center',paddingLeft:8}}>
+                    {barPct>20&&<span style={{fontSize:11,fontWeight:700,color:'white'}}>{fmt(r.weEuro)}</span>}
+                  </div>
+                  {barPct<=20&&<span style={{position:'absolute',left:barPct+'%',top:'50%',transform:'translateY(-50%)',paddingLeft:6,fontSize:11,color:'#374151',fontWeight:600}}>{fmt(r.weEuro)}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{marginTop:12,fontSize:12,color:'#5e6e7f'}}>
+          Wareneinsatz in € pro Sandwich, absteigend sortiert. Farbe folgt dem WE%-Ziel ({SOLL}% grün, ≤30% orange, darüber rot). Nur Sandwiches (To-go, 7% MwSt) – Getränke ausgeblendet.
         </div>
       </>)}
 
