@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS recipes (
   mwst        INTEGER DEFAULT 7,
   anzahl      INTEGER,
   brot        TEXT,
+  kategorie   TEXT,
+  personen    INTEGER,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
