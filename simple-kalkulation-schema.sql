@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS recipes (
   brot        TEXT,
   kategorie   TEXT,
   personen    INTEGER,
+  ernaehrung  TEXT DEFAULT 'Omnivore',
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
