@@ -202,12 +202,19 @@ function pricePerUnit(art, variantLief) {
   return ek / art.g;
 }
 
+// Schwundfaktor: z.schwund = % Verlust beim Putzen/Garen. z.menge = verwendbare Menge im Rezept,
+// eingekauft werden muss menge / (1 - schwund). Kosten und Einkaufsmengen skalieren damit.
+function yieldFactor(z) {
+  const s = parseFloat(z && z.schwund) || 0;
+  return 1 - Math.min(Math.max(s, 0), 95) / 100;
+}
+
 function calcWEWithArts(recipe, arts) {
   if (!recipe.zutaten || !recipe.zutaten.length) return recipe.weEuro || 0;
   return recipe.zutaten.reduce((sum, z) => {
     const art = arts.find(a => a.id === z.art);
     if (!art || !z.menge) return sum;
-    return sum + pricePerUnit(art, z.variantLief) * z.menge * toBaseMultiplier(z.einheit);
+    return sum + pricePerUnit(art, z.variantLief) * z.menge * toBaseMultiplier(z.einheit) / yieldFactor(z);
   }, 0);
 }
 
@@ -1055,7 +1062,7 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
     return form.zutaten.reduce((sum,z)=>{
       const art = articles.find(a=>a.id===z.art);
       if (!art || !z.menge) return sum;
-      return sum + pricePerUnit(art, z.variantLief) * z.menge * toBaseMultiplier(z.einheit);
+      return sum + pricePerUnit(art, z.variantLief) * z.menge * toBaseMultiplier(z.einheit) / yieldFactor(z);
     }, 0);
   }, [form.zutaten, articles]);
 
@@ -1138,8 +1145,8 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
           <div className="section-title" style={{marginTop:8}}>Zutaten <span style={{fontSize:11,color:'#5e6e7f',fontWeight:400,textTransform:'none'}}>(optional — WE wird dann automatisch berechnet)</span></div>
           <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:12,marginBottom:14}}>
             {form.zutaten.length > 0 && (
-              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 60px 65px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase'}}>
-                <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span style={{textAlign:'right'}}>€</span><span></span>
+              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 50px 60px 65px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase'}}>
+                <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span title="Schwund in % beim Putzen/Garen">Schwund %</span><span style={{textAlign:'right'}}>€</span><span></span>
               </div>
             )}
             {form.zutaten.map((z,i)=>{
@@ -1148,7 +1155,7 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
               const hasVariants = sups.length > 1;
               const activePpu = art ? pricePerUnit(art, z.variantLief) : 0;
               const defaultPpu = art ? pricePerUnit(art) : 0;
-              const zeilKosten = art ? activePpu * z.menge * toBaseMultiplier(z.einheit) : null;
+              const zeilKosten = art ? activePpu * z.menge * toBaseMultiplier(z.einheit) / yieldFactor(z) : null;
               const saving = (hasVariants && z.variantLief && z.variantLief !== art.lief)
                 ? ((activePpu - defaultPpu) / defaultPpu * 100) : null;
               const cheapest = hasVariants ? sups.reduce((m,s)=>{
@@ -1158,7 +1165,7 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
                 ? {lief:cheapest.lief, ppu:cheapest.ppu, savPct:(activePpu-cheapest.ppu)/activePpu*100} : null;
               return (
                 <div key={i} style={{marginBottom:6}}>
-                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 50px 65px auto',gap:8,alignItems:'center'}}>
+                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 50px 60px 65px auto',gap:8,alignItems:'center'}}>
                     <select value={z.art||''} onChange={e=>{
                       const a2 = articles.find(a=>a.id===e.target.value);
                       f('zutaten', form.zutaten.map((z2,j)=>j!==i ? z2 : {
@@ -1185,6 +1192,7 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
                       onChange={e=>setZutat(i,'menge',parseFloat(e.target.value)||0)}
                       style={{fontSize:12,padding:'5px 8px'}}/>
                     {(()=>{const uOpts=getIngUnits(art?.e);const allU=uOpts.includes(z.einheit)?uOpts:[z.einheit,...uOpts].filter(Boolean);return<select value={z.einheit||''} onChange={e=>setZutat(i,'einheit',e.target.value)} style={{fontSize:12,padding:'3px 4px',width:'100%'}}>{allU.map(u=><option key={u} value={u}>{u}</option>)}</select>;})()}
+                    <input type="number" value={z.schwund||''} min="0" max="95" step="1" placeholder="0" title="Schwund % (Putzen/Garen): Menge ist das, was im Rezept ankommt" onChange={e=>setZutat(i,'schwund',parseFloat(e.target.value)||0)} style={{fontSize:12,padding:'5px 6px'}}/>
                     <div style={{textAlign:'right',fontSize:12,fontWeight:600,color:zeilKosten>0?'#374151':'#5e6e7f',fontFamily:'monospace',whiteSpace:'nowrap'}}>
                       {zeilKosten!=null&&zeilKosten>0 ? fmt(zeilKosten) : '—'}
                     </div>
@@ -1193,7 +1201,7 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
                   {saving !== null && (
                     <div style={{fontSize:11,color:saving<0?'#16a34a':'#dc2626',paddingLeft:4,marginTop:2}}>
                       {saving<0?'▼ Einsparung':'▲ Aufpreis'} {Math.abs(saving).toFixed(1)}% vs. Standard ({fmt(defaultPpu)}/{art.e})
-                      {' · '}{fmt(activePpu*z.menge*toBaseMultiplier(z.einheit))} statt {fmt(defaultPpu*z.menge*toBaseMultiplier(z.einheit))}
+                      {' · '}{fmt(activePpu*z.menge*toBaseMultiplier(z.einheit)/yieldFactor(z))} statt {fmt(defaultPpu*z.menge*toBaseMultiplier(z.einheit)/yieldFactor(z))}
                     </div>
                   )}
                   {cheaperAvailable && !saving && (
@@ -1407,11 +1415,11 @@ function RecipeTab({recipes, setRecipes, pendingModal=null, onPendingClear, upse
                       <tbody>
                         {detail.zutaten.map((z,i)=>{
                           const art = articles.find(a=>a.id===z.art);
-                          const kosten = art ? pricePerUnit(art, z.variantLief)*z.menge*toBaseMultiplier(z.einheit) : null;
+                          const kosten = art ? pricePerUnit(art, z.variantLief)*z.menge*toBaseMultiplier(z.einheit)/yieldFactor(z) : null;
                           return (
                             <tr key={i} style={{borderTop:'1px solid #f1f5f9'}}>
                               <td style={{padding:'6px 10px'}}>{z.name||z.art||'—'}{z.variantLief&&z.variantLief!==art?.lief&&<span style={{color:'#5e6e7f',marginLeft:4}}>({z.variantLief})</span>}</td>
-                              <td style={{padding:'6px 10px',textAlign:'right',fontFamily:'monospace'}}>{z.menge} {z.einheit}</td>
+                              <td style={{padding:'6px 10px',textAlign:'right',fontFamily:'monospace'}}>{z.menge} {z.einheit}{parseFloat(z.schwund)>0&&<span style={{color:'#b45309',marginLeft:4}} title="Schwund beim Putzen/Garen">−{z.schwund}%</span>}</td>
                               <td style={{padding:'6px 10px',textAlign:'right',fontFamily:'monospace',fontWeight:600}}>{kosten!=null?fmt(kosten):'—'}</td>
                             </tr>
                           );
@@ -1461,7 +1469,7 @@ function VPModal({vp, articles, onSave, onClose}) {
     return form.zutaten.reduce((sum,z)=>{
       const art = articles.find(a=>a.id===z.art);
       if (!art) return sum;
-      return sum + pricePerUnit(art, z.variantLief)*z.menge*toBaseMultiplier(z.einheit);
+      return sum + pricePerUnit(art, z.variantLief)*z.menge*toBaseMultiplier(z.einheit)/yieldFactor(z);
     },0);
   },[form.zutaten,articles]);
 
@@ -1485,8 +1493,8 @@ function VPModal({vp, articles, onSave, onClose}) {
           </div>
           <div className="section-title">Zutaten</div>
           <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:12,marginBottom:12}}>
-            <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase'}}>
-              <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span></span>
+            <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px 60px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase'}}>
+              <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span title="Schwund in % beim Putzen/Garen">Schwund %</span><span></span>
             </div>
             {form.zutaten.map((z,i)=>{
               const art = articles.find(a=>a.id===z.art);
@@ -1498,7 +1506,7 @@ function VPModal({vp, articles, onSave, onClose}) {
                 ? ((activePpu - defaultPpu) / defaultPpu * 100) : null;
               return (
                 <div key={i} style={{marginBottom:6}}>
-                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px auto',gap:8,alignItems:'center'}}>
+                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 70px 60px auto',gap:8,alignItems:'center'}}>
                     <select value={z.art||''} onChange={e=>{
                       const a2 = articles.find(a=>a.id===e.target.value);
                       f('zutaten', form.zutaten.map((z2,j)=>j!==i ? z2 : {
@@ -1527,12 +1535,13 @@ function VPModal({vp, articles, onSave, onClose}) {
                       onChange={e=>setZutat(i,'menge',parseFloat(e.target.value)||0)}
                       style={{fontSize:12,padding:'5px 8px'}}/>
                     {(()=>{const uOpts=getIngUnits(art?.e);const allU=uOpts.includes(z.einheit)?uOpts:[z.einheit,...uOpts].filter(Boolean);return<select value={z.einheit||''} onChange={e=>setZutat(i,'einheit',e.target.value)} style={{fontSize:12,padding:'5px 8px',width:'100%'}}>{allU.map(u=><option key={u} value={u}>{u}</option>)}</select>;})()}
+                    <input type="number" value={z.schwund||''} min="0" max="95" step="1" placeholder="0" title="Schwund % (Putzen/Garen): Menge ist das, was im Rezept ankommt" onChange={e=>setZutat(i,'schwund',parseFloat(e.target.value)||0)} style={{fontSize:12,padding:'5px 6px'}}/>
                     <button className="btn btn-danger btn-xs" onClick={()=>delZutat(i)}>✕</button>
                   </div>
                   {saving !== null && (
                     <div style={{fontSize:11,color:saving<0?'#16a34a':'#dc2626',paddingLeft:4,marginTop:2}}>
                       {saving<0?'▼ Einsparung':'▲ Aufpreis'} {Math.abs(saving).toFixed(1)}% vs. Standard ({fmt(defaultPpu)}/{art.e})
-                      {' · '}{fmt(activePpu*z.menge*toBaseMultiplier(z.einheit))} statt {fmt(defaultPpu*z.menge*toBaseMultiplier(z.einheit))}
+                      {' · '}{fmt(activePpu*z.menge*toBaseMultiplier(z.einheit)/yieldFactor(z))} statt {fmt(defaultPpu*z.menge*toBaseMultiplier(z.einheit)/yieldFactor(z))}
                     </div>
                   )}
                 </div>
@@ -2442,15 +2451,15 @@ function VorlagenModal({tpl, articles, onSave, onClose}) {
           <div className="section-title">Zutaten</div>
           <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:12,marginBottom:12}}>
             {form.zutaten.length > 0 && (
-              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 50px 65px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase'}}>
-                <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span style={{textAlign:'right'}}>€</span><span></span>
+              <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 50px 60px 65px auto',gap:8,marginBottom:8,fontSize:11,fontWeight:600,color:'#566373',textTransform:'uppercase'}}>
+                <span>Artikel</span><span>Lieferant</span><span>Menge</span><span>Einheit</span><span title="Schwund in % beim Putzen/Garen">Schwund %</span><span style={{textAlign:'right'}}>€</span><span></span>
               </div>
             )}
             {form.zutaten.map((z,i)=>{
               const art = articles.find(a=>a.id===z.art);
               const ppu = art ? pricePerUnit(art) : 0;
               return (
-                <div key={i} style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 50px 65px auto',gap:8,alignItems:'center',marginBottom:6}}>
+                <div key={i} style={{display:'grid',gridTemplateColumns:'2fr 1fr 80px 50px 60px 65px auto',gap:8,alignItems:'center',marginBottom:6}}>
                   <select value={z.art||''} onChange={e=>{
                     const a2=articles.find(a=>a.id===e.target.value);
                     f('zutaten', form.zutaten.map((z2,j)=>j!==i ? z2 : {
@@ -2469,8 +2478,9 @@ function VorlagenModal({tpl, articles, onSave, onClose}) {
                     onChange={e=>setZutat(i,'menge',parseFloat(e.target.value)||0)}
                     style={{fontSize:12,padding:'5px 8px'}}/>
                   <span style={{fontSize:12,color:'#566373',padding:'5px 4px',textAlign:'center'}}>{art?.e||z.einheit||'—'}</span>
+                  <input type="number" value={z.schwund||''} min="0" max="95" step="1" placeholder="0" title="Schwund % (Putzen/Garen): Menge ist das, was im Rezept ankommt" onChange={e=>setZutat(i,'schwund',parseFloat(e.target.value)||0)} style={{fontSize:12,padding:'5px 6px'}}/>
                   <div style={{textAlign:'right',fontSize:12,fontWeight:600,color:'#374151',fontFamily:'monospace'}}>
-                    {art&&z.menge ? fmt(ppu*z.menge*toBaseMultiplier(z.einheit)) : '—'}
+                    {art&&z.menge ? fmt(ppu*z.menge*toBaseMultiplier(z.einheit)/yieldFactor(z)) : '—'}
                   </div>
                   <button className="btn btn-danger btn-xs" onClick={()=>delZutat(i)}>✕</button>
                 </div>
@@ -3801,7 +3811,7 @@ function EventTab({recipes, articles, vps, items, setItems, evName, setEvName, c
         const scale = vp.outputKg>0 ? baseQty/vp.outputKg : 0;
         const seen2 = new Set(seen); seen2.add(vp.id);
         (vp.zutaten||[]).forEach(z=>{
-          const q = (z.menge||0)*toBaseMultiplier(z.einheit)*scale;
+          const q = (z.menge||0)*toBaseMultiplier(z.einheit)*scale/yieldFactor(z);
           if (z.art) need(z.art, q, seen2);
           else { const k=z.name||'?'; rawAcc[k]={name:z.name, qty:(rawAcc[k]?.qty||0)+q, einheit:z.einheit}; }
         });
@@ -3814,7 +3824,7 @@ function EventTab({recipes, articles, vps, items, setItems, evName, setEvName, c
       const qty = Number(it.qty)||0;
       if (!r || !qty) return;
       (r.zutaten||[]).forEach(z=>{
-        const q = (z.menge||0)*toBaseMultiplier(z.einheit)*qty;
+        const q = (z.menge||0)*toBaseMultiplier(z.einheit)*qty/yieldFactor(z);
         if (z.art) need(z.art, q, new Set());
         else { const k=z.name||'?'; rawAcc[k]={name:z.name, qty:(rawAcc[k]?.qty||0)+q, einheit:z.einheit}; }
       });
