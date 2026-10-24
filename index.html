@@ -4350,10 +4350,17 @@ function App() {
   const [syncError, setSyncError] = useState('');
 
   const [articles,   setArticles]   = useLS('simple_articles',   ARTICLES_SEED);
-  const [recipes,    setRecipes]    = useLS('simple_recipes',    RECIPES_SEED);
+  const [rawRecipes, setRecipes]    = useLS('simple_recipes',    RECIPES_SEED);
   const [vps,        setVPs]        = useLS('simple_vps',        VPS_SEED);
   const [priceLog,   setPriceLog]   = useLS('simple_pricelog',   []);
   const [suppliers,  setSuppliers]  = useLS('simple_suppliers',  SUPPLIERS_SEED);
+  // WE/%/DB live aus aktuellen Artikelpreisen + Schwund ableiten (gespeicherte Werte sind nur Snapshot)
+  const recipes = useMemo(()=>rawRecipes.map(r=>{
+    if (!r.zutaten || !r.zutaten.length) return r;
+    const weEuro = calcWEWithArts(r, articles);
+    const vkNetto = r.vkBrutto > 0 ? r.vkBrutto / (1 + (r.mwst||7)/100) : 0;
+    return {...r, weEuro, wePct: vkNetto>0 ? weEuro/vkNetto*100 : 0, dbNetto: vkNetto-weEuro};
+  }), [rawRecipes, articles]);
   const [templates,  setTemplates]  = useLS('simple_templates',  TEMPLATES_SEED);
   const [deliveryRate, setDeliveryRate] = useLS('simple_delivery_rate', 30);
   const [warnDays,  setWarnDays]  = useLS('simple_warn_days',  90);
