@@ -3421,16 +3421,14 @@ function MobileDashboardView({recipes, articles, vps, priceLog, warnDays, alertD
         </div>
       )}
       {mostStale&&(
-        <div style={{background:'var(--b-fffbeb,#fffbeb)',border:'1px solid var(--d-fcd34d,#fcd34d)',borderRadius:12,padding:'12px 14px',marginBottom:16,display:'flex',alignItems:'center',gap:12}}>
+        <div role="button" tabIndex={0} onClick={()=>onEditArticle&&onEditArticle(mostStale)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onEditArticle&&onEditArticle(mostStale);}}}
+          style={{background:'var(--b-fffbeb,#fffbeb)',border:'1px solid var(--d-fcd34d,#fcd34d)',borderRadius:12,padding:'12px 14px',marginBottom:16,display:'flex',alignItems:'center',gap:12,cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
           <span style={{fontSize:18,color:'var(--t-d97706,#d97706)',flexShrink:0}}>⚠</span>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:14,fontWeight:600,color:'var(--t-92400e,#92400e)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{mostStale.name}</div>
             <div style={{fontSize:12,color:'var(--t-b45309,#b45309)',marginTop:1}}>{mostStale.days} Tage nicht aktualisiert</div>
           </div>
-          <button onClick={()=>onEditArticle&&onEditArticle(mostStale)}
-            style={{fontSize:13,color:'var(--t-d97706,#d97706)',fontWeight:700,background:'none',border:'none',cursor:'pointer',flexShrink:0,padding:'4px 0',WebkitTapHighlightColor:'transparent'}}>
-            Öffnen
-          </button>
+          <span style={{fontSize:13,color:'var(--t-d97706,#d97706)',fontWeight:700,flexShrink:0}}>Öffnen</span>
         </div>
       )}
 
