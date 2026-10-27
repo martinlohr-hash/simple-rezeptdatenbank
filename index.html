@@ -44,7 +44,7 @@ td{padding:8px 12px;vertical-align:middle;font-variant-numeric:tabular-nums}
 .btn-danger{background:var(--b-fee2e2,#fee2e2);color:var(--t-dc2626,#dc2626)}
 .btn-sm{padding:4px 10px;font-size:12px}
 .btn-xs{padding:2px 8px;font-size:11px}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:250;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal{background:var(--b-fff,#fff);border-radius:12px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.22)}
 .modal-lg{max-width:760px}
 .modal-header{padding:16px 20px;border-bottom:1px solid var(--d-e2e8f0,#e2e8f0);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--b-fff,#fff);z-index:1}
@@ -114,7 +114,11 @@ input:checked+.slider:before{transform:translateX(16px)}
 @media(prefers-reduced-motion:reduce){.toast{animation:none;}.tab-content{animation:none}.btn:active{transform:none}.modal,.modal-overlay,.slider,.slider:before,.shop-progress-bar{transition:none}}
 /* Touch: Apple HIG Standard-Controlgröße 44 pt, Eingabefelder 16 px (kein iOS-Zoom) */
 @media(pointer:coarse){.btn{min-height:44px;justify-content:center}.btn-sm,.btn-xs{min-height:36px}input[type=text],input[type=number],input[type=date],select,textarea,.search{font-size:16px}}
+.sup-row{display:grid;grid-template-columns:1fr 90px 120px auto;gap:8px;align-items:center;margin-bottom:6px}
 @media(max-width:767px){
+  .sup-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--d-e2e8f0,#e2e8f0)}
+  .sup-row>:first-child{grid-column:1/-1}
+  .sup-row input[type=date]{min-width:0}
   .header{flex-wrap:wrap;padding:10px 16px;gap:8px}
   .content{padding:12px 16px}
   .tabs{padding:0 12px}
@@ -636,7 +640,7 @@ function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
               const vPpu = form.g>0 ? row.ek/form.g : row.ek;
               const diffPct = !row.isDefault&&ppu>0 ? ((vPpu-ppu)/ppu*100) : 0;
               return (
-                <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 90px 120px auto',gap:8,alignItems:'center',marginBottom:6}}>
+                <div key={i} className="sup-row">
                   <input type="text" list="art-sup-list" value={row.lief||''} onChange={e=>updateRow(i,'lief',e.target.value)} placeholder="Lieferant" style={{fontSize:12}}/>
                   <div style={{position:'relative'}}>
                     <input type="number" value={row.ek||''} onChange={e=>updateRow(i,'ek',parseFloat(e.target.value)||0)} step="0.01" placeholder="EK €" style={{fontSize:12,width:'100%'}}/>
