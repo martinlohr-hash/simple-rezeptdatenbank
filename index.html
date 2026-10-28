@@ -114,9 +114,9 @@ input:checked+.slider:before{transform:translateX(16px)}
 @media(prefers-reduced-motion:reduce){.toast{animation:none;}.tab-content{animation:none}.btn:active{transform:none}.modal,.modal-overlay,.slider,.slider:before,.shop-progress-bar{transition:none}}
 /* Touch: Apple HIG Standard-Controlgröße 44 pt, Eingabefelder 16 px (kein iOS-Zoom) */
 @media(pointer:coarse){.btn{min-height:44px;justify-content:center}.btn-sm,.btn-xs{min-height:36px}input[type=text],input[type=number],input[type=date],select,textarea,.search{font-size:16px}}
-.sup-row{display:grid;grid-template-columns:1fr 90px 120px auto;gap:8px;align-items:center;margin-bottom:6px}
+.sup-row{display:grid;grid-template-columns:1fr 72px 90px 120px auto;gap:8px;align-items:center;margin-bottom:6px}
 @media(max-width:767px){
-  .sup-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--d-e2e8f0,#e2e8f0)}
+  .sup-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--d-e2e8f0,#e2e8f0)}
   .sup-row>:first-child{grid-column:1/-1}
   .sup-row input[type=date]{min-width:0}
   .header{flex-wrap:wrap;padding:10px 16px;gap:8px}
@@ -210,8 +210,9 @@ function ampelWE(pct) {
 function pricePerUnit(art, variantLief) {
   const v = variantLief && (art.varianten||[]).find(va=>va.lief===variantLief);
   const ek = v ? v.ek : art.ek;
-  if (!art.g || art.g === 0) return ek;
-  return ek / art.g;
+  const g = v && v.g > 0 ? v.g : art.g;   // Variante kann eigene Gebindegröße haben
+  if (!g || g === 0) return ek;
+  return ek / g;
 }
 
 // Schwundfaktor: z.schwund = % Verlust beim Putzen/Garen. z.menge = verwendbare Menge im Rezept,
@@ -330,6 +331,9 @@ function newestDatum(art) {
   const dates = [art.datum, ...(art.varianten||[]).map(v=>v.datum)].filter(Boolean);
   return dates.length ? [...dates].sort().reverse()[0] : '';
 }
+
+// €/Einheit einer Lieferanten-Zeile (eigene Gebindegröße, sonst die des Artikels)
+function supPpu(art, s) { const g = s.g > 0 ? s.g : art.g; return s.ek / (g || 1); }
 
 function allSuppliers(art) {
   // Returns [{lief, ek, datum, isDefault}] — default first
@@ -579,10 +583,15 @@ function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
     {lief:art.lief||'', ek:art.ek||0, datum:art.datum||'', isDefault:true},
     ...(art.varianten||[]).map(v=>({...v, isDefault:false})),
   ]);
-  const addRow    = () => setRows(prev=>[...prev,{lief:'',ek:0,datum:'',isDefault:false}]);
+  const addRow    = () => setRows(prev=>[...prev,{lief:'',ek:0,datum:'',g:0,isDefault:false}]);
   const removeRow = (i) => setRows(prev=>prev.filter((_,j)=>j!==i));
   const updateRow = (i,k,v) => setRows(prev=>prev.map((r,j)=>j===i?{...r,[k]:v}:r));
-  const makeDefault = (i) => setRows(prev=>prev.map((r,j)=>({...r,isDefault:j===i})));
+  const makeDefault = (i) => {
+    // Gebindegröße wandert mit: neuer Standard übernimmt seine Größe in den Artikel, alter behält die bisherige
+    const oldG = form.g, newG = rows[i].g>0 ? rows[i].g : form.g;
+    setRows(prev=>prev.map((r,j)=>j===i?{...r,g:newG,isDefault:true}:r.isDefault?{...r,g:oldG,isDefault:false}:r));
+    f('g',newG);
+  };
 
   const defaultRow = rows.find(r=>r.isDefault)||rows[0];
   const ppu = defaultRow ? (form.g>0 ? defaultRow.ek/form.g : defaultRow.ek) : 0;
@@ -637,16 +646,15 @@ function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
             </div>
             <datalist id="art-sup-list">{suppliers.map(s=><option key={s.id} value={s.name}/>)}</datalist>
             {rows.map((row,i)=>{
-              const vPpu = form.g>0 ? row.ek/form.g : row.ek;
+              const rowG = row.isDefault ? form.g : (row.g>0 ? row.g : form.g);
+              const vPpu = rowG>0 ? row.ek/rowG : row.ek;
               const diffPct = !row.isDefault&&ppu>0 ? ((vPpu-ppu)/ppu*100) : 0;
               return (
                 <div key={i} className="sup-row">
                   <input type="text" list="art-sup-list" value={row.lief||''} onChange={e=>updateRow(i,'lief',e.target.value)} placeholder="Lieferant" style={{fontSize:12}}/>
+                  <input type="number" step="0.001" title={row.isDefault?'Gebindegröße (= Packungsgröße oben)':'Gebindegröße dieses Lieferanten — leer = wie Standard'} value={row.isDefault?(form.g||''):(row.g||'')} placeholder={form.g?String(form.g):'Gebinde'} onChange={e=>{const v=parseFloat(e.target.value)||0; if(row.isDefault)f('g',v); else updateRow(i,'g',v);}} style={{fontSize:12}}/>
                   <div style={{position:'relative'}}>
                     <input type="number" value={row.ek||''} onChange={e=>updateRow(i,'ek',parseFloat(e.target.value)||0)} step="0.01" placeholder="EK €" style={{fontSize:12,width:'100%'}}/>
-                    {!row.isDefault&&row.ek>0&&ppu>0&&<span style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',fontSize:9,color:diffPct>0?'var(--t-dc2626,#dc2626)':'var(--t-16a34a,#16a34a)',fontWeight:700,pointerEvents:'none'}}>
-                      {diffPct>0?'▲':'▼'}{Math.abs(diffPct).toFixed(0)}%
-                    </span>}
                   </div>
                   <input type="date" value={row.datum||''} onChange={e=>updateRow(i,'datum',e.target.value)} style={{fontSize:12}}/>
                   <div style={{display:'flex',gap:4}}>
@@ -656,6 +664,9 @@ function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
                     }
                     {!row.isDefault&&<button className="btn btn-danger btn-xs" onClick={()=>removeRow(i)}>✕</button>}
                   </div>
+                  {row.ek>0&&<div style={{gridColumn:'1/-1',fontSize:11,color:'var(--t-5e6e7f,#5e6e7f)',fontVariantNumeric:'tabular-nums'}}>
+                    = {vPpu.toFixed(2).replace('.',',')} €/{form.e||'Einheit'}{!row.isDefault&&ppu>0&&Math.abs(diffPct)>=0.5&&<span style={{marginLeft:6,fontWeight:700,color:diffPct>0?'var(--t-dc2626,#dc2626)':'var(--t-16a34a,#16a34a)'}}>{diffPct>0?'▲ ':'▼ '}{Math.abs(diffPct).toFixed(0)} % {diffPct>0?'teurer':'günstiger'} als Standard</span>}
+                  </div>}
                 </div>
               );
             })}
@@ -674,7 +685,7 @@ function ArticleModal({art, onSave, onClose, suppliers=[], onDelete}) {
           <button className="btn btn-secondary" onClick={onClose}>Abbrechen</button>
           <button className="btn btn-primary" onClick={()=>{
             const defRow=rows.find(r=>r.isDefault)||rows[0];
-            onSave({...form,id:form.id||('A'+uid()),lief:defRow.lief,ek:defRow.ek,datum:defRow.datum,varianten:rows.filter(r=>!r.isDefault).map(({lief,ek,datum})=>({lief,ek,datum}))});
+            onSave({...form,id:form.id||('A'+uid()),lief:defRow.lief,ek:defRow.ek,datum:defRow.datum,varianten:rows.filter(r=>!r.isDefault).map(({lief,ek,datum,g})=>({lief,ek,datum,...(g>0?{g}:{})}))});
           }}>Speichern</button>
         </div>
       </div>
@@ -919,8 +930,8 @@ function ArticleTab({articles, setArticles, priceLog, setPriceLog, upsert, del, 
             const age = bestPriceAge(a, warnDays, alertDays);
             const suppliers = allSuppliers(a);
             const hasVariants = (a.varianten||[]).length > 0;
-            const ppuMin = hasVariants ? Math.min(...suppliers.map(s=>s.ek/(a.g||1))) : ppu;
-            const ppuMax = hasVariants ? Math.max(...suppliers.map(s=>s.ek/(a.g||1))) : ppu;
+            const ppuMin = hasVariants ? Math.min(...suppliers.map(s=>supPpu(a,s))) : ppu;
+            const ppuMax = hasVariants ? Math.max(...suppliers.map(s=>supPpu(a,s))) : ppu;
             return (
               <tr key={a.id} style={{...(a.archiv?{opacity:.5}:{}),cursor:'pointer'}} onClick={()=>setModal({...a})}>
                 <td style={{padding:'4px 6px',textAlign:'center'}} onClick={e=>e.stopPropagation()}>
@@ -1172,8 +1183,8 @@ function RecipeModal({recipe, onSave, onClose, articles=[], templates=[], delive
               const saving = (hasVariants && z.variantLief && z.variantLief !== art.lief)
                 ? ((activePpu - defaultPpu) / defaultPpu * 100) : null;
               const cheapest = hasVariants ? sups.reduce((m,s)=>{
-                const p=s.ek/(art.g||1); return p<m.ppu?{lief:s.lief,ppu:p}:m;
-              },{lief:sups[0].lief,ppu:sups[0].ek/(art.g||1)}) : null;
+                const p=supPpu(art,s); return p<m.ppu?{lief:s.lief,ppu:p}:m;
+              },{lief:sups[0].lief,ppu:supPpu(art,sups[0])}) : null;
               const cheaperAvailable = cheapest && cheapest.ppu < activePpu - 0.001
                 ? {lief:cheapest.lief, ppu:cheapest.ppu, savPct:(activePpu-cheapest.ppu)/activePpu*100} : null;
               return (
@@ -2613,7 +2624,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
   articles.filter(a=>!a.archiv&&(a.varianten||[]).length>0).forEach(art=>{
     const defPPU = art.g>0 ? art.ek/art.g : art.ek;
     let cheapestV=null, cheapestPPU=defPPU;
-    (art.varianten||[]).forEach(v=>{const p=v.ek/(art.g||1);if(p<cheapestPPU-0.0001){cheapestPPU=p;cheapestV=v;}});
+    (art.varianten||[]).forEach(v=>{const p=supPpu(art,v);if(p<cheapestPPU-0.0001){cheapestPPU=p;cheapestV=v;}});
     if(!cheapestV) return;
     const deltaPPU=defPPU-cheapestPPU;
     let annualSaving=0; const recipeRefs=[];
@@ -3382,7 +3393,7 @@ function MobileDashboardView({recipes, articles, vps, priceLog, warnDays, alertD
   articles.filter(a=>!a.archiv&&(a.varianten||[]).length>0).forEach(art=>{
     const defPPU=art.g>0?art.ek/art.g:art.ek;
     let cheapestV=null,cheapestPPU=defPPU;
-    (art.varianten||[]).forEach(v=>{const p=v.ek/(art.g||1);if(p<cheapestPPU-0.0001){cheapestPPU=p;cheapestV=v;}});
+    (art.varianten||[]).forEach(v=>{const p=supPpu(art,v);if(p<cheapestPPU-0.0001){cheapestPPU=p;cheapestV=v;}});
     if(!cheapestV) return;
     const deltaPPU=defPPU-cheapestPPU; let annualSaving=0; const refs=[];
     recipes.filter(r=>!r.archiv&&(r.zutaten||[]).some(z=>z.art===art.id)).forEach(rec=>{
