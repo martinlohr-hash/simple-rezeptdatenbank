@@ -2564,9 +2564,83 @@ function VorlagenTab({templates, setTemplates, articles}) {
   );
 }
 
+// ── NEUE PREISE (Vorschläge aus Rechnungen, wöchentlich automatisch) ─────────
+
+function NeuePreise({client, targetWePct=28, targetDB=6.5, onDecided}) {
+  const [items, setItems] = React.useState(null);
+  const [err, setErr] = React.useState('');
+  const [busy, setBusy] = React.useState({});
+  const load = React.useCallback(async ()=>{
+    if (!client) { setErr('Keine Supabase-Verbindung – Vorschläge liegen in der Datenbank.'); return; }
+    const {data, error} = await client.from('preis_vorschlaege_offen').select('*');
+    if (error) { setErr(error.message); return; }
+    const sorted = [...(data||[])].sort((a,b)=>((b.impact||[]).length>0)-((a.impact||[]).length>0) || Math.abs(b.diff_pct??100)-Math.abs(a.diff_pct??100));
+    setItems(sorted); setErr('');
+  },[client]);
+  React.useEffect(()=>{ load(); },[load]);
+  const decide = async (pv, aktion) => {
+    setBusy(b=>({...b,[pv.id]:true}));
+    const {error} = await client.rpc('preis_entscheiden', {p_id: pv.id, p_aktion: aktion});
+    setBusy(b=>({...b,[pv.id]:false}));
+    if (error) { setErr(error.message); return; }
+    setItems(prev=>prev.filter(x=>x.id!==pv.id));
+    onDecided && onDecided();
+  };
+  const num = v => v==null ? null : parseFloat(v);
+  const ppu = (v,e) => v==null ? '—' : fmt(v)+' / '+(e||'');
+  if (err) return <div className="card"><div className="empty">{err}</div></div>;
+  if (!items) return <div className="card"><div className="empty">Lade Vorschläge …</div></div>;
+  if (!items.length) return <div className="card"><div className="empty">Keine offenen Preisvorschläge. Der nächste Abgleich läuft montags.</div></div>;
+  return (
+    <div>
+      <div style={{fontSize:12,color:'var(--t-566373,#566373)',marginBottom:12}}>
+        Jeden Montag automatisch aus den Rechnungen in Google Drive: Preise, die mindestens 5 % vom KitchenOS-Preis abweichen.
+        <strong> Übernehmen</strong> schreibt den Preis in den Artikel (beim richtigen Lieferanten) und ins Preislog.
+        <strong> Sonderpreis</strong> ändert nichts, wird protokolliert und meldet sich 60 Tage nicht erneut.
+      </div>
+      {items.map(pv=>{
+        const d = num(pv.diff_pct), alt = num(pv.alt_ppu), neu = num(pv.neu_ppu);
+        const imp = pv.impact||[];
+        return (
+          <div key={pv.id} className="card" style={{marginBottom:12,padding:'14px 16px'}}>
+            <div style={{display:'flex',gap:10,alignItems:'baseline',flexWrap:'wrap'}}>
+              <strong style={{fontSize:15}}>{pv.artikel}</strong>
+              <span style={{fontSize:12,color:'var(--t-566373,#566373)'}}>{pv.lieferant} · Rechnung {pv.rechnung} vom {pv.rechnungsdatum?new Date(pv.rechnungsdatum).toLocaleDateString('de-DE'):'—'}</span>
+              {alt==null
+                ? <span className="ampel yellow"><span className="dot"/>Lieferant neu in KitchenOS</span>
+                : <span style={{fontWeight:700,color:d>0?'var(--t-dc2626,#dc2626)':'var(--t-16a34a,#16a34a)'}}>{d>0?'+':''}{d.toFixed(1)} %</span>}
+              {d!=null&&Math.abs(d)>50&&<span className="ampel red"><span className="dot"/>Prüfen: Einheit oder Packungsgröße?</span>}
+            </div>
+            <div style={{fontSize:13,marginTop:6}}>{ppu(alt,pv.einheit)} → <strong>{ppu(neu,pv.einheit)}</strong> <span style={{color:'var(--t-566373,#566373)'}}>· auf der Rechnung: {pv.rechnungsartikel}</span></div>
+            {imp.length>0&&(
+              <table style={{marginTop:10}}>
+                <thead><tr><th>Rezept</th><th style={{textAlign:'right'}}>WE % alt</th><th style={{textAlign:'right'}}>WE % neu</th><th style={{textAlign:'right'}}>DB alt</th><th style={{textAlign:'right'}}>DB neu</th></tr></thead>
+                <tbody>{imp.map(i=>{
+                  const bad = i.kategorie==='Sandwich' && (i.we_pct_neu>targetWePct || i.db_neu<targetDB);
+                  return <tr key={i.rezept}>
+                    <td>{i.rezept}</td>
+                    <td style={{textAlign:'right'}}>{fmtPct(i.we_pct_alt)}</td>
+                    <td style={{textAlign:'right',fontWeight:600,color:bad?'var(--t-dc2626,#dc2626)':undefined}}>{fmtPct(i.we_pct_neu)}</td>
+                    <td style={{textAlign:'right'}}>{fmt(i.db_alt)}</td>
+                    <td style={{textAlign:'right',fontWeight:600,color:bad?'var(--t-dc2626,#dc2626)':undefined}}>{fmt(i.db_neu)}</td>
+                  </tr>;})}</tbody>
+              </table>
+            )}
+            {!imp.length&&<div style={{fontSize:12,color:'var(--t-566373,#566373)',marginTop:6}}>Kein aktives Rezept rechnet mit diesem Preis.</div>}
+            <div style={{display:'flex',gap:8,marginTop:10}}>
+              <button className="btn btn-primary btn-sm" disabled={busy[pv.id]} onClick={()=>decide(pv,'uebernehmen')}>Übernehmen</button>
+              <button className="btn btn-sm" disabled={busy[pv.id]} onClick={()=>decide(pv,'sonderpreis')}>Kurzfristig / Sonderpreis</button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── DASHBOARD TAB ─────────────────────────────────────────────────────────────
 
-function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, onNavigateToRecipe, suppliers=[], warnDays=90, alertDays=180, targetWePct=22, targetDB=7, haccpOpenCount=0, haccpTotal=0, onOpenHaccp}) {
+function DashboardTab({client=null, onPriceDecided, recipes, articles, vps=[], priceLog=[], onNewArticle, onNewRecipe, onNewVP, onEditArticle, onSaveArticle, onNavigateToRecipe, suppliers=[], warnDays=90, alertDays=180, targetWePct=22, targetDB=7, haccpOpenCount=0, haccpTotal=0, onOpenHaccp}) {
   const [isMobile, setIsMobile] = React.useState(()=>window.innerWidth<768);
   React.useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h,{passive:true});return()=>window.removeEventListener('resize',h);},[]);
   const [view, setView] = React.useState('db');
@@ -2871,6 +2945,7 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
         <SubBtn k="margen" label="Margen"/>
         <SubBtn k="we" label="Wareneinsatz €"/>
         <SubBtn k="preisalarm" label="Preisalarm"/>
+        <SubBtn k="neuepreise" label="Neue Preise"/>
         <SubBtn k="szenarien" label="Was wäre wenn …"/>
       </div>
 
@@ -3060,6 +3135,8 @@ function DashboardTab({recipes, articles, vps=[], priceLog=[], onNewArticle, onN
           Wareneinsatz in € pro Sandwich, absteigend sortiert. Farbe folgt dem WE%-Ziel ({SOLL}% grün, ≤30% orange, darüber rot). Nur Sandwiches (To-go, 7% MwSt) – Getränke ausgeblendet.
         </div>
       </>)}
+
+      {view==='neuepreise'&&<NeuePreise client={client} targetWePct={targetWePct} targetDB={targetDB} onDecided={onPriceDecided}/>}
 
       {view==='preisalarm'&&(<>
         <div className="stats-row" style={{marginBottom:20}}>
@@ -4477,6 +4554,21 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[client]);
 
+  // Nach einer Entscheidung über einen Preisvorschlag Artikel und Preislog neu laden
+  const reloadPrices = useCallback(async ()=>{
+    if (!client) return;
+    const [a, l] = await Promise.all([
+      client.from('articles').select('*').order('name'),
+      client.from('price_log').select('*').order('created_at',{ascending:false}).limit(500),
+    ]);
+    if (!a.error && a.data) {
+      const favIds = new Set(JSON.parse(localStorage.getItem('simple_favs')||'[]'));
+      setArticles(a.data.map(art=>({...art, fav: art.fav || favIds.has(art.id)})));
+    }
+    if (!l.error && l.data) setPriceLog(l.data);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[client]);
+
   // ── Upsert helper (called explicitly by save functions via props) ──
   const upsert = useCallback(async (table, item, {silent}={}) => {
     if (!client) return;
@@ -4648,7 +4740,7 @@ function App() {
         right={<button className="btn btn-ghost" style={{color:'var(--t-5e6e7f,#5e6e7f)',fontSize:19,padding:'4px 6px',lineHeight:1}} onClick={()=>setShowSettings(true)} title="Einstellungen">⚙</button>}
       />}
       <div className="content">
-        {tab===0&&<DashboardTab recipes={recipes} articles={articles} vps={vps} suppliers={suppliers} priceLog={priceLog} warnDays={warnDays} alertDays={alertDays} targetWePct={targetWePct} targetDB={targetDB}
+        {tab===0&&<DashboardTab client={client} onPriceDecided={reloadPrices} recipes={recipes} articles={articles} vps={vps} suppliers={suppliers} priceLog={priceLog} warnDays={warnDays} alertDays={alertDays} targetWePct={targetWePct} targetDB={targetDB}
           haccpOpenCount={haccpOpenCount} haccpTotal={haccpDevices.length} onOpenHaccp={()=>setTab(10)}
           onNewArticle={()=>{setPendingModal({name:'',g:1,e:'KG',ek:0,lief:'',datum:'',archiv:false});setTab(1);}}
           onNewRecipe={()=>{setPendingRecipeModal({});setTab(3);}}
